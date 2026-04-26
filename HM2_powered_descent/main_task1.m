@@ -38,6 +38,18 @@ end
 %% Plots
 plot_results(sols, tf_list, data);
 
+%% Export figures
+fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
+if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
+slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
+fig_handles = findobj(groot, 'Type', 'figure');
+for kk = 1:numel(fig_handles)
+    nm = get(fig_handles(kk), 'Name');
+    if isempty(nm); nm = sprintf('fig%d', kk); end
+    exportgraphics(fig_handles(kk), ...
+        fullfile(fig_dir, ['task1_' slugify(nm) '.png']), 'Resolution', 200);
+end
+
 %% Summary table
 fprintf('\n--- Sensitivity summary ---\n');
 fprintf('%8s | %10s | %10s\n', 'tf [s]', 'm_f [kg]', 'fuel [kg]');

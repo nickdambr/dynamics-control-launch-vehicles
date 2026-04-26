@@ -75,6 +75,14 @@ Fuel consumption grows monotonically with `tf` over the swept window
 (longer hover ⇒ more gravity losses). All three solutions respect the
 glide-slope corridor and the thrust-magnitude bounds.
 
+| Trajectory (3 sensitivity runs + glide-slope corridor) | Thrust magnitude |
+|:-:|:-:|
+| ![Trajectory](figures/task1_trajectory.png) | ![Thrust](figures/task1_thrust_magnitude.png) |
+
+| Mass | Glide-slope angle |
+|:-:|:-:|
+| ![Mass](figures/task1_mass.png) | ![Glide-slope](figures/task1_glide_slope.png) |
+
 ## Roadmap / TODO
 
 - [ ] **Tighten convergence.** With the current settings (`MaxIterations = 500`,
