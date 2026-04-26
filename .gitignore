@@ -1,0 +1,37 @@
+# --- Course material (not redistributed: copyright of the lecturer) ---
+DCLV_MATERIALE_CORSO_26042026/
+# Assignment PDFs sometimes get copied into individual HM folders — exclude
+# those too so the same copyrighted material doesn't slip in by another path.
+**/LVdynamics_*.pdf
+**/Homework*.pdf
+**/Classwork*.pdf
+
+# --- MATLAB ---
+*.asv
+*.m~
+*.mex*
+*.autosave
+octave-workspace
+# *.mat — not blanket-ignored on purpose; commit small reference results
+#         per-homework, but keep heavy datasets out via per-folder rules.
+
+# --- Simulink ---
+slprj/
+*.slxc
+*.mdl.r*
+*.slx.r*
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Build / temporary artifacts ---
+*.bak
+*.tmp

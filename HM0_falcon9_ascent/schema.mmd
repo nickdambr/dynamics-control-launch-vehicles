@@ -1,0 +1,254 @@
+%%{init: {"flowchart": {"nodeSpacing": 120, "rankSpacing": 180}, "fontSize": 28}}%%
+flowchart LR
+
+    %% ── MAIN SCRIPT ────────────────────────────────────────────────────────
+
+    START([" Inizio main2.m "])
+
+    START --> PARAMS["Costanti e parametri veicolo
+    mu, RE, rho0, p0, Hscale, omegaE
+    mdry1, mp1, Tvac1, tb1, cvac1, Aex1
+    mdry2, mp2, CD, Sref, mfair, mpay
+    t_end1=5 s, t_end2=15 s"]
+
+    PARAMS --> SITE["Sito di lancio — KSC
+    lat0 = 28.57°, lon0 = -80.65°"]
+
+    SITE --> REFSCALES["Scale di riferimento
+    L_ref = RE = 6 378 137 m
+    V_ref = 7800 m/s
+    T_ref = L_ref / V_ref ≈ 817.7 s
+    m_ref = m0 (massa iniziale totale)"]
+
+    REFSCALES --> NDPARAMS["Adimensionalizzazione parametri
+    mu*  = mu / (V_ref²·L_ref)
+    ωE*  = ωE · T_ref
+    ρ0*  = ρ0 · L_ref³ / m_ref
+    p0*  = p0 · L_ref³ / (m_ref·V_ref²)
+    H*   = H_scale / L_ref
+    Tvac* = Tvac · L_ref / (m_ref·V_ref²)
+    Aex* = Aex / L_ref²
+    Q̇*   = Q̇ · T_ref / m_ref
+    Sref* = Sref / L_ref²"]
+
+    NDPARAMS --> IC["Condizioni iniziali nd
+    r0*=1, θ0=lon0, φ0=lat0
+    u0*=0, v0*=ωE·RE·cos(lat0)/V_ref
+    w0*=0, m0*=1
+    y0* = [r0*; θ0; φ0; u0*; v0*; w0*; m0*]"]
+
+    IC --> ARCS["Durate archi (nd)
+    t1* = t_end1 / T_ref
+    t2* = t_end2 / T_ref
+    tb* = tb1    / T_ref
+    Δ1 = t1*
+    Δ2 = t2* - t1*
+    Δ3 = tb* - t2*"]
+
+    ARCS --> PAR["Struttura par
+    (tutti i parametri nd + T_ref, t_end1)"]
+
+    PAR --> OPTS["odeset
+    RelTol=1e-10, AbsTol=1e-12
+    Events = arc_boundary_events"]
+
+    OPTS --> ODE["ode45  —  tspan = [0, 3]
+    [τ_sol, Y_nd] = ode45(@eom_nd, [0 3], y0*)"]
+
+    %% ── EVENTO BOUNDARY ────────────────────────────────────────────────────
+
+    ODE -->|"chiama a ogni step"| EOM_CALL(["eom_nd(τ, y*, par)"])
+    ODE -->|"monitora zero-crossing"| EVFUN
+
+    subgraph EVFUN["arc_boundary_events(τ, ~, ~)"]
+        EV1["value = [τ−1 ; τ−2]
+        isterminal = [0 ; 0]
+        direction  = [+1 ; +1]"]
+        EV2{"zero-crossing
+        rilevato?"}
+        EV3["ode45 inserisce punto
+        esatto in τ=1 o τ=2
+        (solver NON si ferma)"]
+        EV1 --> EV2
+        EV2 -->|"Sì"| EV3
+        EV2 -->|"No"| EV1
+    end
+
+    EVFUN -->|"continua"| ODE
+
+    %% ── EOM_ND ─────────────────────────────────────────────────────────────
+
+    subgraph EOM["eom_nd(τ, y*, par)  —  equazioni del moto nd"]
+        direction TB
+
+        ARC_DEC{"τ ≤ 1 ?"}
+
+        ARC_DEC -->|"Sì"| A1["Arco 1  (ascesa verticale)
+        Δ = Δ1,  t_arc_start* = 0
+        τ_k = τ,  fase = 1"]
+
+        ARC_DEC -->|"No"| ARC12{"τ ≤ 2 ?"}
+
+        ARC12 -->|"Sì"| A2["Arco 2  (pitchover)
+        Δ = Δ2,  t_arc_start* = t1*
+        τ_k = τ−1,  fase = 2"]
+
+        ARC12 -->|"No"| A3["Arco 3  (gravity turn)
+        Δ = Δ3,  t_arc_start* = t2*
+        τ_k = τ−2,  fase = 3"]
+
+        A1 & A2 & A3 --> TNS["t* = t_arc_start* + τ_k · Δ"]
+
+        TNS --> UNPACK["Spacchetta y*
+        r*, θ, φ, u*, v*, w*, m*"]
+
+        UNPACK --> ATM["Atmosfera nd
+        alt* = r* − 1
+        ρ* = ρ0* · exp(−alt*/H*)
+        p* = p0* · exp(−alt*/H*)"]
+
+        ATM --> VREL_CALC["Velocità relativa nd
+        v_atm* = ωE* · r* · cos φ
+        ur*=u*,  vr*=v*−v_atm*,  wr*=w*
+        Vrel* = ‖ur*,vr*,wr*‖"]
+
+        VREL_CALC --> GRAV["Gravità nd  (solo radiale)
+        g_u* = −mu* / r*²"]
+
+        GRAV --> DRAG_DEC{"Vrel* > 1e-10 ?"}
+
+        DRAG_DEC -->|"Sì"| DRAG["Drag nd
+        Dc* = −0.5 · ρ* · Sref* · CD · Vrel*
+        Du* = Dc*·ur*
+        Dv* = Dc*·vr*
+        Dw* = Dc*·wr*"]
+
+        DRAG_DEC -->|"No"| NODRAG["Du* = Dv* = Dw* = 0"]
+
+        DRAG & NODRAG --> THRUST_MAG["Spinta nd
+        Tmag* = Tvac* − p* · Aex*"]
+
+        THRUST_MAG --> PHASE_DEC{"fase ?"}
+
+        PHASE_DEC -->|"1"| PH1["Ascesa verticale
+        Tu* = Tmag*
+        Tv* = 0
+        Tw* = 0"]
+
+        PHASE_DEC -->|"2"| PH2["Pitchover
+        t_dim = t* · T_ref
+        γT = 90° − 0.05·(t_dim−t_end1)
+        Tu* = Tmag*·sin(γT)
+        Tv* = Tmag*·cos(γT)
+        Tw* = 0    (ψ=90°, Est)"]
+
+        PHASE_DEC -->|"3"| PH3_DEC{"Vrel* > 1e-10 ?"}
+
+        PH3_DEC -->|"Sì"| PH3["Gravity turn
+        Tu* = Tmag*·ur*/Vrel*
+        Tv* = Tmag*·vr*/Vrel*
+        Tw* = Tmag*·wr*/Vrel*"]
+
+        PH3_DEC -->|"No"| PH3B["Tu*=Tmag*, Tv*=Tw*=0"]
+
+        PH1 & PH2 & PH3 & PH3B --> KIN["Cinematica nd
+        ṙ*     = u*
+        θ̇      = v* / (r*·cos φ)
+        φ̇      = w* / r*"]
+
+        KIN --> DYN["Dinamica nd
+        u̇* = (v*²+w*²)/r* + g_u* + (Tu*+Du*)/m*
+        v̇* = (−u*v*+v*w*·tan φ)/r* + (Tv*+Dv*)/m*
+        ẇ* = (−u*w*−v*²·tan φ)/r* + (Tw*+Dw*)/m*"]
+
+        DYN --> DMASS["ṁ* = −Q̇*"]
+
+        DMASS --> SCALE["Scala per regola della catena
+        dydt = Δ · [ṙ*; θ̇; φ̇; u̇*; v̇*; ẇ*; ṁ*]"]
+    end
+
+    EOM_CALL --> ARC_DEC
+    SCALE -->|"return dydt"| ODE
+
+    %% ── POST-PROCESSING ────────────────────────────────────────────────────
+
+    ODE --> TRECOV["Recupero t* da τ_sol
+    mask1: τ≤1  →  t*= τ·Δ1
+    mask2: 1<τ≤2 → t*=(τ−1)·Δ2 + t1*
+    mask3: τ>2  →  t*=(τ−2)·Δ3 + t2*
+    t = t* · T_ref"]
+
+    TRECOV --> CONVBACK["Riconversione dimensionale
+    r = r*·L_ref,  u,v,w = u*,v*,w*·V_ref
+    m = m*·m_ref"]
+
+    CONVBACK --> DERIVED["Grandezze derivate
+    h = r − RE
+    Vmag = ‖u,v,w‖
+    Vrel = ‖ur,vr,wr‖  (atmosfera co-rotante)
+    ρ_traj, p_traj  (esponenziale)
+    q_dyn = ½ρVrel²
+    Mach = Vrel / a_sound"]
+
+    DERIVED --> LOOP_START["Loop k = 1 … N
+    calcolo angoli γT e γA"]
+
+    LOOP_START --> LOOP_VREL{"Vrel(k) > 1e-6 ?"}
+    LOOP_VREL -->|"Sì"| CALC_GA["γA(k) = atan2d(ur(k), Vh)"]
+    LOOP_VREL -->|"No"| GA_90["γA(k) = 90°"]
+
+    CALC_GA & GA_90 --> GT_DEC1{"t(k) ≤ t_end1 ?"}
+
+    GT_DEC1 -->|"Sì"| GT1["γT(k) = 90°"]
+    GT_DEC1 -->|"No"| GT_DEC2{"t(k) ≤ t_end2 ?"}
+    GT_DEC2 -->|"Sì"| GT2["γT(k) = 90 − 0.05·(t(k)−t_end1)"]
+    GT_DEC2 -->|"No"| GT3["γT(k) = γA(k)"]
+
+    GT1 & GT2 & GT3 --> LOOP_NEXT{"k < N ?"}
+    LOOP_NEXT -->|"Sì"| LOOP_START
+    LOOP_NEXT -->|"No"| MISSION_EV
+
+    MISSION_EV["Individua eventi di missione
+    ip1 = argmin|t − t_end1|
+    ip2 = argmin|t − t_end2|
+    im1 = primo k con Mach(k) ≥ 1
+    imQ = argmax(q_dyn)"]
+
+    MISSION_EV --> ENU["Conversione ECI → ENU
+    East_km, North_km, Up_km
+    lon_ground, lat_ground"]
+
+    ENU --> CONSOLE["Output console
+    masse, quota finale, velocità, Mach"]
+
+    CONSOLE --> MACH_CHECK{"im1 non vuoto ?"}
+    MACH_CHECK -->|"Sì"| PRINT_M1["Stampa Mach 1
+    t(im1), h(im1)"]
+    MACH_CHECK -->|"No"| FIGS
+    PRINT_M1 --> FIGS
+
+    FIGS["Figure 1-8  (unità dimensionali)
+    3D traj · quota · velocità · massa
+    pressione dinamica · Mach · angoli · traccia a terra"]
+
+    FIGS --> FIG9["Figura 9  (variabili nd vs τ)
+    r*, u*v*w*, m*, h*, |V*|, t_dim(τ)
+    boundary archi a τ=1 e τ=2"]
+
+    FIG9 --> STOP([" Fine "])
+
+    %% ── STILI ──────────────────────────────────────────────────────────────
+
+    classDef startstop fill:#2d6a2d,color:#fff,stroke:#1a3d1a,rx:20
+    classDef decision  fill:#8b4513,color:#fff,stroke:#5c2d0a
+    classDef process   fill:#1a3d6b,color:#fff,stroke:#0d2040
+    classDef subprocess fill:#4a235a,color:#fff,stroke:#2d1438
+    classDef io        fill:#1a5c4a,color:#fff,stroke:#0d3d30
+    classDef event_fn  fill:#6b4f00,color:#fff,stroke:#3d2d00
+
+    class START,STOP startstop
+    class ARC_DEC,ARC12,DRAG_DEC,PHASE_DEC,PH3_DEC,LOOP_VREL,GT_DEC1,GT_DEC2,LOOP_NEXT,MACH_CHECK,EV2 decision
+    class PARAMS,SITE,REFSCALES,NDPARAMS,IC,ARCS,PAR,OPTS process
+    class TNS,UNPACK,ATM,VREL_CALC,GRAV,DRAG,NODRAG,THRUST_MAG,PH1,PH2,PH3,PH3B,KIN,DYN,DMASS,SCALE subprocess
+    class TRECOV,CONVBACK,DERIVED,MISSION_EV,ENU,CONSOLE,PRINT_M1,FIGS,FIG9,GT1,GT2,GT3,GA_90,CALC_GA io
+    class ODE,LOOP_START,LOOP_NEXT event_fn

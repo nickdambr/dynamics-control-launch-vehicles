@@ -1,0 +1,287 @@
+================================================================================
+  DOCUMENTAZIONE  —  main2.m
+  Falcon 9 First Stage Trajectory Simulation (Non-Dimensional)
+================================================================================
+
+AUTORE  : Niccolò D'Ambrosio
+FILE    : main2.m
+MODELLO : 3-DoF, punto materiale, coordinate sferiche, frame UEN (Up-East-North)
+
+--------------------------------------------------------------------------------
+1. SCOPO
+--------------------------------------------------------------------------------
+
+main2.m risolve le equazioni del moto (ascesa del primo stadio
+del Falcon 9) con tutte le variabili adimensionalizzate. L'obiettivo è
+ottenere un sistema di equazioni differenziali in cui tutti i termini sono O(1),
+rendendo l'integrazione numerica più robusta e il problema indipendente dal
+sistema di unità di misura.
+
+--------------------------------------------------------------------------------
+2. ADIMENSIONALIZZAZIONE DELLE VARIABILI
+--------------------------------------------------------------------------------
+
+Le scale di riferimento sono:
+
+  Grandezza          Simbolo    Espressione              Valore
+  ─────────────────────────────────────────────────────────────────
+  Lunghezza          L_ref    = RE  (raggio Terra)       6 378 137 m
+  Velocità           V_ref    = 7800 m/s                 ≈ 1ª vel. cosmica
+  Tempo              T_ref    = L_ref / V_ref            ≈ 817.7 s
+  Massa              m_ref    = m0  (massa iniziale)     569 100 kg
+  ─────────────────────────────────────────────────────────────────
+  Accelerazione      a_ref    = V_ref² / L_ref           ≈ 9.543 m/s²
+  Forza              F_ref    = m_ref · a_ref             ≈ 5.43 GN
+  Pressione          p_ref    = F_ref / L_ref²           = m_ref·V_ref²/L_ref³
+
+Le variabili adimensionali si ottengono come:
+
+  r*     = r / L_ref            (raggio, R_E* = 1 per costruzione)
+  u*,v*,w* = u,v,w / V_ref     (componenti di velocità UEN)
+  m*     = m / m_ref            (massa, m0* = 1 per costruzione)
+  t*     = t / T_ref            (tempo globale adimensionale)
+  alt*   = alt / L_ref = r* − 1 (quota adimensionale)
+
+Gli angoli θ (ascensione retta) e φ (latitudine) sono già adimensionali [rad].
+
+Parametri adimensionali derivati:
+
+  mu*      = mu  / (V_ref² · L_ref)          ≈ 1.027
+  ω_E*     = ω_E · T_ref                     ≈ 0.0596
+  ρ₀*      = ρ₀  · L_ref³ / m_ref
+  p₀*      = p₀  · L_ref³ / (m_ref · V_ref²)
+  H*       = H_scale / L_ref                 ≈ 1.254 × 10⁻³
+  T_vac*   = T_vac · L_ref / (m_ref · V_ref²) ≈ 1.516
+  A_ex*    = A_ex / L_ref²
+  Q̇*       = Q̇  · T_ref / m_ref            ≈ 3.645
+  S_ref*   = S_ref / L_ref²
+  C_D      invariato (già adimensionale)
+
+--------------------------------------------------------------------------------
+3. VETTORE DI STATO ADIMENSIONALE
+--------------------------------------------------------------------------------
+
+  y* = [ r*, θ, φ, u*, v*, w*, m* ]ᵀ   (7 componenti)
+
+Condizioni iniziali:
+
+  r0*  = 1                          (lancio dalla superficie terrestre)
+  θ0   = lon_KSC  [rad]
+  φ0   = lat_KSC  [rad]
+  u0*  = 0
+  v0*  = ω_E · R_E · cos(lat0) / V_ref   (rotazione terrestre)
+  w0*  = 0
+  m0*  = 1
+
+--------------------------------------------------------------------------------
+4. EQUAZIONI DEL MOTO ADIMENSIONALI
+--------------------------------------------------------------------------------
+
+Le equazioni in forma adimensionale hanno la STESSA struttura di quelle
+dimensionali (vantaggio della scelta coerente delle scale di riferimento):
+
+  Cinematica:
+    dr*/dt*     =  u*
+    dθ/dt*      =  v* / (r* · cos φ)
+    dφ/dt*      =  w* / r*
+
+  Dinamica (termini di trasporto + forze):
+    du*/dt* = (v*² + w*²)/r*  −  mu*/r*²  +  (Tu* + Du*)/m*
+    dv*/dt* = (−u*v* + v*w*·tan φ)/r*    +  (Tv* + Dv*)/m*
+    dw*/dt* = (−u*w* − v*²·tan φ)/r*     +  (Tw* + Dw*)/m*
+
+  Massa:
+    dm*/dt* = −Q̇*
+
+  dove:
+    − mu*/r*²        = gravità adimensionale (solo radiale)
+    Tu*,Tv*,Tw*      = componenti spinta adimensionale / F_ref
+    Du*,Dv*,Dw*      = componenti drag adimensionale / F_ref
+
+  Atmosfera esponenziale:
+    ρ*   = ρ₀* · exp(−alt* / H*)
+    p*   = p₀* · exp(−alt* / H*)
+
+  Velocità relativa (atmosfera co-rotante):
+    v_atm* = ω_E* · r* · cos φ
+    ur* = u*,   vr* = v* − v_atm*,   wr* = w*
+    V_rel* = √(ur*² + vr*² + wr*²)
+
+  Spinta adimensionale:
+    T_mag* = T_vac* − p* · A_ex*
+
+  Drag adimensionale:
+    D_c* = −0.5 · ρ* · S_ref* · C_D · V_rel*
+    Du*  = D_c* · ur*,   Dv* = D_c* · vr*,   Dw* = D_c* · wr*
+
+--------------------------------------------------------------------------------
+5. VARIABILE DI INTEGRAZIONE τ ∈ [0, 3]
+--------------------------------------------------------------------------------
+
+Per mantenere la lunghezza temporale di ciascun arco come riferimento locale,
+si introduce una variabile τ continua su [0, 3] che mappa i tre archi di volo
+ciascuno su un sotto-intervallo unitario:
+
+  τ ∈ [0, 1]  →  Arco 1 (ascesa verticale)
+                 τ_k = τ
+                 t*  = τ_k · Δ₁
+
+  τ ∈ [1, 2]  →  Arco 2 (pitchover)
+                 τ_k = τ − 1
+                 t*  = τ_k · Δ₂  +  t₁*
+
+  τ ∈ [2, 3]  →  Arco 3 (gravity turn)
+                 τ_k = τ − 2
+                 t*  = τ_k · Δ₃  +  t₂*
+
+dove le durate adimensionali degli archi sono:
+
+  Δ₁ = t_end1 / T_ref  =  5   / 817.7  ≈ 0.00611
+  Δ₂ = (t_end2 − t_end1) / T_ref  =  10  / 817.7  ≈ 0.01223
+  Δ₃ = (tb1   − t_end2) / T_ref   =  147 / 817.7  ≈ 0.17979
+
+Per la regola della catena:
+
+  dy*/dτ = Δₖ · (dy*/dt*)
+
+cioè il membro destro delle EOM viene scalato per la durata adimensionale
+dell'arco corrente. In questo modo:
+  • ogni arco copre esattamente un'unità di τ (normalizzazione locale);
+  • gli step di ode45 hanno dimensioni comparabili tra archi diversi;
+  • una sola chiamata ode45 copre l'intera missione su [0, 3].
+
+La funzione eventi arc_boundary_events forza ode45 a collocare un punto
+esatto in τ = 1 e τ = 2, evitando che un singolo step attraversi il confine
+dove Δ_k cambia in modo discontinuo.
+
+--------------------------------------------------------------------------------
+6. STRUTTURA DEL CODICE
+--------------------------------------------------------------------------------
+
+  Sezione                         Righe   Descrizione
+  ──────────────────────────────────────────────────────────────────────────────
+  Costanti e parametri veicolo     41-83   Dati fisici dimensionali
+  Sito di lancio                   85-90   Lat/lon KSC
+  Scale di riferimento             92-108  Calcolo L_ref, V_ref, T_ref, m_ref
+  Parametri adimensionali         110-123  Conversione di tutti i parametri
+  Condizioni iniziali nd           125-135 y0_nd
+  Durate degli archi              137-147  Δ₁, Δ₂, Δ₃, t₁*, t₂*, tb*
+  Struttura parametri              149-169 struct par (passata all'EOM)
+  Integrazione ode45               171-184 singola chiamata su [0, 3]
+  Recupero tempo e conversione     186-268 t*, t_dim, variabili dimensionali
+  Output a console                 270-300 riepilogo risultati
+  Figure 1-8                       302-415 stessi grafici di main.m (dim.)
+  Figura 9                         417-461 variabili adimensionali vs τ
+  eom_nd  (funzione locale)        467-577 EOM adimensionale
+  arc_boundary_events (locale)     581-588 eventi ai boundary degli archi
+
+--------------------------------------------------------------------------------
+7. FASI DI VOLO E LOGICA DI SPINTA
+--------------------------------------------------------------------------------
+
+  Fase 1 — Ascesa verticale  (τ ∈ [0, 1],  t_dim ∈ [0, 5] s)
+    La spinta è diretta radialmente verso l'alto:
+      Tu* = T_mag*,  Tv* = 0,  Tw* = 0
+
+  Fase 2 — Pitchover  (τ ∈ [1, 2],  t_dim ∈ [5, 15] s)
+    L'angolo di elevazione della spinta decresce linearmente di 0.05°/s in
+    tempo dimensionale:
+      γ_T = 90° − 0.05 · (t_dim − 5)   [gradi]
+    Azimuth fisso a 90° (Est):
+      Tu* = T_mag* · sin(γ_T)
+      Tv* = T_mag* · cos(γ_T)
+      Tw* = 0
+    Nota: per recuperare t_dim dall'EOM adimensionale si usa
+      t_dim = t* · T_ref = (t_arc_start* + τ_k · Δ_k) · T_ref
+
+  Fase 3 — Gravity turn  (τ ∈ [2, 3],  t_dim ∈ [15, 162] s)
+    La spinta è allineata alla velocità relativa (atmosfera co-rotante):
+      Tu* = T_mag* · ur*/V_rel*
+      Tv* = T_mag* · vr*/V_rel*
+      Tw* = T_mag* · wr*/V_rel*
+
+--------------------------------------------------------------------------------
+8. POST-PROCESSING
+--------------------------------------------------------------------------------
+
+Al termine dell'integrazione le variabili dimensionali vengono recuperate:
+
+  r     = r*  · L_ref              [m]
+  u,v,w = u*,v*,w* · V_ref         [m/s]
+  m     = m*  · m_ref              [kg]
+  t     = t*  · T_ref              [s]    (con t* = f(τ, Δₖ))
+
+Grandezze derivate calcolate in post-processing (in unità dimensionali):
+  • quota h = r − R_E
+  • velocità inerziale |V| e relativa |V_rel|
+  • densità e pressione atmosferiche lungo la traiettoria
+  • pressione dinamica q = ½ ρ V_rel²
+  • numero di Mach
+  • forza di spinta T_mag = T_vac − p · A_ex
+  • angoli γ_T (spinta) e γ_A (aerodinamico)
+  • coordinate ENU locali (East, North, Up in km)
+  • traccia a terra (longitudine ECEF, latitudine)
+
+--------------------------------------------------------------------------------
+9. OUTPUT GRAFICO
+--------------------------------------------------------------------------------
+
+  Figura  Titolo                              Asse x      Asse y
+  ──────────────────────────────────────────────────────────────────────────
+  1       3D Trajectory                       East/North  Up  [km]
+  2       Altitude vs Time                    t [s]       h [km]
+  3       Velocity Magnitude vs Time          t [s]       V [m/s]
+  4       Vehicle Mass vs Time                t [s]       m [t]
+  5       Dynamic Pressure vs Time            t [s]       q [kPa]
+  6       Mach Number vs Time                 t [s]       Ma [-]
+  7       Thrust and Flight-Path Angles       t [s]       γ [deg]
+  8       Ground Track                        lon [deg]   lat [deg]
+  9       Non-dimensional state variables     τ ∈ [0,3]   var. nd
+  ──────────────────────────────────────────────────────────────────────────
+
+  Nella Figura 9 i boundary degli archi (τ = 1 e τ = 2) sono indicati con
+  linee tratteggiate verticali nere. I sotto-pannelli mostrano:
+    (1,1) r*  vs τ         (1,2) u*,v*,w* vs τ
+    (2,1) m*  vs τ         (2,2) h* vs τ
+    (3,1) |V*| vs τ        (3,2) t_dim vs τ  (mostra la scalatura per arco)
+
+  Il pannello (3,2) è particolarmente utile per verificare la corretta
+  normalizzazione: t_dim(τ) è lineare a tratti con tre pendenti distinte,
+  una per ciascun arco (proporzionali a Δₖ · T_ref).
+
+--------------------------------------------------------------------------------
+10. EVENTI ODE45 E PRECISIONE AI BOUNDARY
+--------------------------------------------------------------------------------
+
+La funzione arc_boundary_events restituisce due zero-crossing:
+
+  value(1) = τ − 1    (confine arco 1 / arco 2)
+  value(2) = τ − 2    (confine arco 2 / arco 3)
+
+Con isterminal = [0; 0] il solver non si ferma ma inserisce un punto esatto
+della soluzione in τ = 1 e τ = 2. Questo è necessario perché Δ_k cambia
+discontinuamente al boundary: senza eventi, un singolo step di Runge-Kutta
+potrebbe attraversare il cambio di scala producendo un errore di integrazione.
+
+--------------------------------------------------------------------------------
+11. TOLLERANZE DI INTEGRAZIONE
+--------------------------------------------------------------------------------
+
+  RelTol  = 1 × 10⁻¹⁰
+  AbsTol  = 1 × 10⁻¹²
+
+Queste tolleranze sono identiche a quelle di main.m e garantiscono che i
+risultati dimensionali (dopo riconversione) siano numericamente equivalenti.
+
+--------------------------------------------------------------------------------
+12. EVENTI DI MISSIONE INDIVIDUATI IN POST-PROCESSING
+--------------------------------------------------------------------------------
+
+  ip1   indice di t(k) più vicino a t_end1 = 5 s    (fine ascesa verticale)
+  ip2   indice di t(k) più vicino a t_end2 = 15 s   (fine pitchover)
+  im1   primo indice con Mach ≥ 1                    (Mach 1)
+  imQ   indice del massimo di q_dyn                  (Max-Q)
+
+================================================================================
+  Fine documentazione
+================================================================================
