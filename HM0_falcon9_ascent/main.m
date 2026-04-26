@@ -354,6 +354,19 @@ title('Ground Track');
 legend('Trajectory', 'Location', 'best'); grid on; hold off;
 
 %% ========================================================================
+%  EXPORT FIGURES TO figures/ (PNG, 200 dpi)
+%  ========================================================================
+fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
+if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
+
+slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
+fig_handles = findobj(groot, 'Type', 'figure');
+for kk = 1:numel(fig_handles)
+    fname = fullfile(fig_dir, [slugify(get(fig_handles(kk), 'Name')) '.png']);
+    exportgraphics(fig_handles(kk), fname, 'Resolution', 200);
+end
+
+%% ========================================================================
 %  EQUATIONS OF MOTION (local function)
 %  ========================================================================
 

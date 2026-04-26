@@ -168,6 +168,18 @@ else
     fprintf('ERROR: BVP did not converge for Task 3.\n');
 end
 
+%% ===================== EXPORT FIGURES =====================
+fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
+if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
+slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
+fig_handles = findobj(groot, 'Type', 'figure');
+for kk = 1:numel(fig_handles)
+    nm = get(fig_handles(kk), 'Name');
+    if isempty(nm); nm = sprintf('fig%d', kk); end
+    exportgraphics(fig_handles(kk), ...
+        fullfile(fig_dir, ['task3_' slugify(nm) '.png']), 'Resolution', 200);
+end
+
 %% ===================== LOCAL FUNCTIONS =====================
 
 function dz = ode_vertical(t, z, T, Q)
