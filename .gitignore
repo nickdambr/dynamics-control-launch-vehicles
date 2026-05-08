@@ -35,3 +35,21 @@ desktop.ini
 # --- Build / temporary artifacts ---
 *.bak
 *.tmp
+
+# --- Agent-only files (Claude Code) ---
+CLAUDE.md
+.claude/
+
+# --- LaTeX build artifacts ---
+# keep main.pdf (the deliverable) and source files
+*.aux
+*.log
+*.toc
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
