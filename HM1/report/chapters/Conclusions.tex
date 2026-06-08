@@ -1,0 +1,21 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Conclusions}\label{sec:conclusions}
+
+This work applied the Pontryagin Maximum Principle to four minimum-fuel planar ascent programs of increasing complexity, all solved by single-shooting with \texttt{fsolve} over the costate initial conditions. The main findings are as follows.
+
+\textbf{Bilinear-tangent law (all tasks).}\ The flat-Earth, drag-free dynamics produce a particularly tractable adjoint structure: four of the five costate components are determined analytically (two constants and one linear ramp), leaving only the mass costate $\lambda_m$ to be integrated numerically. The resulting bilinear-tangent steering law reduces the optimal control problem to a five-dimensional root-finding problem, making single-shooting computationally affordable.
+
+\textbf{Optimal thrust-to-weight ratio (Task 1).}\ The mass-flow rate $Q$ that maximises the final mass balances two competing losses: gravity losses (dominant at low $Q$, due to long burn times) and thrust-misalignment losses (dominant at high $Q$, due to steep climb angles). The optimal $Q^*$ shifts slightly with target altitude $y_f$, reflecting the longer burn time required for higher orbits.
+
+\textbf{Continuation is indispensable.}\ Single-shooting from a cold start fails across most of the $Q$ range. The continuation strategy---warm-starting each new $Q$ from the previous converged solution and sweeping forward and backward from a seed point---was the critical algorithmic ingredient enabling the parameter sweeps in Tasks~1 and~4.
+
+\textbf{Coast arc saves propellant (Task 3).}\ Terminating the engine before reaching the target altitude and relying on ballistic dynamics is beneficial whenever the vehicle has sufficient residual vertical velocity to coast up to the injection point. The condition $S(t_c) = 0$ determines the optimal engine cutoff time without an additional outer optimization loop.
+
+\textbf{Staging provides large payload gains (Task 4).}\ At the reference operating point ($Q = 2$, $y_f = 0.04$), the optimal two-stage configuration delivers a $+182\%$ payload gain over the single-stage baseline. The fundamental mechanism---discarding first-stage structural mass before it needs to be accelerated to orbital velocity---is well-captured even by the simplified constant-$Q$, drag-free model.
+
+\textbf{Model limitations.}\ The simplifications adopted throughout (flat Earth, no drag, constant thrust, no vehicle attitude dynamics) neglect key physical effects. Atmospheric drag dominates energy loss in the first 80~km of ascent; Earth's curvature and rotation alter the optimal coast and staging conditions; and real throttling constraints bound $Q$ away from its theoretical range. Extending the framework to 3-DoF spherical-Earth dynamics with a drag model would shift $Q^*$ and $t_s^*$ quantitatively but would not alter the PMP structure derived here.
+
+\end{document}

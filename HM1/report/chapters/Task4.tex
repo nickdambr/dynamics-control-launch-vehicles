@@ -1,0 +1,92 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 4: Optimal Staging}\label{sec:task4}
+
+\subsection{Staging Model}
+
+Task~4 removes the vertical-climb phase and introduces a single \emph{staging event} at time $t = t_s$. At staging, the first-stage structural mass
+\begin{equation}
+    m_{s1} = \eta\, Q\, t_s
+    \label{eq:ms1}
+\end{equation}
+is jettisoned instantaneously, where $\eta\, Q\, t_s$ is the structural fraction of the propellant consumed by the first stage. The vehicle mass undergoes a step:
+\begin{equation}
+    m^+(t_s) = m^-(t_s) - m_{s1} = 1 - Q\,t_s - \eta\, Q\, t_s = 1 - Q\,t_s(1 + \eta).
+\end{equation}
+For $m^+(t_s) > 0$ one requires $t_s < [Q(1+\eta)]^{-1}$, which provides an upper bound on the admissible staging time. The costate vector is continuous across the staging event.
+
+The net payload delivered to orbit is
+\begin{equation}
+    m_\mathrm{pay} = m_f - m_{s2}, \qquad m_{s2} = \eta\, Q\,(t_f - t_s),
+    \label{eq:payload}
+\end{equation}
+where $m_{s2}$ is the second-stage structural mass (proportional to the second-stage propellant consumption).
+
+\subsection{Optimization Procedure}
+
+For a fixed staging time $t_s$, the two burn arcs share the same costate evolution (the bilinear-tangent law is unaffected by staging), and the BVP reduces to the same structure as Task~1 with updated initial mass after staging:
+\begin{enumerate}
+    \item Integrate the augmented state from $t = 0$ to $t = t_s$ (Stage~1 burn),
+    \item Apply the staging mass jump \eqref{eq:ms1},
+    \item Integrate from $t_s$ to $t_f$ (Stage~2 burn),
+    \item Evaluate the residual \eqref{eq:residual1} at $t_f$.
+\end{enumerate}
+The shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) are identical to Task~1.
+
+The optimal staging time $t_s^*$ is found by an \textbf{outer parametric sweep}: $t_s$ is varied over a dense grid of 50 points, the inner BVP is solved at each point (warm-started from the previous converged solution via continuation), and the payload \eqref{eq:payload} is maximized over the converged solutions. The starting guess for the inner BVP at the first grid point uses the single-stage solution from Task~1.
+
+\subsection{Results}
+
+Figure~\ref{fig:task4_pay} shows the payload as a function of staging time $t_s$ for $Q = 2$, $y_f = 0.04$. The curve has a well-defined maximum; the single-stage baseline (dashed red) lies significantly below the two-stage peak.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{task4_task_4_payload_vs_staging_time}
+    \caption{Task 4: payload mass vs.\ staging time $t_s$. Red dashed line: single-stage reference. Red star: optimal staging point.}
+    \label{fig:task4_pay}
+\end{figure}
+
+Table~\ref{tab:task4} summarises the numerical results at $Q = 2$, $y_f = 0.04$.
+
+\begin{table}[H]
+\centering
+\caption{Task 4 key numerical results ($Q = 2$, $y_f = 0.04$).}
+\label{tab:task4}
+\begin{tabular}{lll}
+\toprule
+Quantity                  & Value  & Notes \\
+\midrule
+Optimal staging time $t_s^*$ & 0.337 & nondim ($\approx 268$~s) \\
+Single-stage payload      & 0.0241 & nondim \\
+Two-stage payload         & 0.0680 & nondim \\
+Payload gain              & $+182\%$ & vs.\ single-stage \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figures~\ref{fig:task4_traj} and~\ref{fig:task4_mass} show the optimal two-stage trajectory and mass profile. The discontinuous mass drop at $t_s^*$ is visible in the profile; the trajectory is continuous (position and velocity are unaffected by staging, only mass changes).
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task4_task_4_optimal_trajectory}
+        \caption{Optimal two-stage trajectory: Stage~1 (blue), Stage~2 (red), staging point (circle).}
+        \label{fig:task4_traj}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task4_task_4_mass_profile}
+        \caption{Mass profile with the instantaneous jettison at $t_s^*$.}
+        \label{fig:task4_mass}
+    \end{subfigure}
+    \caption{Task 4: optimal two-stage solution for $Q = 2$, $y_f = 0.04$.}
+    \label{fig:task4}
+\end{figure}
+
+The large relative gain is a consequence of the model simplifications (constant $Q$, no drag, identical $I_{sp}$ for both stages). Real launchers achieve much smaller but still substantial staging benefits; the key mechanism---jettisoning inert structural mass before it has to be accelerated to orbital velocity---is the same.
+
+\end{document}

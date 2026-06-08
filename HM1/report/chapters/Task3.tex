@@ -1,0 +1,85 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 3: Vertical Climb, Burn, and Coast}\label{sec:task3}
+
+\subsection{Switching Function and Thrust-Arc Structure}
+
+Task~3 introduces a \emph{coast arc} between the powered burn and orbital injection. In the PMP framework, the switching function governs whether the engine is on or off:
+\begin{equation}
+    S(t) = \frac{\|\boldsymbol{\lambda}_v(t)\|}{m(t)} - \frac{1}{c}.
+    \label{eq:switching}
+\end{equation}
+The engine is \emph{on} (full thrust) when $S > 0$ and \emph{off} (coast) when $S < 0$. During a coast arc $T = 0$, so $\dot{m} = 0$ and the vehicle follows purely ballistic dynamics.
+
+The three-phase mission sequence is:
+\begin{enumerate}
+    \item \textbf{Vertical climb}: $\varphi = \pi/2$ until $y = y_1 = 10^{-4}$ (identical to Task~2),
+    \item \textbf{Powered burn}: bilinear-tangent steering until engine cutoff at time $t_c$,
+    \item \textbf{Coast arc}: ballistic flight from $t_c$ to the injection point.
+\end{enumerate}
+
+\subsection{Engine Cutoff Conditions}
+
+The shooting unknowns remain $\boldsymbol{\zeta} = [\lambda_{v_x,0},\; \lambda_{v_y,0},\; \lambda_y,\; \lambda_{m,0},\; t_\mathrm{burn}]^T$ (with time measured from the start of Phase~2). At engine cutoff the following five conditions must be satisfied simultaneously:
+\begin{equation}
+    \mathbf{r}_3(\boldsymbol{\zeta}) =
+    \begin{bmatrix}
+        v_{x,c} - 1 \\[2pt]
+        y_c + \tfrac{1}{2}v_{y,c}^2 - y_f \\[2pt]
+        \lambda_m(t_c) - 1 \\[2pt]
+        \lambda_{v_y}(t_c) - \lambda_y\, v_{y,c} \\[2pt]
+        S(t_c)
+    \end{bmatrix} = \mathbf{0}.
+    \label{eq:residual3}
+\end{equation}
+
+Conditions~1 and~2 encode the \emph{ballistic-coast reachability}: since during the coast $v_x$ is constant and $v_y$ decreases linearly under gravity, the vehicle must already have the orbital horizontal speed ($v_{x,c} = 1$) at cutoff, and the apogee of the ballistic arc must coincide with the target altitude. Condition~3 is the standard mass-costate transversality \eqref{eq:trans_m}. Condition~4 ensures $\lambda_{v_y}(t_f) = 0$ at the coast end: since $\lambda_{v_y}$ evolves linearly throughout, $\lambda_{v_y}(t_f) = \lambda_{v_y}(t_c) - \lambda_y v_{y,c}$, and setting this to zero recovers condition~4. Condition~5 is the bang-bang switching condition: the engine cuts off exactly when $S = 0$.
+
+\subsection{Coast Arc}
+
+During the ballistic coast ($T = 0$) the trajectory is analytically integrable. Denoting the elapsed coast time by $\tau$ and the cutoff state by subscript $c$:
+\begin{equation}
+    x(t_c + \tau) = x_c + v_{x,c}\,\tau, \qquad
+    y(t_c + \tau) = y_c + v_{y,c}\,\tau - \tfrac{1}{2}\tau^2.
+\end{equation}
+The coast ends at apogee $\tau^* = v_{y,c}$, where $v_y = 0$ and
+\begin{equation}
+    y_f = y_c + \tfrac{1}{2}v_{y,c}^2,
+\end{equation}
+in agreement with condition~2 of \eqref{eq:residual3}. The vehicle mass is constant throughout the coast: $m_f = m_c$.
+
+\subsection{Results}
+
+Figure~\ref{fig:task3} shows the three-phase trajectory and mass profile for $Q = 2$, $y_f = 0.04$. The vertical climb (red) is short; the burn arc (blue) terminates below the target altitude; the ballistic coast (green dashed) ascends to the injection point. The mass profile confirms the model: it decreases linearly during both powered phases and remains constant during the coast. The final mass in Task~3 exceeds that of Task~2: by cutting the engine early and relying on the ballistic coast, less propellant is consumed while still satisfying all terminal constraints.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task3_task_3_trajectory}
+        \caption{Trajectory: vertical climb (red), burn (blue), coast (green dashed).}
+        \label{fig:task3_traj}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task3_task_3_mass}
+        \caption{Mass profile: linear decrease during powered phases, flat during coast.}
+        \label{fig:task3_mass}
+    \end{subfigure}
+    \caption{Task 3: trajectory and mass profile for $Q = 2$, $y_f = 0.04$.}
+    \label{fig:task3}
+\end{figure}
+
+Figure~\ref{fig:task3_angles} shows the thrust and velocity angles throughout the three phases. The dashed vertical lines mark the end of the vertical climb and the engine cutoff. During the coast no thrust angle is defined; the velocity angle $\psi$ continues to evolve ballistically until it reaches zero at apogee.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{task3_task_3_angles}
+    \caption{Task 3: thrust angle $\varphi$ and velocity angle $\psi$ across all three phases. Vertical dashed lines mark phase transitions.}
+    \label{fig:task3_angles}
+\end{figure}
+
+\end{document}

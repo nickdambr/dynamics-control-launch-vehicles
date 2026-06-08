@@ -1,0 +1,47 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 2: Vertical Climb and Optimal Burn}\label{sec:task2}
+
+\subsection{Phase 1: Vertical Climb}
+
+Practical launchers cannot pitch over immediately at liftoff because of aerodynamic loads and tower-clearance requirements. Task~2 prepends a short \emph{vertical-climb phase} ($\varphi = \pi/2$, thrust pointing straight up) until the altitude reaches $y_1 = 10^{-4}$ (dimensionally $\approx 620$~m). During this phase the horizontal position and velocity remain zero, and the 3-state sub-problem is
+\begin{equation}
+    \dot{y} = v_y, \qquad
+    \dot{v}_y = \frac{T}{m} - 1, \qquad
+    \dot{m} = -Q,
+    \label{eq:ode_vert}
+\end{equation}
+integrated until the event $y = y_1$ is detected via \texttt{ode45} event handling. The end state $(y_1,\, v_{y,1},\, m_1)$ becomes the initial condition for Phase~2.
+
+\subsection{Phase 2: Optimal Burn}
+
+Starting from the state $(x_0, y_0, v_{x,0}, v_{y,0}, m_0) = (0,\, y_1,\, 0,\, v_{y,1},\, m_1)$, Phase~2 is an optimal powered arc with the same BVP structure as Task~1. The shooting unknowns and the residual \eqref{eq:residual1} are unchanged; only the initial conditions of the augmented state differ. Because the orbit injection targets are identical to Task~1, the continuation warm-start from Task~1's solution at $Q = 2$ provides a reliable initial guess.
+
+\subsection{Results}
+
+Figure~\ref{fig:task2} shows the composite trajectory and the angle history for $Q = 2$, $y_f = 0.04$. The red segment is the short vertical-climb phase; the blue arc is the optimal burn. The trajectory is qualitatively similar to Task~1 except for the initial vertical stub. During the climb both $\varphi$ and $\psi$ are fixed at $90^\circ$; at the transition the thrust begins to rotate toward the horizontal following the bilinear-tangent law, while the velocity angle $\psi$ lags momentarily before catching up as horizontal speed builds.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task2_task_2_trajectory}
+        \caption{Composite trajectory: vertical climb (red), optimal burn (blue).}
+        \label{fig:task2_traj}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task2_task_2_angles}
+        \caption{Thrust angle $\varphi$ and velocity angle $\psi$ during the burn.}
+        \label{fig:task2_angles}
+    \end{subfigure}
+    \caption{Task 2: trajectory and control history for $Q = 2$, $y_f = 0.04$.}
+    \label{fig:task2}
+\end{figure}
+
+The final mass in Task~2 is marginally lower than in Task~1: the vertical climb consumes propellant while building only vertical velocity, contributing to gravity losses without advancing the vehicle toward the horizontal injection speed. Nevertheless, the prepended climb is a standard launch practice, and the payload penalty is modest for the short $y_1$ value used here.
+
+\end{document}
