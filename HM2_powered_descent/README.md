@@ -63,17 +63,20 @@ Expected runtime: ~30 s per `tf` value on a modern laptop (three runs total).
 |                   | `dyn_rhs` — continuous dynamics (Eq. 2-6 of PDF).    |
 |                   | `plot_results` — trajectory, thrust, mass, glide-slope plots. |
 
-## Results (preliminary)
+## Results
 
 | `tf` [s] | `m_f` [kg] | fuel [kg] |
 | -------- | ---------- | --------- |
-| 36.10    | 1397.8     | 602.2     |
-| 38.00    | 1395.5     | 604.5     |
-| 39.90    | 1390.6     | 609.4     |
+| 36.10    | 1406.33    | 593.67    |
+| 38.00    | 1403.20    | 596.80    |
+| 39.90    | 1398.82    | 601.18    |
 
 Fuel consumption grows monotonically with `tf` over the swept window
 (longer hover ⇒ more gravity losses). All three solutions respect the
-glide-slope corridor and the thrust-magnitude bounds.
+glide-slope corridor and the thrust-magnitude bounds. The two shorter-`tf`
+runs terminate at the `MaxIterations` cap of 1000 with first-order
+optimality of order `1e-4` in non-dim units; constraint violations are
+below `1e-6` in all cases.
 
 | Trajectory (3 sensitivity runs + glide-slope corridor) | Thrust magnitude |
 |:-:|:-:|
@@ -85,16 +88,22 @@ glide-slope corridor and the thrust-magnitude bounds.
 
 ## Roadmap / TODO
 
-- [ ] **Tighten convergence.** With the current settings (`MaxIterations = 500`,
-      `'sqp'`) one of the three sensitivity runs hits the iteration cap with
-      first-order optimality ≈ 5×10⁻⁴. Either raise the cap, supply analytical
-      gradients, or warm-start from the nominal-`tf` solution.
-- [ ] **Task 2 (optional, PDF Appendix A):** implement a Zero-Order Hold
-      (ZOH) discretization. Solve over the same horizon and validate by
-      forward-integrating the optimized control schedule with `ode45`.
-- [ ] **Successive Convexification (SCvx).** Re-solve via convex
-      sub-problems (YALMIP + a conic solver). The reference example
-      `cvx_sled_class_2026.m` from the professor is the starting template.
-- [ ] **Free-time variant.** Lift the `tf`-fixed assumption and minimize fuel
-      over a variable horizon — likely the right framing for a real GFOLD-like
+- [x] **Task 2 (PDF Appendix A) — Nonlinear ZOH + RK4.** Multiple-shooting NLP
+      with `x_{k+1} = RK4(x_k, u_k, dt)`. Validated against `ode45` forward
+      integration (max node error `1.4e-8` non-dim).
+- [x] **Task 2 — LTV-linearised ZOH with SCvx (fmincon/SQP).** Literal
+      Appendix-A construction (augmented ODE for `Φ`, `B̂`, `ĉ`), adaptive
+      trust-region ratio test, warm-started from the trapezoidal solution.
+- [x] **Task 2 — SCvx with conic inner solver (YALMIP + ECOS).** Same outer
+      loop; inner sub-problem cast as an SOCP and solved by ECOS. Per-step
+      fidelity is an order of magnitude tighter than the fmincon path.
+- [ ] **Free-time variant.** Lift the `tf`-fixed assumption and minimise fuel
+      over a variable horizon — the right framing for a GFOLD-like
       formulation.
+- [ ] **Lossless convexification.** Handle a non-zero lower thrust bound
+      `T_min > 0` via the slack-variable change of variable
+      (Açikmeşe–Ploen), preserving the SOCP structure of variant (c).
+- [ ] **Tighten convergence at short `tf`.** The 36.10 s and 38.00 s
+      sensitivity runs currently hit the `MaxIterations = 1000` cap with
+      `OptimalityTolerance ≈ 1e-4` non-dim. Either raise the cap further,
+      supply analytical gradients, or warm-start from the nominal solution.

@@ -1,0 +1,58 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Numerical Results}\label{sec:results}
+
+The NLP \eqref{eq:nlp} is solved at the nominal flight time $t_f = 38$~s with $N = 50$ collocation nodes. \texttt{fmincon} runs for approximately $30$~s of wall time and returns a final mass of $m_f = 1403.20$~kg, equivalently $596.80$~kg of propellant consumed (about $30\%$ of the initial mass). The solver terminates at the \texttt{MaxIterations} cap of $1000$ iterations; the constraint residual is below the tolerance of $10^{-6}$ and the first-order optimality reaches $\sim 10^{-4}$ in non-dim units, indicating that the algorithm has located a high-quality but not fully converged local optimum (see Section~\ref{sec:sensitivity} for the analogous behaviour across the sensitivity sweep).
+
+The four key plots are presented below. All three sensitivity runs (Section~\ref{sec:sensitivity}) are overlaid on the same axes for reference; the discussion in this section focuses on the nominal $t_f = 38.00$~s curve.
+
+\subsection{Trajectory and Glide-Slope Corridor}
+
+Figure~\ref{fig:hm2_traj} shows the descent trajectory in the $(x, y)$ plane together with the glide-slope corridor (dashed grey lines bounding the cone of half-angle $\theta_{\max} = 60^\circ$). The vehicle enters the corridor from the upper right with significant horizontal velocity, executes a divert manoeuvre to align with the landing pad, and softly touches down at the origin (black triangle). The glide-slope constraint becomes active in the late portion of the descent, as the trajectory grazes the corridor boundary before the final approach.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{task1_trajectory}
+    \caption{Powered descent trajectory in the $(x, y)$ plane. Dashed grey lines: glide-slope corridor at $\theta_{\max} = 60^\circ$. Black triangle: landing pad at the origin.}
+    \label{fig:hm2_traj}
+\end{figure}
+
+\subsection{Thrust Magnitude}
+
+Figure~\ref{fig:hm2_thrust} shows the thrust-magnitude profile $\|\mathbf{T}(t)\|$. The fuel-optimal solution exhibits the expected \textbf{bang-bang structure}: $\|\mathbf{T}\|$ saturates at $T_{\max} = 70$~kN over an extended portion of the descent (the deceleration phase), and drops to a low coast-thrust level just before touchdown to satisfy the soft-landing terminal condition. This is the discrete-time signature of the same Pontryagin-style optimality principle that produced the bilinear-tangent law in Homework~1, applied here to a problem with linear-in-control dynamics and a control-magnitude bound: the optimal control switches between the extreme values of its admissible set.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.72\textwidth]{task1_thrust_magnitude}
+    \caption{Thrust-magnitude profile. Dashed line: upper bound $T_{\max} = 70$~kN.}
+    \label{fig:hm2_thrust}
+\end{figure}
+
+\subsection{Mass and Glide-Slope Angle}
+
+Figure~\ref{fig:hm2_mass} shows the vehicle mass $m(t)$, which decreases monotonically at a rate proportional to $\|\mathbf{T}\|$ (Eq.~\ref{eq:hm2_mdot}). The slope is therefore approximately constant during the high-thrust deceleration phase and flattens during the low-thrust terminal segment, mirroring the bang-bang structure of the thrust profile.
+
+Figure~\ref{fig:hm2_gs} shows the instantaneous glide-slope angle $\theta(t) = \arctan(|x|/y)$, bounded above by $\theta_{\max} = 60^\circ$ (dashed). The trajectory remains strictly inside the corridor for most of the descent and approaches the boundary only briefly near landing.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task1_mass}
+        \caption{Vehicle mass.}
+        \label{fig:hm2_mass}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task1_glide_slope}
+        \caption{Glide-slope angle $\arctan(|x|/y)$.}
+        \label{fig:hm2_gs}
+    \end{subfigure}
+    \caption{Mass profile and instantaneous glide-slope angle for the nominal solution.}
+    \label{fig:hm2_mg}
+\end{figure}
+
+\end{document}

@@ -1,0 +1,32 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Sensitivity Analysis}\label{sec:sensitivity}
+
+To probe the dependence of fuel consumption on the imposed flight time, the NLP is re-solved at $t_f \in \{0.95,\, 1.00,\, 1.05\}\cdot 38$~s, i.e., at $36.10$, $38.00$, and $39.90$~s. Each solve uses the linear-interpolation initial guess of Section~\ref{sec:initial_guess} (no warm-start across runs). The shortest and nominal runs ($t_f = 36.10$~s and $38.00$~s) terminate at the \texttt{MaxIterations} cap with first-order optimality of order $10^{-4}$ in the non-dim cost; the longest run ($t_f = 39.90$~s) satisfies the step-size convergence criterion. The candidate solutions of the two capped runs still respect all constraints to within the \texttt{ConstraintTolerance} of $10^{-6}$, so they are reported as engineering-quality solutions rather than fully optimised ones.
+
+Table~\ref{tab:hm2_sweep} reports the converged final masses and propellant consumption.
+
+\begin{table}[H]
+\centering
+\caption{Sensitivity sweep on flight time.}
+\label{tab:hm2_sweep}
+\begin{tabular}{ccc}
+\toprule
+$t_f$ [s] & $m_f$ [kg] & Fuel consumed [kg] \\
+\midrule
+36.10 & 1406.33 & 593.67 \\
+38.00 & 1403.20 & 596.80 \\
+39.90 & 1398.82 & 601.18 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Fuel use grows with $t_f$ across the swept window. The interpretation is straightforward: the longer the descent, the more time the vehicle spends in the gravity field, and the more thrust must be expended just to counteract gravity (gravity loss). Within the $\pm 5\%$ window around the nominal $38$~s the variation is small ($\approx 7.5$~kg, or about $1.3\%$ of the propellant), indicating that the nominal $t_f$ is close to a flat region of the cost landscape---consistent with the observation that the mission is dominated by horizontal divert and not by hover time.
+
+The monotonic behaviour suggests that the truly fuel-optimal solution corresponds to the minimum admissible $t_f$ compatible with the thrust-magnitude bound. A free-time formulation, where $t_f$ becomes a decision variable, would seek out this minimum automatically; this is one of the natural extensions identified in Section~\ref{sec:conclusions}.
+
+The trajectory, thrust, mass, and glide-slope plots presented in Section~\ref{sec:results} overlay the three sensitivity runs on common axes, allowing direct visual comparison. The solutions are qualitatively similar: all three exhibit the bang-bang thrust structure, all three respect the glide-slope corridor, and the trajectories differ only marginally in shape, with the longer-$t_f$ run hovering slightly more at altitude before initiating the final descent.
+
+\end{document}

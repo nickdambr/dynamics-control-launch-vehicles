@@ -1,0 +1,37 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Conclusions}\label{sec:conclusions}
+
+A classical attitude control system for an aerodynamically unstable launch
+vehicle at the max-$\bar q$ condition was designed and validated entirely in the
+frequency domain.
+
+\begin{itemize}
+\item \textbf{Task 1.} A proportional--derivative attitude law with weak negative
+drift feedback stabilises the rigid airframe (open-loop pole at
+$+1.84$~rad/s) and meets the design targets $|GM|\approx 6$~dB,
+$|PM|\approx 30^\circ$. The conditional-stability nature of the loop was
+identified and accounted for in the interpretation of the margins.
+\item \textbf{Task 2.} Introducing the TVC actuator, the transport delay and the
+lightly damped bending mode destabilises the loop through a $+39$~dB resonance.
+A gain-stabilising notch centred on $\omega_{BM}$ restores stability while
+preserving the rigid margins, with negligible change to the nominal gust
+response. Gain stabilisation was preferred to phase stabilisation because the
+resonance is too large to be tamed by a phase shift alone.
+\item \textbf{Task 3.} The fixed Task~2 controller is robust to $\pm 30\%$
+independent variations of $\mu_\alpha$ and $\mu_c$: all four corners remain
+stable. Aerodynamic uncertainty primarily erodes the rigid-body margin and
+nominal performance, whereas control-effectiveness uncertainty primarily erodes
+the bending margin.
+\end{itemize}
+
+The design illustrates the textbook trade-offs of launch-vehicle attitude
+control~\cite{greensite1970,wie2008}: enough gain to stabilise the unstable
+airframe, but not so much as to excite the structural modes, with the Nichols
+chart providing a single, unified view of both constraints. A Simulink
+block-diagram mirror of the closed loop reproduces the script results and is
+documented in the accompanying \texttt{models/SIMULINK\_GUIDE.md}.
+
+\end{document}

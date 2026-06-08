@@ -1,0 +1,102 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Trapezoidal Direct Collocation}\label{sec:methodology}
+
+Direct transcription methods discretise the continuous optimal control problem \eqref{eq:OCP} over a finite mesh of nodes and replace the continuous-time dynamics with algebraic relations among the node values. The resulting finite-dimensional NLP can be solved by general-purpose nonlinear programming solvers without the need to derive the costate equations and transversality conditions of the indirect approach. This is the methodological complement to the PMP-based formulation used in Homework~1.
+
+\subsection{Trapezoidal Quadrature Rule}\label{sec:trap_rule}
+
+The continuous-time dynamics are written compactly as
+\begin{equation}
+    \dot{\mathbf{x}}(t) = \mathbf{f}\bigl(\mathbf{x}(t),\, \mathbf{u}(t)\bigr),
+    \qquad \mathbf{x}\in\mathbb{R}^{n_x},\; \mathbf{u}\in\mathbb{R}^{n_u}.
+\end{equation}
+Discretise the time horizon $[0, t_f]$ into $N$ uniformly spaced nodes $\{t_k\}_{k=1}^{N}$ with spacing $\Delta t = t_f/(N-1)$, and let
+\begin{equation}
+    \mathbf{x}_k = \mathbf{x}(t_k),\qquad \mathbf{u}_k = \mathbf{u}(t_k),\qquad
+    \mathbf{f}_k = \mathbf{f}(\mathbf{x}_k, \mathbf{u}_k).
+\end{equation}
+Integrating the state equation over $[t_k, t_{k+1}]$,
+\begin{equation}
+    \mathbf{x}_{k+1} - \mathbf{x}_k = \int_{t_k}^{t_{k+1}} \mathbf{f}\bigl(\mathbf{x}(\tau),\mathbf{u}(\tau)\bigr)\,\mathrm{d}\tau.
+\end{equation}
+Approximating the integrand by a linear interpolation between the two endpoints and applying the \textbf{trapezoidal quadrature rule} yields
+\begin{equation}
+    \mathbf{x}_{k+1} - \mathbf{x}_k \;\approx\; \frac{\Delta t}{2}\bigl(\mathbf{f}_k + \mathbf{f}_{k+1}\bigr).
+    \label{eq:trap_rule}
+\end{equation}
+The local truncation error of the trapezoidal rule is $O(\Delta t^3)$, giving a globally second-order method. The rule is implicit (since $\mathbf{f}_{k+1}$ depends on $\mathbf{x}_{k+1}$) and A-stable, properties that make it well suited to transcribing dynamical systems with moderately stiff modes.
+
+\subsection{Defect Constraints}\label{sec:defects}
+
+Promoting \eqref{eq:trap_rule} from approximation to equality constraint produces the \textbf{defect equations} of trapezoidal direct collocation:
+\begin{equation}
+    \boldsymbol{\delta}_k \;:=\; \mathbf{x}_{k+1} - \mathbf{x}_k - \frac{\Delta t}{2}\bigl(\mathbf{f}_k + \mathbf{f}_{k+1}\bigr) \;=\; \mathbf{0},
+    \qquad k = 1,\, \ldots,\, N-1.
+    \label{eq:defects}
+\end{equation}
+With $n_x$ states this generates $n_x(N-1)$ scalar nonlinear equality constraints. When all defects are satisfied to machine precision, the discrete trajectory is consistent with the continuous-time dynamics to second order in $\Delta t$, and the controls are interpreted as the nodal values of a piecewise-linear input.
+
+For the powered-descent problem ($n_x = 5$, $n_u = 2$) each node contributes $n_x + n_u = 7$ decision variables and the defect block carries $5(N-1)$ rows.
+
+\subsection{NLP Formulation}\label{sec:nlp}
+
+The decision vector stacks states and controls node by node:
+\begin{equation}
+    \mathbf{z} = \bigl[\mathbf{x}_1^T,\; \mathbf{u}_1^T,\;
+                       \mathbf{x}_2^T,\; \mathbf{u}_2^T,\;
+                       \ldots,\;
+                       \mathbf{x}_N^T,\; \mathbf{u}_N^T\bigr]^T \in \mathbb{R}^{(n_x+n_u)N}.
+    \label{eq:dec_vec}
+\end{equation}
+The transcribed problem is
+\begin{equation}
+\begin{aligned}
+    \min_{\mathbf{z}} \quad & -m_N \\[2pt]
+    \text{s.t.}\quad
+    & \mathbf{c}_{\mathrm{eq}}^{\mathrm{lin}}(\mathbf{z}) = \mathbf{0}     && \text{(boundary conditions)}, \\
+    & \mathbf{c}_{\mathrm{eq}}^{\mathrm{nl}}(\mathbf{z}) = \mathbf{0}      && \text{(defects)}, \\
+    & \mathbf{c}_{\mathrm{ineq}}(\mathbf{z}) \leq \mathbf{0}              && \text{(path constraints)}, \\
+    & \mathbf{z}_{\mathrm{lb}} \leq \mathbf{z} \leq \mathbf{z}_{\mathrm{ub}} && \text{(box bounds)}.
+\end{aligned}
+\label{eq:nlp}
+\end{equation}
+With $N = 50$, the dimensions are: $7N = 350$ decision variables; $9$ linear equalities (5 initial + 4 final boundary conditions, $m_f$ being free); $5(N-1) = 245$ nonlinear equalities (defects); $4N = 200$ nonlinear inequalities (lower and upper thrust magnitude, two glide-slope half-spaces); and $7N$ box bounds.
+
+\subsection{KKT Optimality Conditions}\label{sec:kkt}
+
+Introducing multipliers $\boldsymbol{\lambda}^{\mathrm{eq}}$ and $\boldsymbol{\mu} \geq \mathbf{0}$ for the equality and inequality constraints, the Lagrangian of \eqref{eq:nlp} is
+\begin{equation}
+    \mathcal{L}(\mathbf{z},\boldsymbol{\lambda}^{\mathrm{eq}},\boldsymbol{\mu})
+    = J(\mathbf{z}) + (\boldsymbol{\lambda}^{\mathrm{eq}})^T \mathbf{c}_{\mathrm{eq}}(\mathbf{z})
+                    + \boldsymbol{\mu}^T \mathbf{c}_{\mathrm{ineq}}(\mathbf{z}).
+\end{equation}
+A point $\mathbf{z}^*$ is a local minimiser if there exist multipliers $(\boldsymbol{\lambda}^{\mathrm{eq},*},\boldsymbol{\mu}^*)$ such that the \textbf{Karush--Kuhn--Tucker} (KKT) conditions hold:
+\begin{align}
+    \nabla_{\mathbf{z}} \mathcal{L}(\mathbf{z}^*,\boldsymbol{\lambda}^{\mathrm{eq},*},\boldsymbol{\mu}^*) &= \mathbf{0}
+        && \text{(stationarity),}\\
+    \mathbf{c}_{\mathrm{eq}}(\mathbf{z}^*) = \mathbf{0},\quad \mathbf{c}_{\mathrm{ineq}}(\mathbf{z}^*) &\leq \mathbf{0}
+        && \text{(primal feasibility),}\\
+    \boldsymbol{\mu}^* &\geq \mathbf{0}
+        && \text{(dual feasibility),}\\
+    \mu_j^*\, c_{\mathrm{ineq},j}(\mathbf{z}^*) &= 0,\quad \forall j
+        && \text{(complementary slackness).}
+\end{align}
+Complementarity expresses that an inequality is either active ($c_j = 0$, with $\mu_j > 0$) or strictly inactive ($c_j < 0$, with $\mu_j = 0$). At the optimum of the powered-descent problem the upper thrust bound $\|\mathbf{T}\| = T_{\max}$ is active over a substantial portion of the trajectory, mirroring the bang-bang nature of the optimal control law for fuel-optimal problems with linear-in-control dynamics; the corresponding KKT multipliers are positive, identifying the binding constraints that shape the solution.
+
+\subsection{Sequential Quadratic Programming}\label{sec:sqp}
+
+The NLP \eqref{eq:nlp} is solved with MATLAB's \texttt{fmincon} configured with the SQP algorithm. SQP iteratively constructs a quadratic-programming approximation of the KKT system: at each iterate $\mathbf{z}^{(k)}$ the search direction $\mathbf{d}^{(k)}$ is found by solving
+\begin{equation}
+\begin{aligned}
+    \min_{\mathbf{d}} \quad & \tfrac{1}{2}\mathbf{d}^T \mathbf{H}^{(k)} \mathbf{d} + \nabla J(\mathbf{z}^{(k)})^T \mathbf{d} \\[2pt]
+    \text{s.t.}\quad
+    & \nabla \mathbf{c}_{\mathrm{eq}}(\mathbf{z}^{(k)})^T \mathbf{d} + \mathbf{c}_{\mathrm{eq}}(\mathbf{z}^{(k)}) = \mathbf{0}, \\
+    & \nabla \mathbf{c}_{\mathrm{ineq}}(\mathbf{z}^{(k)})^T \mathbf{d} + \mathbf{c}_{\mathrm{ineq}}(\mathbf{z}^{(k)}) \leq \mathbf{0},
+\end{aligned}
+\end{equation}
+where $\mathbf{H}^{(k)}$ is a quasi-Newton (BFGS) approximation of the Hessian of the Lagrangian. The next iterate is $\mathbf{z}^{(k+1)} = \mathbf{z}^{(k)} + \alpha^{(k)} \mathbf{d}^{(k)}$, with the step length $\alpha^{(k)}$ obtained from a line search on a merit function that balances objective decrease against constraint violation.
+
+\end{document}

@@ -1,0 +1,70 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 1 --- Rigid Launch Vehicle}\label{sec:task1}
+
+\subsection{Rigid model and loop}
+
+Neglecting the bending mode, the plant reduces to the four states
+$[\,z,\dot z,\theta,\dot\theta\,]$ and the actuator is taken as ideal
+($W_{TVC}\!=\!e^{-\tau s}\!=\!1$). The open-loop transfer broken at the TVC
+deflection, in the $1+L$ convention, is obtained by closing the static
+PD law of Eq.~\eqref{eq:control} around the plant:
+\begin{equation}
+L(s) = K_{P,\theta}\,G_{\delta\to\theta}(s)
+     + K_{D,\theta}\,G_{\delta\to\dot\theta}(s)
+     + K_{P,z}\,G_{\delta\to z}(s)
+     + K_{D,z}\,G_{\delta\to\dot z}(s),
+\end{equation}
+where $G_{\delta\to\bullet}$ are the plant channels from $\delta$ to each
+measurement. The dominant term is the pitch loop
+$L_\theta(s) = (K_{P,\theta}+K_{D,\theta}s)\,K_1/(s^2-A_6)$, whose closed-loop
+characteristic polynomial $s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta}-A_6)$
+is stable only for $K_{P,\theta} > A_6/K_1 = 0.74$ and $K_{D,\theta} > 0$: the
+proportional gain must overcome the aerodynamic instability.
+
+\subsection{Tuning}
+
+The pitch gains were tuned (by a small \texttt{fminsearch} wrapper around the
+margin computation) to meet the assignment targets, while the lateral gains were
+fixed at $K_{P,z}=K_{D,z}=-10^{-3}$. The resulting design is
+\begin{equation}
+K_{P,\theta} = 1.98,\quad K_{D,\theta} = 1.40,\quad
+K_{P,z}=K_{D,z}=-10^{-3},
+\end{equation}
+giving $|GM| = 6.0$~dB at $0.34$~rad/s and $|PM| = 30^\circ$ at $0.21$~rad/s.
+The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve threading
+between the two critical points $(-180^\circ,0\,\text{dB})$ and
+$(-540^\circ,0\,\text{dB})$ --- the geometric signature of conditional
+stability --- and clearing the $6$~dB closed-loop contour.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.62\textwidth]{task1_nichols.png}
+\caption{Task 1 --- Nichols chart of the rigid open-loop transfer. The loop is
+conditionally stable; the design meets $|GM|\approx 6$~dB and
+$|PM|\approx 30^\circ$.}
+\label{fig:t1nichols}
+\end{figure}
+
+\subsection{Wind-gust response}
+
+The closed loop is excited by a deterministic ``1-cosine'' wind gust whose
+amplitude ($V_g = 6.4$~m/s) is taken from the reference dry-wind dispersion
+(\texttt{drywind.mat}, severe regime) at the current altitude, converted to a
+wind angle of attack $\alpha_w = v_w/V$. The four key time histories requested
+by the assignment are shown in Figure~\ref{fig:t1gust}: the pitch attitude stays
+below $0.14^\circ$, the TVC deflection peaks at $0.38^\circ$, and the lateral
+drift builds up smoothly to a few metres, as expected from the weak drift
+feedback. The response is well damped and the actuator effort is modest.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{task1_gust_response.png}
+\caption{Task 1 --- response to a severe wind gust: pitch attitude $\theta$,
+lateral drift $z$, drift rate $\dot z$ and TVC deflection $\delta$.}
+\label{fig:t1gust}
+\end{figure}
+
+\end{document}

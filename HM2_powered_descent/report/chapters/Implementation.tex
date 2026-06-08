@@ -1,0 +1,106 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Numerical Implementation}\label{sec:implementation}
+
+This section details the practical setup of the NLP \eqref{eq:nlp} in MATLAB. The full transcription is built and solved by the script \texttt{main\_task1.m}; \texttt{fmincon} is the only solver dependency (no CasADi, no YALMIP).
+
+\subsection{Non-Dimensionalisation}\label{sec:nondim}
+
+The decision-vector entries span four orders of magnitude in SI units (positions $\sim 10^3$~m, velocities $\sim 10^2$~m/s, mass $\sim 10^3$~kg, thrust components $\sim 7\cdot 10^4$~N). Mixing scales of this size in a single NLP yields a poorly conditioned Jacobian and slow asymptotic convergence under finite-difference gradients. Following the same approach used in Homework~1, the problem is therefore non-dimensionalised before being handed to \texttt{fmincon}. The reference scales are listed in Table~\ref{tab:nondim_scales}.
+
+\begin{table}[H]
+\centering
+\caption{Non-dimensionalisation reference scales.}
+\label{tab:nondim_scales}
+\begin{tabular}{llll}
+\toprule
+Quantity        & Symbol     & Definition                          & Numerical value \\
+\midrule
+Length          & $L_{ref}$  & $y_0$                               & $3000$~m        \\
+Acceleration    & $a_{ref}$  & $g$                                 & $9.81$~m/s$^2$  \\
+Time            & $t_{ref}$  & $\sqrt{L_{ref}/g}$                  & $17.49$~s       \\
+Velocity        & $V_{ref}$  & $\sqrt{g\,L_{ref}}$                 & $171.6$~m/s     \\
+Mass            & $m_{ref}$  & $m_0$                               & $2000$~kg       \\
+Thrust          & $T_{ref}$  & $m_0\,g$                            & $19\,620$~N     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In non-dimensional variables (denoted by tildes), the dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} reduce to
+\begin{align}
+    \dot{\tilde{x}}    &= \tilde{v}_x,
+    & \dot{\tilde{y}}  &= \tilde{v}_y,\\
+    \dot{\tilde{v}}_x  &= \frac{\tilde{T}_x}{\tilde{m}},
+    & \dot{\tilde{v}}_y &= \frac{\tilde{T}_y}{\tilde{m}} - 1,\\
+    \dot{\tilde{m}}    &= -V_c\,\|\tilde{\mathbf{T}}\|,
+\end{align}
+where $V_c = V_{ref}/c \approx 0.0778$ is the only residual dimensionless parameter (a local Tsiolkovsky-style ratio of the characteristic flight speed to the effective exhaust velocity). All decision variables now span $O(1)$ magnitudes, with positions in $[-1/3,\,1]$, velocities in $[-1.17,\,1.75]$, mass in $[10^{-3},\,1]$, and thrust components in $[-3.57,\,3.57]$; the Jacobians of the LTV linearisation (Section~\ref{sec:task2}) become uniformly $O(1)$, sharply improving the conditioning of \texttt{fmincon}'s SQP iterations and of the SCvx outer loop. Boundary conditions, glide-slope angle, and the time horizon $t_f$ are all rescaled by their natural units; results are returned to SI before printing and plotting.
+
+\subsection{Decision Vector Layout}
+
+With $N = 50$ collocation nodes, the decision vector \eqref{eq:dec_vec} has $7N = 350$ components ordered as
+\begin{equation}
+    \mathbf{z} = \bigl[\,
+    \underbrace{x_1, y_1, v_{x,1}, v_{y,1}, m_1, T_{x,1}, T_{y,1}}_{\text{node 1}},\;
+    \ldots,\;
+    \underbrace{x_N, y_N, v_{x,N}, v_{y,N}, m_N, T_{x,N}, T_{y,N}}_{\text{node }N}\,\bigr]^T.
+\end{equation}
+A slice operator \texttt{idx(i) = (i-1)*7 + (1:7)} returns the indices of the seven entries belonging to node~$i$, used throughout the helper functions to build sparse constraint matrices and unpack the converged solution.
+
+\subsection{Initial Guess}\label{sec:initial_guess}
+
+A reasonable initial guess is essential for SQP convergence on this nonconvex NLP. The state variables are linearly interpolated between the boundary states with $\alpha = (i-1)/(N-1)$:
+\begin{align}
+    x_i^{(0)}     &= (1-\alpha)\, x_0,
+    & y_i^{(0)}   &= (1-\alpha)\, y_0,\\
+    v_{x,i}^{(0)} &= (1-\alpha)\, v_{x,0},
+    & v_{y,i}^{(0)} &= (1-\alpha)\, v_{y,0},\\
+    m_i^{(0)}     &= m_0\bigl(1 - 0.3\,\alpha\bigr).
+\end{align}
+The control guess is a constant hover thrust $\mathbf{T}^{(0)} = (0,\, m_0\, g)^T$, which approximately balances gravity at the start and provides a search direction that does not violate the thrust-magnitude bounds.
+
+\subsection{Constraints}
+
+\paragraph{Linear equality (boundary conditions).} The nine scalar conditions are encoded in $\mathbf{A}_{\mathrm{eq}}\mathbf{z} = \mathbf{b}_{\mathrm{eq}}$ as a sparse $9 \times 7N$ matrix: five rows fix the initial state and four rows fix the terminal $(x, y, v_x, v_y) = (0,0,0,0)$. The terminal mass is left free (its bound, $m \geq 1$, is a box constraint).
+
+\paragraph{Nonlinear equality (defects).} The function \texttt{trap\_nonlcon} reshapes $\mathbf{z}$ into a $7\times N$ matrix, evaluates the right-hand side $\mathbf{f}_k$ at every node via \texttt{dyn\_rhs}, and assembles the $5(N-1) = 245$ defect entries of Eq.~\eqref{eq:defects}.
+
+\paragraph{Nonlinear inequality.} The same routine returns the $4N$ inequalities:
+\begin{itemize}
+    \item Thrust magnitude (lower and upper):
+          $T_{\min} - \|\mathbf{T}_k\| \leq 0$ and
+          $\|\mathbf{T}_k\| - T_{\max} \leq 0$, both nonsmooth at the origin but smoothly differentiable away from $\mathbf{T} = \mathbf{0}$;
+    \item Glide-slope (linear, decomposed):
+          $+x_k - \tan\theta_{\max}\,y_k \leq 0$ and
+          $-x_k - \tan\theta_{\max}\,y_k \leq 0$.
+\end{itemize}
+
+\paragraph{Box bounds.} Per-node bounds enforce $\tilde{y}_k \geq 0$, $10^{-3} \leq \tilde{m}_k \leq 1$ (equivalently $2 \leq m_k \leq m_0$~kg in SI), and $|\tilde{T}_{x,k}|,\,|\tilde{T}_{y,k}| \leq \tilde{T}_{\max}$. The strictly-positive mass lower bound avoids division-by-zero in the dynamics RHS \eqref{eq:hm2_vxdot}--\eqref{eq:hm2_vydot}; the chosen value of $2$~kg is well below the propellant inventory at any feasible terminal state.
+
+\subsection{Solver Settings}
+
+The NLP is solved with \texttt{fmincon} using the options listed in Table~\ref{tab:fmincon}.
+
+\begin{table}[H]
+\centering
+\caption{\texttt{fmincon} options.}
+\label{tab:fmincon}
+\begin{tabular}{ll}
+\toprule
+Option                          & Value \\
+\midrule
+\texttt{Algorithm}              & \texttt{'sqp'} \\
+\texttt{MaxIterations}          & $1000$ \\
+\texttt{MaxFunctionEvaluations} & $10^{6}$ \\
+\texttt{OptimalityTolerance}    & $10^{-5}$ \\
+\texttt{ConstraintTolerance}    & $10^{-6}$ \\
+\texttt{StepTolerance}          & $10^{-10}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The SQP algorithm was preferred over the interior-point method (\texttt{fmincon}'s default) for two reasons: SQP exploits a warm start more effectively when sweeping $t_f$ in the sensitivity study, and it tracks the active-set structure of the bang-bang optimum more efficiently than barrier-based interior-point iterations. Gradients are not provided explicitly, so \texttt{fmincon} computes them via finite differences; the typical wall time at $N = 50$ is approximately $30$~s per solve on a modern laptop.
+
+\end{document}

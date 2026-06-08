@@ -22,7 +22,7 @@ entry-point, and figures regenerated on every run.
 | HM0 | Falcon 9 first-stage 3-DoF ascent simulation     | Spherical-coords EOM, exponential atmosphere, three-phase mission program          | [HM0_falcon9_ascent/](HM0_falcon9_ascent/) |
 | HM1 | Indirect optimization of a planar ascent (4 tasks)| Pontryagin Maximum Principle, single shooting BVP via `fsolve`, parameter continuation, coast-arc switching, optimal staging | [HM1/](HM1/) |
 | HM2 | Reusable-LV powered descent and landing          | Direct collocation (trapezoidal), `fmincon`/SQP, convex glide-slope cone           | [HM2_powered_descent/](HM2_powered_descent/) |
-| HM3 | Rigid-body LV control                            | *Planned* — H-infinity design, `systune`, sloshing, possibly Simulink              | — |
+| HM3 | LV attitude control in atmospheric flight (max-q)| Classical frequency-domain design (Nichols), PD + drift feedback, bending-mode notch, TVC + transport delay, ±30% parametric robustness | [HM3/](HM3/) |
 
 ## Highlights
 
@@ -94,7 +94,7 @@ The `tickets/` folder tracks ongoing work as plain-markdown items —
 - 🚧 HM2 — Task 1 (trapezoidal direct collocation) done. Task 2 (Zero-Order
        Hold transcription, ODE45 forward-validation) and SCvx variant
        pending.
-- ⏳ HM3 — Rigid-body launch-vehicle control (H-∞, sloshing) — to be added
+- ✅ HM3 — LV attitude control at max-q (Nichols, PD + bending notch, parametric robustness)
        later in the semester.
 
 ## Author

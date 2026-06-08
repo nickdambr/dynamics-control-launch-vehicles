@@ -1,0 +1,91 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Introduction}\label{sec:introduction}
+
+This report presents the solution to Homework~2 of the course \emph{Dynamics and Control of Launch Vehicles}: the minimum-fuel powered descent and pinpoint soft landing of a reusable launch vehicle. While Homework~1 tackled an ascent problem via the indirect approach (Pontryagin Maximum Principle plus shooting), this work adopts a \emph{direct transcription}: the optimal control problem is approximated by a finite-dimensional Nonlinear Programming (NLP) problem through trapezoidal collocation, which is then solved by Sequential Quadratic Programming (SQP).
+
+The powered-descent problem models the final phase of flight of a reusable rocket performing a "divert and soft land" manoeuvre, of the kind flown by the SpaceX Falcon~9 first stage and by Mars precision-landing concepts. The vehicle must reach a designated landing pad with zero residual velocity while respecting thrust bounds, a glide-slope corridor, and altitude constraints, and using minimum propellant.
+
+\subsection{Vehicle Model and Equations of Motion}\label{sec:hm2_dynamics}
+
+The vehicle is modelled as a 2D point mass moving above flat ground with no aerodynamics. The state vector is
+\begin{equation}
+    \mathbf{x}(t) = \bigl[x,\; y,\; v_x,\; v_y,\; m\bigr]^T,
+\end{equation}
+and the control is the thrust vector $\mathbf{T}(t) = [T_x,\; T_y]^T$. The equations of motion are
+\begin{align}
+    \dot{x}   &= v_x, \label{eq:hm2_xdot}\\
+    \dot{y}   &= v_y, \label{eq:hm2_ydot}\\
+    \dot{v}_x &= \frac{T_x}{m}, \label{eq:hm2_vxdot}\\
+    \dot{v}_y &= \frac{T_y}{m} - g, \label{eq:hm2_vydot}\\
+    \dot{m}   &= -\frac{\|\mathbf{T}\|}{c}, \label{eq:hm2_mdot}
+\end{align}
+where $g = 9.81$~m/s$^2$ is the gravitational acceleration and $c = I_{sp}\,g_0$ is the effective exhaust velocity ($I_{sp} = 225$~s, $g_0 = 9.80665$~m/s$^2$, hence $c \approx 2206$~m/s). As in Homework~1, the problem is non-dimensionalised before being passed to the solver (see Section~\ref{sec:nondim}); the dimensional form is retained throughout this section for clarity. Compared to Homework~1, the control is the full thrust vector rather than a scalar direction angle, since the magnitude is now also a degree of freedom subject to a bound.
+
+\subsection{Boundary Conditions and Mission Parameters}\label{sec:hm2_bc}
+
+The vehicle starts at a known state and must reach the origin with zero velocity at the prescribed terminal time:
+\begin{equation}
+    \mathbf{x}(0) = \bigl[x_0,\; y_0,\; v_{x,0},\; v_{y,0},\; m_0\bigr]^T,
+    \qquad
+    \mathbf{x}(t_f) = \bigl[0,\; 0,\; 0,\; 0,\; m_f\bigr]^T,
+\end{equation}
+with the final mass $m_f$ free. The mission data taken from Table~1 of the assignment are summarised in Table~\ref{tab:hm2_data}.
+
+\begin{table}[H]
+\centering
+\caption{Mission data.}
+\label{tab:hm2_data}
+\begin{tabular}{llll}
+\toprule
+Quantity                & Symbol                & Value             & Units \\
+\midrule
+Initial position        & $(x_0, y_0)$          & $(1000,\; 3000)$  & m     \\
+Initial velocity        & $(v_{x,0}, v_{y,0})$  & $(300,\; -200)$   & m/s   \\
+Initial mass            & $m_0$                 & $2000$            & kg    \\
+Specific impulse        & $I_{sp}$              & $225$             & s     \\
+Thrust bounds           & $T_{\min},\; T_{\max}$ & $0,\; 70$        & kN    \\
+Glide-slope half-angle  & $\theta_{\max}$       & $60$              & deg   \\
+Flight time (fixed)     & $t_f$                 & $38$              & s     \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Path Constraints}\label{sec:hm2_path}
+
+Three path constraints are enforced over $[0, t_f]$:
+\begin{align}
+    T_{\min} &\leq \|\mathbf{T}(t)\| \leq T_{\max}
+        && \text{(thrust magnitude)},
+        \label{eq:thrust_bound}\\
+    |x(t)| &\leq \tan(\theta_{\max})\,y(t)
+        && \text{(glide-slope)},
+        \label{eq:glide_slope}\\
+    y(t) &\geq 0
+        && \text{(no underground flight)}.
+        \label{eq:altitude}
+\end{align}
+The glide-slope condition \eqref{eq:glide_slope} confines the vehicle to a cone of half-angle $\theta_{\max}$ apexed at the landing pad, ensuring a safe approach corridor. It is convex in $(x, y)$ and decomposes into the linear pair
+\begin{equation}
+    +\,x - \tan(\theta_{\max})\,y \leq 0,\qquad -\,x - \tan(\theta_{\max})\,y \leq 0.
+    \label{eq:glide_slope_linear}
+\end{equation}
+Both forms are exploited downstream: the linearised pair \eqref{eq:glide_slope_linear} is what is fed to \texttt{fmincon} as a smooth inequality.
+
+\subsection{Optimal Control Problem}\label{sec:hm2_ocp}
+
+The minimum-fuel powered-descent problem is the Mayer-form OCP
+\begin{equation}
+\begin{aligned}
+    \min_{\mathbf{T}(\cdot)} \quad & J = -m(t_f) \\
+    \text{s.t.}\quad & \text{Eqs.~\eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot}},\\
+    & \text{boundary conditions of Section~\ref{sec:hm2_bc}},\\
+    & \text{path constraints \eqref{eq:thrust_bound}--\eqref{eq:altitude}}.
+\end{aligned}
+\label{eq:OCP}
+\end{equation}
+This continuous-time problem is approximated by an NLP using trapezoidal direct collocation, as described in Section~\ref{sec:methodology}.
+
+\end{document}

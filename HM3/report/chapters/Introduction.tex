@@ -1,0 +1,117 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Introduction}\label{sec:intro}
+
+This report addresses the design of an attitude control system for a launch
+vehicle (LV) during the atmospheric phase of flight, at the instant of maximum
+dynamic pressure ($t = 72$~s, max-$\bar q$). At this condition the LV is the
+hardest to control: the aerodynamic moment destabilises the airframe while the
+wind disturbance is largest. The design is carried out entirely with
+\emph{classical} frequency-domain tools, using the Nichols chart as the primary
+stability indicator, following the short-period pitch-plane model of
+Greensite~\cite{greensite1970}.
+
+\subsection{Plant model}
+
+The pitch-plane short-period dynamics are described by the linear
+time-invariant model (assignment Eq.~1), with state vector
+$\mathbf{x} = [\,z,\ \dot z,\ \theta,\ \dot\theta,\ \eta,\ \dot\eta\,]^\top$
+(lateral drift, pitch attitude and first bending mode), control input $\delta$
+(TVC deflection) and disturbance $\alpha_w$ (wind angle of attack):
+\begin{equation}
+\dot{\mathbf{x}} =
+\begin{bmatrix}
+0 & 1 & 0 & 0 & 0 & 0\\
+0 & a_1 & a_1 V + a_4 & 0 & 0 & 0\\
+0 & 0 & 0 & 1 & 0 & 0\\
+0 & A_6/V & A_6 & 0 & 0 & 0\\
+0 & 0 & 0 & 0 & 0 & 1\\
+0 & 0 & 0 & 0 & -\omega_1^2 & -2\zeta_1\omega_1
+\end{bmatrix}\mathbf{x}
++
+\begin{bmatrix} 0\\ a_3\\ 0\\ K_1\\ 0\\ -\phi_{1,TVC}T_c \end{bmatrix}\delta
++
+\begin{bmatrix} 0\\ -a_1 V\\ 0\\ -A_6\\ 0\\ 0 \end{bmatrix}\alpha_w .
+\label{eq:plant}
+\end{equation}
+The pitch channel $\ddot\theta = A_6\,\theta + K_1\,\delta - A_6\,\alpha_w$ is
+the core of the problem. The coefficient $A_6 = N_\alpha l_\alpha / I_{yy} > 0$
+(\emph{aerodynamic moment}, denoted $\mu_\alpha$) places an open-loop pole at
+$s = +\sqrt{A_6} = +1.84$~rad/s in the right half-plane: the airframe is
+\textbf{statically unstable} and feedback is mandatory. The coefficient
+$K_1 = T_c l_c / I_{yy}$ (\emph{control effectiveness}, $\mu_c$) sets the
+authority of the TVC.
+
+The sensed quantities are produced by the inertial unit (assignment Eq.~2),
+which couples the bending coordinate $\eta$ into the gyro and accelerometer
+channels through $\sigma_{1,ins}$ and $\phi_{1,ins}$:
+\begin{equation}
+\theta_m = \theta + \sigma_{1,ins}\,\eta,\quad
+\dot\theta_m = \dot\theta + \sigma_{1,ins}\,\dot\eta,\quad
+z_m = z - \phi_{1,ins}\,\eta,\quad
+\dot z_m = \dot z - \phi_{1,ins}\,\dot\eta .
+\label{eq:ins}
+\end{equation}
+This contamination is exactly what makes the lightly damped bending mode
+($\omega_{BM} = 18.9$~rad/s, $\zeta_{BM}=0.005$) visible to the controller and
+drives the need for a dedicated filter (Task~2).
+
+The actuator is the second-order TVC of Eq.~3,
+\begin{equation}
+W_{TVC}(s) = \frac{\omega_{TVC}^2}{s^2 + 2\zeta_{TVC}\omega_{TVC}s + \omega_{TVC}^2},
+\qquad \omega_{TVC}=70~\text{rad/s},\ \zeta_{TVC}=0.7,
+\label{eq:tvc}
+\end{equation}
+in series with a pure transport delay $\tau = 20$~ms, approximated by a
+third-order Pad\'e rational function. Parameters at $t=72$~s are read from the
+reference data set \texttt{GreensiteLPV\_DATA.mat} (cross-checked against
+Table~1 of the assignment); the salient values are reported in
+Table~\ref{tab:params}.
+
+\begin{table}[H]
+\centering
+\caption{Pitch-plane LV parameters at the max-$\bar q$ condition ($t=72$~s).}
+\label{tab:params}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Symbol & Value \\
+\midrule
+Aerodynamic moment   & $A_6=\mu_\alpha$ & $3.382~\text{s}^{-2}$ \\
+Control effectiveness & $K_1=\mu_c$     & $4.565~\text{s}^{-2}$ \\
+Drift coefficients    & $a_1,a_3,a_4$   & $-0.0154,\ 20.61,\ -27.27~\text{s}^{-2}$ \\
+Relative velocity      & $V$            & $937.7~\text{m/s}$ \\
+Bending mode           & $\omega_{BM},\zeta_{BM}$ & $18.9~\text{rad/s},\ 0.005$ \\
+INS coupling           & $\phi_{1,ins},\sigma_{1,ins}$ & $0.8,\ 0.178$ \\
+TVC actuator           & $\omega_{TVC},\zeta_{TVC},\tau$ & $70~\text{rad/s},\ 0.7,\ 20~\text{ms}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Control architecture}
+
+A proportional--derivative attitude law is adopted, augmented by a weak negative
+feedback on the lateral-drift channel (the \emph{drift-minimum} principle):
+\begin{equation}
+\delta_{cmd} =
+K_{P,\theta}\,(\theta_{ref}-\theta_m) - K_{D,\theta}\,\dot\theta_m
+- K_{P,z}\,z_m - K_{D,z}\,\dot z_m ,
+\label{eq:control}
+\end{equation}
+with $K_{P,z},K_{D,z}$ small and negative, of order $10^{-3}$, as recommended in
+the assignment guidelines. The actual deflection follows from the actuator and
+the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\,\delta_{cmd}$.
+
+\subsection{A note on conditional stability}
+
+Because the open-loop airframe carries a right-half-plane pole, the loop is
+\emph{conditionally stable}: closed-loop stability is lost if the loop gain is
+\emph{reduced} below a threshold, not only if it is increased. Consequently the
+\texttt{margin} routine returns the low-frequency \emph{aerodynamic} gain margin,
+and the assignment targets $|GM|\approx 6$~dB and $|PM|\approx 30^\circ$ are
+interpreted in magnitude, as read off the Nichols chart. This is standard
+practice for the attitude control of aerodynamically unstable
+launchers~\cite{wie2008}.
+
+\end{document}

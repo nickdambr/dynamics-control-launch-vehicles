@@ -1,0 +1,69 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 2 --- Full Launch Vehicle Model}\label{sec:task2}
+
+Task~2 reintroduces the full dynamics of Eq.~\eqref{eq:plant}: the lightly damped
+first bending mode, the second-order TVC actuator of Eq.~\eqref{eq:tvc} with its
+$20$~ms delay, and the INS measurement model of Eq.~\eqref{eq:ins}. The design
+proceeds incrementally, as suggested in the assignment guidelines.
+
+\subsection{Step B --- actuator, delay and bending without compensation}
+
+Adding the TVC, delay and bending mode to the Task~1 controller leaves the
+low-frequency margins essentially intact, but the bending resonance appears in
+the loop at a magnitude of $|L(\omega_{BM})| = +39$~dB. With a damping of only
+$\zeta_{BM} = 0.005$ this peak encircles the critical point and the closed loop
+becomes \textbf{unstable} (a closed-loop pole at $\mathrm{Re}(s)=+5.6$). The red
+curve in Figure~\ref{fig:t2nichols} shows the bending loop crossing into the
+unstable region.
+
+\subsection{Step C --- bending notch}
+
+The guideline filter of Eq.~4 is used. Two strategies are possible: a
+\emph{phase}-stabilising lead-lag (the non-minimum-phase variant, which shifts
+the bending excursion left/right on the Nichols chart) and a \emph{gain}-stabilising
+notch (a minimum-phase band-reject section that drives the resonance below
+$0$~dB). The lead-lag was found to thin the bending phase margin to a fraction of
+a degree, whereas the gain-stabilising notch
+\begin{equation}
+H_x(s) = \frac{s^2 + 2\zeta_{x,N}\omega_x s + \omega_x^2}
+              {s^2 + 2\zeta_{x,D}\omega_x s + \omega_x^2},
+\qquad \omega_x = \omega_{BM},\ \zeta_{x,N}=0.002,\ \zeta_{x,D}=0.7,
+\end{equation}
+attenuates $|L(\omega_{BM})|$ to $-12$~dB while remaining flat at the
+low-frequency rigid crossovers. The bending mode is therefore left at its
+open-loop (lightly damped but stable) location, the rigid margins are
+\emph{preserved} ($|GM| = 6.6$~dB, $|PM| = 30^\circ$), and the closed loop is
+stable. No re-tuning of the PD gains was necessary, consistent with the
+guideline note. The notch is the chosen design; the blue curve in
+Figure~\ref{fig:t2nichols} shows the stabilised loop.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{task2_nichols.png}
+\caption{Task 2 --- effect of the bending notch on the full-model loop: without
+the notch (red) the $+39$~dB bending resonance destabilises the loop; with the
+notch (blue) the resonance is gain-stabilised and the rigid margins are kept.}
+\label{fig:t2nichols}
+\end{figure}
+
+\subsection{Comparison with the rigid model}
+
+Because the notch is localised at the bending frequency and the TVC bandwidth
+($70$~rad/s) is well above the control crossover, the full-model gust response is
+virtually indistinguishable from the rigid one
+(Figure~\ref{fig:t2cmp}): the pitch peak changes from $0.139^\circ$ to
+$0.132^\circ$ and the TVC effort is unchanged. The added dynamics affect
+stability robustness (the bending margin) far more than nominal performance.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{task2_comparison_rigid_vs_full.png}
+\caption{Task 2 --- rigid (Task 1) versus full-model gust response: pitch
+attitude, lateral drift and TVC deflection are nearly coincident.}
+\label{fig:t2cmp}
+\end{figure}
+
+\end{document}
