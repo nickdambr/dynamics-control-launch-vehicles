@@ -1,0 +1,153 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Introduction}\label{sec:introduction}
+
+This report presents the solution to Homework~1 of the course \emph{Dynamics and Control of Launch Vehicles}, which concerns the minimum-fuel planar ascent of a rocket from rest on the ground to a prescribed low-Earth orbit injection state. Four progressively richer mission programs are addressed, each framed as an optimal control problem and solved by applying the Pontryagin Maximum Principle (PMP) and single-shooting over the costate initial conditions.
+
+\subsection{Vehicle Dynamics}\label{sec:dynamics}
+
+The vehicle is modelled as a point mass moving in a vertical plane above a flat, non-rotating Earth with no atmospheric drag. The state vector is
+\begin{equation}
+    \mathbf{x}(t) = \bigl[x,\; y,\; v_x,\; v_y,\; m\bigr]^T,
+\end{equation}
+where $(x, y)$ is the position in the orbital plane, $(v_x, v_y)$ is the velocity, and $m$ is the vehicle mass. The single control variable is the thrust-direction angle $\varphi$ measured from the horizontal. The thrust magnitude is $T = cQ$, where $c$ is the effective exhaust velocity and $Q = -\dot{m}$ is the constant mass-flow rate. The equations of motion are
+\begin{align}
+    \dot{x}   &= v_x, \label{eq:xdot}\\
+    \dot{y}   &= v_y, \label{eq:ydot}\\
+    \dot{v}_x &= \frac{T}{m}\cos\varphi, \label{eq:vxdot}\\
+    \dot{v}_y &= \frac{T}{m}\sin\varphi - g, \label{eq:vydot}\\
+    \dot{m}   &= -Q. \label{eq:mdot}
+\end{align}
+
+\subsection{Non-dimensionalization}\label{sec:nondim}
+
+All quantities are made dimensionless with the reference values in Table~\ref{tab:nondim}. The reference velocity $V_\mathrm{ref}$ is the circular orbital speed at the nominal target altitude; the reference length and time follow from $g$.
+
+\begin{table}[H]
+\centering
+\caption{Non-dimensionalization reference values.}
+\label{tab:nondim}
+\begin{tabular}{llll}
+\toprule
+Quantity     & Symbol              & Expression              & Value \\
+\midrule
+Velocity     & $V_\mathrm{ref}$   & orbital speed           & 7800 m/s \\
+Acceleration & $g_\mathrm{ref}$   & $g$                     & 9.81 m/s$^2$ \\
+Length       & $L_\mathrm{ref}$   & $V_\mathrm{ref}^2/g$    & $\approx 6200$ km \\
+Time         & $t_\mathrm{ref}$   & $V_\mathrm{ref}/g$      & $\approx 795$ s \\
+Mass         & $m_\mathrm{ref}$   & $m_0$                   & $10^6$ kg \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In non-dimensional form ($g = 1$, $m_0 = 1$, $v_{x,f} = 1$) the fixed problem data are collected in Table~\ref{tab:params}.
+
+\begin{table}[H]
+\centering
+\caption{Fixed non-dimensional problem parameters.}
+\label{tab:params}
+\begin{tabular}{lll}
+\toprule
+Symbol   & Value             & Physical interpretation \\
+\midrule
+$c$      & 0.6               & Effective exhaust velocity ($c_\mathrm{dim} \approx 4680$ m/s, $I_{sp} \approx 477$ s) \\
+$\eta$   & 0.1               & Structural coefficient $m_s/m_p$ \\
+$y_f$    & 0.04, 0.05, 0.06  & Target orbit altitude ($\approx 248$, 310, 372 km) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The mass-flow rate $Q$ is a free design parameter swept in Tasks~1 and~4. Since $W = mg$ and $m_0 = 1$, the initial thrust-to-weight ratio is $\left.T/W\right|_{t=0} = cQ$, so liftoff ($T > W$) requires $Q > 1/c \approx 1.67$. As propellant burns off ($\dot{m} = -Q < 0$) the ratio $T/W = cQ/m$ increases monotonically, hence the liftoff instant is the binding case.
+
+\subsection{Pontryagin Maximum Principle}\label{sec:pmp}
+
+\subsubsection{Hamiltonian and Costate Equations}
+
+The optimal control problem is to find the control $\varphi(t)$ and the free terminal time $t_f$ that maximize the final mass $m(t_f)$---equivalently, minimize the Mayer cost $J = -m(t_f)$---subject to the dynamics \eqref{eq:xdot}--\eqref{eq:mdot} and the terminal constraints
+\begin{equation}
+    y(t_f) = y_f, \qquad v_x(t_f) = 1, \qquad v_y(t_f) = 0.
+    \label{eq:terminal}
+\end{equation}
+The horizontal position $x(t_f)$ is free, and $t_f$ is free.
+
+Introducing the costate (adjoint) vector $\boldsymbol{\lambda} = [\lambda_x,\; \lambda_y,\; \lambda_{v_x},\; \lambda_{v_y},\; \lambda_m]^T$, the Hamiltonian is
+\begin{equation}
+    \mathcal{H} = \lambda_x v_x + \lambda_y v_y
+    + \lambda_{v_x}\frac{T}{m}\cos\varphi
+    + \lambda_{v_y}\!\left(\frac{T}{m}\sin\varphi - 1\right)
+    - \lambda_m Q.
+    \label{eq:hamiltonian}
+\end{equation}
+Rearranging,
+\begin{equation}
+    \mathcal{H} = \underbrace{\lambda_x v_x + \lambda_y v_y - \lambda_{v_y} - \lambda_m Q}_{\text{state-only part}}
+    + \frac{T}{m}\underbrace{\bigl(\lambda_{v_x}\cos\varphi + \lambda_{v_y}\sin\varphi\bigr)}_{\text{control-dependent part}}.
+\end{equation}
+
+The costate equations $\dot{\boldsymbol{\lambda}} = -\partial\mathcal{H}/\partial\mathbf{x}$ yield
+\begin{align}
+    \dot{\lambda}_x     &= 0
+        &&\Longrightarrow\quad \lambda_x = 0
+        \quad\text{(}x(t_f)\text{ free } \Rightarrow \lambda_x(t_f)=0\text{)},
+        \label{eq:lx}\\
+    \dot{\lambda}_y     &= 0
+        &&\Longrightarrow\quad \lambda_y = \mathrm{const},
+        \label{eq:ly}\\
+    \dot{\lambda}_{v_x} &= -\lambda_x = 0
+        &&\Longrightarrow\quad \lambda_{v_x} = \lambda_{v_x,0} = \mathrm{const},
+        \label{eq:lvx}\\
+    \dot{\lambda}_{v_y} &= -\lambda_y
+        &&\Longrightarrow\quad \lambda_{v_y}(t) = \lambda_{v_y,0} - \lambda_y t,
+        \label{eq:lvy}\\
+    \dot{\lambda}_m     &= \frac{T}{m^2}\left\|\boldsymbol{\lambda}_v\right\|,
+        \label{eq:lm}
+\end{align}
+where $\|\boldsymbol{\lambda}_v\| = \sqrt{\lambda_{v_x}^2 + \lambda_{v_y}^2}$.
+
+Four of the five costate components are determined analytically: $\lambda_x = 0$ identically, $\lambda_y$ and $\lambda_{v_x}$ are constant, and $\lambda_{v_y}$ varies linearly in time. Only $\lambda_m$ requires numerical integration via Eq.~\eqref{eq:lm}. This analytical structure greatly reduces the cost of evaluating the shooting residual.
+
+\subsubsection{Optimal Control Law}
+
+By the PMP, the control $\varphi^*$ maximizes $\mathcal{H}$ pointwise:
+\begin{equation}
+    \frac{\partial\mathcal{H}}{\partial\varphi} =
+    \frac{T}{m}\bigl(-\lambda_{v_x}\sin\varphi + \lambda_{v_y}\cos\varphi\bigr) = 0
+    \qquad\Longrightarrow\qquad
+    \tan\varphi^* = \frac{\lambda_{v_y}(t)}{\lambda_{v_x}}.
+    \label{eq:bilinear}
+\end{equation}
+This is the \textbf{bilinear-tangent (linear-tangent) law}: since $\lambda_{v_y}$ is linear in $t$ (Eq.~\ref{eq:lvy}) and $\lambda_{v_x}$ is constant, $\tan\varphi^*$ varies linearly with time. At the optimal angle,
+\begin{equation}
+    \lambda_{v_x}\cos\varphi^* + \lambda_{v_y}\sin\varphi^* = \|\boldsymbol{\lambda}_v\|,
+\end{equation}
+and the optimal Hamiltonian simplifies to
+\begin{equation}
+    \mathcal{H}^* = \lambda_y v_y + \frac{T}{m}\|\boldsymbol{\lambda}_v\| - \lambda_{v_y} - \lambda_m Q.
+    \label{eq:ham_opt}
+\end{equation}
+
+\subsubsection{Transversality Conditions}\label{sec:transversality}
+
+For a Mayer cost with free terminal time, the PMP supplies two additional necessary conditions:
+\begin{align}
+    \lambda_m(t_f) &= 1,
+    \label{eq:trans_m}\\
+    \mathcal{H}(t_f) &= 0.
+    \label{eq:trans_tf}
+\end{align}
+Equation~\eqref{eq:trans_m} is the terminal costate condition that arises from maximizing $m(t_f)$; it fixes the normalization of the costate vector. Equation~\eqref{eq:trans_tf} is the natural boundary condition for the free terminal time: the Hamiltonian is constant along an optimal trajectory (autonomous system), so $\mathcal{H}(t_f) = 0$ implies $\mathcal{H}(t) = 0$ throughout the powered arc, which is consistent with the optimality conditions.
+
+\subsection{Single-Shooting Method and Continuation}\label{sec:shooting}
+
+Substituting the bilinear-tangent law \eqref{eq:bilinear} into Eqs.~\eqref{eq:xdot}--\eqref{eq:mdot}, the optimal control problem reduces to a multi-point \textbf{Boundary Value Problem (BVP)}. The shooting unknowns common to all four tasks are
+\begin{equation}
+    \boldsymbol{\zeta} = \bigl[\lambda_{v_x,0},\;\lambda_{v_y,0},\;\lambda_y,\;\lambda_{m,0},\;t_f\bigr]^T.
+    \label{eq:unknowns}
+\end{equation}
+Given a trial $\boldsymbol{\zeta}$, the augmented state $[x, y, v_x, v_y, m, \lambda_m]^T$ is integrated forward with \texttt{ode45} (tolerances: $\mathrm{RelTol} = 10^{-10}$, $\mathrm{AbsTol} = 10^{-12}$), and the residual vector is evaluated at $t_f$. The system is solved with \texttt{fsolve} (function and step tolerances both $10^{-10}$, up to 500 iterations).
+
+Single-shooting is sensitive to the costate initial guess, which has no direct physical interpretation. The \textbf{continuation strategy} mitigates this: the BVP is first solved at a favorable operating point ($Q \approx 3$), and each subsequent value of $Q$ is initialized with the converged solution from the neighboring point, sweeping both forward and backward across the range $Q \in [1.8, 7]$. This warm-start approach propagates the solution branch smoothly without manual retuning of the initial guess.
+
+\end{document}

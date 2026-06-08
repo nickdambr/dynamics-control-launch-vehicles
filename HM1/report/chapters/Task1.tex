@@ -1,0 +1,85 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Task 1: Single Burn Arc}\label{sec:task1}
+
+\subsection{Problem Statement}
+
+The simplest mission profile consists of a single continuous powered arc starting from rest at the origin, $(x, y, v_x, v_y) = (0, 0, 0, 0)$ with $m(0) = 1$, and ending at the orbital injection state satisfying Eq.~\eqref{eq:terminal}. The mass-flow rate $Q$ is the primary free parameter swept over the range $Q \in [1.8, 7]$; values below $Q_\mathrm{min} = 1/c \approx 1.67$ would yield insufficient thrust at liftoff ($\left.T/W\right|_{t=0} = cQ < 1$).
+
+\subsection{Boundary Value Problem Formulation}
+
+The five shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) determine both the costate initial conditions and the free flight time. The shooting residual is
+\begin{equation}
+    \mathbf{r}_1(\boldsymbol{\zeta}) =
+    \begin{bmatrix}
+        y(t_f) - y_f \\[2pt]
+        v_x(t_f) - 1 \\[2pt]
+        v_y(t_f) \\[2pt]
+        \lambda_m(t_f) - 1 \\[2pt]
+        \mathcal{H}(t_f)
+    \end{bmatrix} = \mathbf{0},
+    \label{eq:residual1}
+\end{equation}
+where $\mathcal{H}(t_f)$ is computed via Eq.~\eqref{eq:ham_opt}. The first three components enforce the terminal state constraints \eqref{eq:terminal}; the fourth is the transversality condition \eqref{eq:trans_m} on the mass costate; the fifth is the free-time condition \eqref{eq:trans_tf}.
+
+\subsection{Velocity-Loss Decomposition}
+
+The total velocity loss $W_\mathrm{tot} = \Delta V_\mathrm{ideal} - v_f$ compares the ideal Tsiolkovsky delta-V,
+\begin{equation}
+    \Delta V_\mathrm{ideal} = c\ln\!\frac{m_0}{m_f} = c\ln\!\frac{1}{m_f},
+\end{equation}
+against the achieved injection speed $v_f = 1$. It is decomposed as
+\begin{align}
+    W_d &= \int_0^{t_f} \frac{T}{m}\bigl[1 - \cos(\varphi - \psi)\bigr]\,\mathrm{d}t
+         && \text{(thrust misalignment loss)},
+    \label{eq:Wd}\\
+    W_g &= \int_0^{t_f} \sin\psi\,\mathrm{d}t
+         && \text{(gravity loss)},
+    \label{eq:Wg}
+\end{align}
+where $\psi = \arctan(v_y/v_x)$ is the flight-path angle. Misalignment loss $W_d$ arises from the fraction of thrust not aligned with the velocity vector; gravity loss $W_g$ is the work done against gravity projected along the trajectory.
+
+\subsection{Results}\label{sec:task1_results}
+
+Figure~\ref{fig:task1a} shows the final mass as a function of $Q$ for the three target altitudes. Each curve exhibits a clear interior maximum $Q^*$: at low $Q$, the long burn time accumulates large gravity losses; at high $Q$, the vehicle climbs steeply and thrust-misalignment loss dominates.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{task1_task_1a_final_mass_vs_q}
+    \caption{Task 1a: final mass $m_f$ as a function of the mass-flow rate $Q$ for three target altitudes $y_f$.}
+    \label{fig:task1a}
+\end{figure}
+
+Figure~\ref{fig:task1b} confirms this trade-off by decomposing the velocity loss at $y_f = 0.04$. The gravity loss $W_g$ is large at low $Q$ and decreases monotonically with $Q$, while the misalignment loss $W_d$ has a broad minimum near $Q^*$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.78\textwidth]{task1_task_1b_velocity_losses}
+    \caption{Task 1b: velocity-loss decomposition---misalignment $W_d$, gravity $W_g$, and total $W_\mathrm{tot}$---at $y_f = 0.04$.}
+    \label{fig:task1b}
+\end{figure}
+
+Figures~\ref{fig:task1c_traj} and~\ref{fig:task1c_angles} show the optimal trajectory and control history at $Q = Q^*$ for $y_f = 0.04$. The thrust angle $\varphi$ decreases smoothly from near-vertical at launch to near-horizontal at injection, following the bilinear-tangent law \eqref{eq:bilinear}. The velocity angle $\psi$ tracks $\varphi$ closely once the initial transient has died out.
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task1_task_1c_trajectory}
+        \caption{Optimal trajectory in the $(x,y)$ plane.}
+        \label{fig:task1c_traj}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{task1_task_1c_thrust_and_velocity_angles}
+        \caption{Thrust angle $\varphi$ and velocity angle $\psi$ vs.\ time.}
+        \label{fig:task1c_angles}
+    \end{subfigure}
+    \caption{Task 1c: optimal trajectory and control at $Q = Q^*$, $y_f = 0.04$.}
+    \label{fig:task1c}
+\end{figure}
+
+\end{document}
