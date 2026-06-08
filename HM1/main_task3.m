@@ -38,7 +38,7 @@ fprintf('  t1 = %.6f,  vy1 = %.6f,  m1 = %.6f\n', t1, vy1, m1);
 %   y(tc) + 0.5*vy(tc)^2 = yf  (coast ballistic condition)
 %   lam_m(tc) = 1            (lam_m constant during coast, transversality)
 %   lam_vy(tc) = lam_y*vy(tc)  (coast optimality from H_coast = 0)
-%   S(tc) = |lam_v|/m - 1/c = 0  (switching function)
+%   S(tc) = |lam_v|/m - lam_m/c = 0  (switching function; lam_m(tc)=1 here)
 
 p.c  = c;
 p.Q  = Q;
@@ -208,7 +208,7 @@ function res = shooting3(z0, p, opts_ode)
 %   2. yc + 0.5*vyc^2 = yf
 %   3. lam_m(tc) = 1
 %   4. lam_vy(tc) = lam_y * vyc  (coast optimality)
-%   5. S(tc) = |lam_v|/mc - 1/c = 0  (switching function)
+%   5. S(tc) = |lam_v|/mc - lam_m/c = 0  (switching function; lam_m(tc)=1)
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);
@@ -245,8 +245,9 @@ function res = shooting3(z0, p, opts_ode)
     lam_vy_c   = lam_vy0 - lam_y * t_burn;
     lam_v_norm = sqrt(lam_vx0^2 + lam_vy_c^2);
 
-    % Switching function
-    S = lam_v_norm / mc - 1 / p.c;
+    % Switching function S = |lam_v|/m - lam_m/c (general form, Lez. 6).
+    % Condition 3 pins lam_mc = 1, so at cutoff this equals |lam_v|/mc - 1/c.
+    S = lam_v_norm / mc - lam_mc / p.c;
 
     res = [vxc - 1;
            yc + 0.5 * vyc^2 - p.yf;
