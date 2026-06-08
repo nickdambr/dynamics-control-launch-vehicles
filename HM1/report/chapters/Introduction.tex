@@ -110,7 +110,12 @@ Four of the five costate components are determined analytically: $\lambda_x = 0$
 
 \subsubsection{Optimal Control Law}
 
-By the PMP, the control $\varphi^*$ maximizes $\mathcal{H}$ pointwise:
+By the PMP, the optimal control $\varphi^*$ maximizes $\mathcal{H}$ pointwise. Since $T/m > 0$, this is equivalent to maximizing the control-dependent part of Eq.~\eqref{eq:hamiltonian},
+\begin{equation}
+    g(\varphi) = \lambda_{v_x}\cos\varphi + \lambda_{v_y}\sin\varphi,
+    \label{eq:gphi}
+\end{equation}
+over $\varphi$. The first-order stationarity condition reads
 \begin{equation}
     \frac{\partial\mathcal{H}}{\partial\varphi} =
     \frac{T}{m}\bigl(-\lambda_{v_x}\sin\varphi + \lambda_{v_y}\cos\varphi\bigr) = 0
@@ -118,11 +123,32 @@ By the PMP, the control $\varphi^*$ maximizes $\mathcal{H}$ pointwise:
     \tan\varphi^* = \frac{\lambda_{v_y}(t)}{\lambda_{v_x}}.
     \label{eq:bilinear}
 \end{equation}
-This is the \textbf{bilinear-tangent (linear-tangent) law}: since $\lambda_{v_y}$ is linear in $t$ (Eq.~\ref{eq:lvy}) and $\lambda_{v_x}$ is constant, $\tan\varphi^*$ varies linearly with time. At the optimal angle,
+This is the \textbf{bilinear-tangent (linear-tangent) law}: since $\lambda_{v_y}$ is linear in $t$ (Eq.~\ref{eq:lvy}) and $\lambda_{v_x}$ is constant, $\tan\varphi^*$ varies linearly with time.
+
+\textbf{Geometric interpretation and branch selection.}\ Equation~\eqref{eq:bilinear} determines $\varphi^*$ only up to an additive $\pi$: it admits two roots per period. Geometrically, $\lambda_{v_x}$ and $\lambda_{v_y}$ are the two legs of a right triangle whose hypotenuse is the norm $\|\boldsymbol{\lambda}_v\| = \sqrt{\lambda_{v_x}^2 + \lambda_{v_y}^2}$, so the two candidate directions are
 \begin{equation}
-    \lambda_{v_x}\cos\varphi^* + \lambda_{v_y}\sin\varphi^* = \|\boldsymbol{\lambda}_v\|,
+    \text{(I)}\;\;
+    \cos\varphi^* = \frac{\lambda_{v_x}}{\|\boldsymbol{\lambda}_v\|},\;
+    \sin\varphi^* = \frac{\lambda_{v_y}}{\|\boldsymbol{\lambda}_v\|}
+    \qquad\text{or}\qquad
+    \text{(II)}\;\;
+    \cos\varphi^* = -\frac{\lambda_{v_x}}{\|\boldsymbol{\lambda}_v\|},\;
+    \sin\varphi^* = -\frac{\lambda_{v_y}}{\|\boldsymbol{\lambda}_v\|}.
+    \label{eq:two_cases}
 \end{equation}
-and the optimal Hamiltonian simplifies to
+Substituting each branch into Eq.~\eqref{eq:gphi} discriminates between them:
+\begin{equation}
+    g_\mathrm{I} = \frac{\lambda_{v_x}^2 + \lambda_{v_y}^2}{\|\boldsymbol{\lambda}_v\|}
+    = \frac{\|\boldsymbol{\lambda}_v\|^2}{\|\boldsymbol{\lambda}_v\|} = +\|\boldsymbol{\lambda}_v\|,
+    \qquad
+    g_\mathrm{II} = -\|\boldsymbol{\lambda}_v\|.
+\end{equation}
+Branch~(I) yields the maximum and branch~(II) the minimum, so the PMP selects branch~(I): the optimal thrust direction is aligned with the velocity costate $\boldsymbol{\lambda}_v$ (primer vector), and the control-dependent term attains its largest value,
+\begin{equation}
+    \lambda_{v_x}\cos\varphi^* + \lambda_{v_y}\sin\varphi^* = \|\boldsymbol{\lambda}_v\|.
+    \label{eq:maxcond}
+\end{equation}
+Using this result, the optimal Hamiltonian simplifies to
 \begin{equation}
     \mathcal{H}^* = \lambda_y v_y + \frac{T}{m}\|\boldsymbol{\lambda}_v\| - \lambda_{v_y} - \lambda_m Q.
     \label{eq:ham_opt}
