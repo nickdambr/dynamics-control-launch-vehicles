@@ -157,8 +157,8 @@ if ef > 0
     plot(t1 + T2, rad2deg(psi_burn), 'r--', 'LineWidth', 1.5, 'DisplayName', '\psi (velocity)');
     % Coast phase (no thrust)
     plot(t1 + t_burn + t_c, rad2deg(psi_coast), 'r--', 'LineWidth', 1, 'HandleVisibility','off');
-    xline(t1, '--k', 'End vertical', 'LabelOrientation', 'horizontal');
-    xline(t1 + t_burn, '--k', 'Engine cutoff', 'LabelOrientation', 'horizontal');
+    xline(t1, '--k', 'End vertical', 'LabelOrientation', 'horizontal', 'HandleVisibility', 'off');
+    xline(t1 + t_burn, '--k', 'Engine cutoff', 'LabelOrientation', 'horizontal', 'HandleVisibility', 'off');
     xlabel('Time (nondim)'); ylabel('Angle (deg)');
     title('Task 3: Angles');
     legend('Location','best');
