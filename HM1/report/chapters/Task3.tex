@@ -6,12 +6,24 @@
 
 \subsection{Switching Function and Thrust-Arc Structure}
 
-Task~3 introduces a \emph{coast arc} between the powered burn and orbital injection. In the PMP framework, the switching function governs whether the engine is on or off:
+Task~3 introduces a \emph{coast arc} between the powered burn and orbital injection. Unlike Tasks~1 and~2---where the engine burns throughout at the fixed magnitude $T = cQ$---the engine may now shut down: the thrust magnitude becomes a bounded control $T \in [0, T_{\max}]$ (with $T_{\max} = cQ$), alongside the steering angle $\varphi$, and the mass flow is $\dot{m} = -T/c$. Collecting in the Hamiltonian the terms proportional to $T$ gives
 \begin{equation}
+    \mathcal{H} = \underbrace{\lambda_x v_x + \lambda_y v_y - \lambda_{v_y}}_{\mathcal{H}_0\ (\text{independent of } T)}
+    \; + \; T\left(\frac{\lambda_{v_x}\cos\varphi + \lambda_{v_y}\sin\varphi}{m} - \frac{\lambda_m}{c}\right),
+    \label{eq:H_grouped}
+\end{equation}
+where the mass term $-\lambda_m\dot{m} = -\lambda_m T/c$ now sits inside the $T$-bracket because $T$ is no longer constant. Inserting the optimal steering of the bilinear-tangent law, which maximizes the bracket by aligning the thrust with the velocity costate so that $\lambda_{v_x}\cos\varphi + \lambda_{v_y}\sin\varphi = \|\boldsymbol{\lambda}_v\|$ (Eq.~\ref{eq:maxcond}), the Hamiltonian becomes \emph{linear} in the thrust magnitude:
+\begin{equation}
+    \mathcal{H} = \mathcal{H}_0 + T\,S(t), \qquad
     S(t) = \frac{\|\boldsymbol{\lambda}_v(t)\|}{m(t)} - \frac{\lambda_m(t)}{c}.
     \label{eq:switching}
 \end{equation}
-The engine is \emph{on} (full thrust) when $S > 0$ and \emph{off} (coast) when $S < 0$. During a coast arc $T = 0$, so $\dot{m} = 0$ and the vehicle follows purely ballistic dynamics. Because $\dot{\lambda}_m = 0$ whenever $T = 0$ and the transversality condition \eqref{eq:trans_m} fixes $\lambda_m(t_f) = 1$, the mass costate stays constant at $\lambda_m \equiv 1$ along the coast; by continuity $\lambda_m(t_c) = 1$ at cutoff, so there the switching function reduces to $S(t_c) = \|\boldsymbol{\lambda}_v(t_c)\|/m(t_c) - 1/c$.
+The coefficient $S(t)$ of $T$ is the \textbf{switching function}: the marginal change of the Hamiltonian per unit thrust, i.e.\ the propulsive benefit $\|\boldsymbol{\lambda}_v\|/m$ (alignment of thrust with the primer vector $\boldsymbol{\lambda}_v$) net of the propellant penalty $\lambda_m/c$. By Pontryagin's maximum principle the optimal $T$ maximizes $\mathcal{H}$ pointwise over $[0, T_{\max}]$; since $\mathcal{H}$ is linear in $T$, the maximizer lies at a bound---the \textbf{bang--bang} law
+\begin{equation}
+    T^\ast = \begin{cases} T_{\max}, & S > 0 \quad(\text{engine on}),\\[2pt] 0,        & S < 0 \quad(\text{coast}). \end{cases}
+    \label{eq:bangbang}
+\end{equation}
+A coast arc is therefore an interval where $S < 0$; there $T = 0$, so $\dot{m} = 0$ and the vehicle flies ballistically. Because $\dot{\lambda}_m = 0$ whenever $T = 0$ and the transversality condition \eqref{eq:trans_m} fixes $\lambda_m(t_f) = 1$, the mass costate stays constant at $\lambda_m \equiv 1$ along the coast; by continuity $\lambda_m(t_c) = 1$ at cutoff, so there the switching function reduces to $S(t_c) = \|\boldsymbol{\lambda}_v(t_c)\|/m(t_c) - 1/c$.
 
 The three-phase mission sequence is:
 \begin{enumerate}
