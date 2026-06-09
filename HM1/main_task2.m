@@ -109,7 +109,7 @@ if ef > 0
     % --- Inset: zoom on the vertical-climb + pitch-over knee ---
     % The vertical climb (x = 0, 0 <= y <= y1) spans y1 = 1e-4, i.e. 1/400 of the
     % full ascent, so it is invisible at full scale; an inset magnifies it.
-    y_zoom = 20 * y1;                                   % climb + first pitch-over
+    y_zoom = 5 * y1;                                    % tight zoom on the climb
     kk_in  = find(y_burn <= y_zoom, 1, 'last');
     if isempty(kk_in) || kk_in < 2, kk_in = min(40, numel(x_burn)); end
     x_zmax = max(x_burn(1:kk_in)) * 1.10 + 1e-6;
@@ -118,7 +118,7 @@ if ef > 0
     rectangle(ax_main, 'Position', [-0.02*x_zmax, 0, 1.04*x_zmax, y_zoom], ...
               'EdgeColor', [0.4 0.4 0.4], 'LineStyle', '--', 'LineWidth', 0.8);
 
-    ax_in = axes('Position', [0.21 0.46 0.32 0.38]);    % inset (norm. figure units)
+    ax_in = axes('Position', [0.15 0.55 0.27 0.32]);    % inset (norm. figure units)
     plot(ax_in, x_vert, y_vert, 'r-', 'LineWidth', 2); hold(ax_in, 'on');
     plot(ax_in, x_burn, y_burn, 'b-', 'LineWidth', 1.5);
     plot(ax_in, 0, y_1, 'ko', 'MarkerSize', 4, 'MarkerFaceColor', 'k');  % climb->burn handover
