@@ -42,6 +42,25 @@ Figure~\ref{fig:task2} shows the composite trajectory and the angle history for 
     \label{fig:task2}
 \end{figure}
 
-The final mass in Task~2 is marginally lower than in Task~1: the vertical climb consumes propellant while building only vertical velocity, contributing to gravity losses without advancing the vehicle toward the horizontal injection speed. Nevertheless, the prepended climb is a standard launch practice, and the payload penalty is modest for the short $y_1$ value used here.
+The final mass in Task~2 is marginally lower than in Task~1: the vertical climb consumes propellant while building only vertical velocity, contributing to gravity losses without advancing the vehicle toward the horizontal injection speed. Nevertheless, the prepended climb is a standard launch practice, and the payload penalty is modest for the short $y_1$ value used here. The converged simulation results are collected in Table~\ref{tab:task2}.
+
+\begin{table}[H]
+\centering
+\caption{Task 2 simulation results ($Q = 2$, $y_f = 0.04$). All quantities are non-dimensional; the Task~1 final mass at the same $Q$ is reported for reference.}
+\label{tab:task2}
+\begin{tabular}{llc}
+\toprule
+Quantity                       & Symbol            & Value \\
+\midrule
+Vertical-climb duration        & $t_1$             & $0.0298$ \\
+Powered-burn duration          & $t_\mathrm{burn}$ & $0.4142$ \\
+Total flight time              & $t_f$             & $0.4440$ \\
+Final mass                     & $m_f$             & $0.1119$ \\
+Delivered payload              & $m_\mathrm{pay}$  & $0.0231$ \\
+\midrule
+Final mass --- Task 1 (no climb) & $m_f^{(1)}$     & $0.1128$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \end{document}

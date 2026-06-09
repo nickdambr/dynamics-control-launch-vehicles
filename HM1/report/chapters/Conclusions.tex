@@ -4,7 +4,25 @@
 
 \section{Conclusions}\label{sec:conclusions}
 
-This work applied the Pontryagin Maximum Principle to four minimum-fuel planar ascent programs of increasing complexity, all solved by single-shooting with \texttt{fsolve} over the costate initial conditions. The main findings are as follows.
+This work applied the Pontryagin Maximum Principle to four minimum-fuel planar ascent programs of increasing complexity, all solved by single-shooting with \texttt{fsolve} over the costate initial conditions. Table~\ref{tab:comparison} summarises the four programs at the common operating point $Q = 2$, $y_f = 0.04$; the main findings are discussed below.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of the four ascent programs at $Q = 2$, $y_f = 0.04$ (non-dimensional). The payload of the single-stage programs (Tasks~1--3) is $m_\mathrm{pay} = m_f(1+\eta) - \eta$; for the two-stage program (Task~4) it is the net mass after jettisoning both stage structures.}
+\label{tab:comparison}
+\begin{tabular}{llccc}
+\toprule
+Program & Mission phases & $t_f$ & $m_f$ & $m_\mathrm{pay}$ \\
+\midrule
+Task 1 & burn                          & $0.444$ & $0.1128$ & $0.0241$ \\
+Task 2 & vertical $+$ burn             & $0.444$ & $0.1119$ & $0.0231$ \\
+Task 3 & vertical $+$ burn $+$ coast   & $0.632$ & $0.1326$ & $0.0458$ \\
+Task 4 & stage 1 $+$ stage 2 (staging) & $0.424$ & $0.0852$ & $0.0680$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The progression of delivered payload---$0.0241 \to 0.0231 \to 0.0458 \to 0.0680$---quantifies the trade-offs: the vertical climb (Task~2) costs a few percent of payload relative to the bare burn (Task~1), the ballistic coast (Task~3) nearly doubles it ($+90\%$), and optimal staging (Task~4) almost triples it ($+182\%$). The main findings are as follows.
 
 \textbf{Bilinear-tangent law (all tasks).}\ The flat-Earth, drag-free dynamics produce a particularly tractable adjoint structure: four of the five costate components are determined analytically (two constants and one linear ramp), leaving only the mass costate $\lambda_m$ to be integrated numerically. The resulting bilinear-tangent steering law reduces the optimal control problem to a five-dimensional root-finding problem, making single-shooting computationally affordable.
 

@@ -98,12 +98,33 @@ if ef > 0
     vy_burn = Z2(:,4);
 
     figure('Name','Task 2 - Trajectory');
-    plot(x_vert, y_vert, 'r-', 'LineWidth', 2, 'DisplayName', 'Vertical climb');
-    hold on;
-    plot(x_burn, y_burn, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Optimal burn');
-    xlabel('x (nondim)'); ylabel('y (nondim)');
-    title(sprintf('Task 2: Trajectory (Q = %.1f, y_f = %.2f)', Q, yf));
-    legend('Location','best'); grid on;
+    ax_main = axes;
+    plot(ax_main, x_vert, y_vert, 'r-', 'LineWidth', 2, 'DisplayName', 'Vertical climb');
+    hold(ax_main, 'on');
+    plot(ax_main, x_burn, y_burn, 'b-', 'LineWidth', 1.5, 'DisplayName', 'Optimal burn');
+    xlabel(ax_main, 'x (nondim)'); ylabel(ax_main, 'y (nondim)');
+    title(ax_main, sprintf('Task 2: Trajectory (Q = %.1f, y_f = %.2f)', Q, yf));
+    legend(ax_main, 'Location', 'best'); grid(ax_main, 'on');
+
+    % --- Inset: zoom on the vertical-climb + pitch-over knee ---
+    % The vertical climb (x = 0, 0 <= y <= y1) spans y1 = 1e-4, i.e. 1/400 of the
+    % full ascent, so it is invisible at full scale; an inset magnifies it.
+    y_zoom = 20 * y1;                                   % climb + first pitch-over
+    kk_in  = find(y_burn <= y_zoom, 1, 'last');
+    if isempty(kk_in) || kk_in < 2, kk_in = min(40, numel(x_burn)); end
+    x_zmax = max(x_burn(1:kk_in)) * 1.10 + 1e-6;
+
+    % dashed rectangle on the main axes marking the magnified region
+    rectangle(ax_main, 'Position', [-0.02*x_zmax, 0, 1.04*x_zmax, y_zoom], ...
+              'EdgeColor', [0.4 0.4 0.4], 'LineStyle', '--', 'LineWidth', 0.8);
+
+    ax_in = axes('Position', [0.21 0.46 0.32 0.38]);    % inset (norm. figure units)
+    plot(ax_in, x_vert, y_vert, 'r-', 'LineWidth', 2); hold(ax_in, 'on');
+    plot(ax_in, x_burn, y_burn, 'b-', 'LineWidth', 1.5);
+    plot(ax_in, 0, y_1, 'ko', 'MarkerSize', 4, 'MarkerFaceColor', 'k');  % climb->burn handover
+    xlim(ax_in, [-0.02*x_zmax, x_zmax]); ylim(ax_in, [0, y_zoom]);
+    grid(ax_in, 'on'); box(ax_in, 'on'); set(ax_in, 'FontSize', 8);
+    title(ax_in, 'vertical-climb zoom', 'FontSize', 8);
 
     % Angles
     phi_burn = zeros(size(T2));
