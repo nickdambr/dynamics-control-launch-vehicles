@@ -142,9 +142,10 @@ if ef > 0
 
     figure('Name','Task 2 - Angles');
     hold on; grid on;
-    % Vertical phase: phi = 90 deg
-    plot([0 t1], [90 90], 'b--', 'LineWidth', 1, 'HandleVisibility','off');
-    plot([0 t1], [90 90], 'r--', 'LineWidth', 1, 'HandleVisibility','off');
+    % Vertical phase: thrust phi = 90 deg (solid, so the blue curve starts at the
+    % climb); velocity psi = 90 deg too (the vehicle flies straight up)
+    plot([0 t1], [90 90], 'b-',  'LineWidth', 1.5, 'HandleVisibility','off');
+    plot([0 t1], [90 90], 'r--', 'LineWidth', 1.5, 'HandleVisibility','off');
     % Burn phase
     plot(t1 + T2, rad2deg(phi_burn), 'b-', 'LineWidth', 1.5, 'DisplayName', '\phi (thrust)');
     plot(t1 + T2, rad2deg(psi_burn), 'r--', 'LineWidth', 1.5, 'DisplayName', '\psi (velocity)');
