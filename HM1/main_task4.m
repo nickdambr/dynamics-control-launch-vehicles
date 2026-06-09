@@ -139,7 +139,9 @@ if any(valid)
     xlabel('Staging time t_s (nondim)');
     ylabel('Payload mass (nondim)');
     title('Task 4: Payload vs staging time');
-    grid on; legend('Two-stage', 'Single-stage', 'Optimal', 'Location','best');
+    grid on;
+    lg = legend('Two-stage', 'Single-stage', 'Optimal', 'Location','southeast');
+    lg.Position(2) = lg.Position(2) + 0.12;   % nudge the legend upward, off the single-stage line
 
     %% Plot: Final mass vs staging time
     figure('Name','Task 4 - Final mass vs staging time');
