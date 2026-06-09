@@ -93,6 +93,17 @@ for jj = 1:nyf
     end
 end
 
+%% ===== Optimal Q* per target altitude =====
+fprintf('\n=== Optimal mass-flow rate Q* per target altitude ===\n');
+Q_star  = nan(1, nyf);
+mf_star = nan(1, nyf);
+for jj = 1:nyf
+    [mf_star(jj), idx] = max(mf_results(:, jj));
+    Q_star(jj) = Q_vec(idx);
+    fprintf('  yf=%.2f:  Q*=%.4f  mf*=%.5f  payload*=%.5f\n', ...
+        yf_vec(jj), Q_star(jj), mf_star(jj), mf_star(jj)*(1+eta)-eta);
+end
+
 %% ===== PLOT 1a: Final mass vs Q =====
 figure('Name','Task 1a - Final mass vs Q');
 hold on; grid on;

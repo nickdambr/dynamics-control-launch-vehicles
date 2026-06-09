@@ -52,6 +52,23 @@ Figure~\ref{fig:task1a} shows the final mass as a function of $Q$ for the three 
     \label{fig:task1a}
 \end{figure}
 
+The interior maxima are quantified in Table~\ref{tab:qstar}: the optimal rate $Q^\ast$ decreases from $2.52$ to $2.19$ as the target altitude rises from $y_f = 0.04$ to $0.06$, and the delivered payload turns \emph{negative} at $y_f = 0.06$---a single stage cannot reach that orbit with positive payload, which is precisely what motivates the staging of Task~4. The nominal $Q = 2$ of the assignment lies within a few percent of $Q^\ast$.
+
+\begin{table}[H]
+\centering
+\caption{Payload-optimal mass-flow rate $Q^\ast$ (maximizing the final mass) for the three target altitudes, read from the $Q$-sweep of Figure~\ref{fig:task1a}. The delivered single-stage payload is $m_\mathrm{pay} = m_f(1+\eta) - \eta$.}
+\label{tab:qstar}
+\begin{tabular}{cccc}
+\toprule
+$y_f$ & $Q^\ast$ & $m_f^\ast$ & $m_\mathrm{pay}^\ast$ \\
+\midrule
+$0.04$ & $2.52$ & $0.1180$ & $+0.0298$ \\
+$0.05$ & $2.33$ & $0.1012$ & $+0.0114$ \\
+$0.06$ & $2.19$ & $0.0854$ & $-0.0060$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 Figure~\ref{fig:task1b} confirms this trade-off by decomposing the velocity loss at $y_f = 0.04$. The gravity loss $W_g$ is large at low $Q$ and decreases monotonically with $Q$, while the misalignment loss $W_d$ has a broad minimum near $Q^*$.
 
 \begin{figure}[H]
