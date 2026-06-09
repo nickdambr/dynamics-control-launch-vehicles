@@ -11,7 +11,7 @@ Task~4 removes the vertical-climb phase and introduces a single \emph{staging ev
     m_{s1} = \eta\, Q\, t_s
     \label{eq:ms1}
 \end{equation}
-is jettisoned instantaneously, where $\eta\, Q\, t_s$ is the structural fraction of the propellant consumed by the first stage. The vehicle mass undergoes a step:
+is jettisoned instantaneously. Here $Q\,t_s$ is the propellant the first stage burns up to $t_s$ and $\eta = m_s/m_p$ is the \emph{structural coefficient} (inert mass per unit propellant, $\eta = 0.1$): to hold that propellant the stage must carry a tankage/engine mass $\eta\,Q\,t_s$. The propellant is fully consumed---the mass falls as $m(t) = 1 - Q t$---and only the inert structure is dropped, so the vehicle mass undergoes a step:
 \begin{equation}
     m^+(t_s) = m^-(t_s) - m_{s1} = 1 - Q\,t_s - \eta\, Q\, t_s = 1 - Q\,t_s(1 + \eta).
 \end{equation}
@@ -22,7 +22,12 @@ The net payload delivered to orbit is
     m_\mathrm{pay} = m_f - m_{s2}, \qquad m_{s2} = \eta\, Q\,(t_f - t_s),
     \label{eq:payload}
 \end{equation}
-where $m_{s2}$ is the second-stage structural mass (proportional to the second-stage propellant consumption).
+where $m_{s2}$ is the second-stage structural mass (again $\eta$ times the propellant that stage burns). Summing the budget over both stages---a total propellant $Q\,t_f$, its structure $\eta\,Q\,t_f$, and the payload, all drawn from $m_0 = 1$---collapses to the compact relation
+\begin{equation}
+    m_\mathrm{pay} = 1 - (1+\eta)\,Q\,t_f,
+    \label{eq:pay_budget}
+\end{equation}
+which depends only on the \emph{total} burn time $t_f$ (equivalently, the total propellant). Staging raises the payload precisely because shedding the spent first-stage structure lets the vehicle reach orbit on a smaller total propellant load, i.e.\ a smaller $t_f$: here $t_f$ drops from $0.444$ (single stage) to $0.424$ (two-stage), lifting $m_\mathrm{pay}$ from $0.024$ to $0.068$.
 
 \subsection{Optimization Procedure}
 
