@@ -20,15 +20,15 @@ opts_fs  = optimoptions('fsolve', 'Display', 'off', ...
 fprintf('=== Single-stage reference solution ===\n');
 p1.c = c; p1.Q = Q; p1.T = T; p1.yf = yf;
 
-z_guess_1 = [0.22; 1.3; 4.5; -0.5; 0.30];
+z_guess_1 = [0.6; 3.8; 14; 0.30];
 [z_ref, ~, ef] = fsolve(@(z) shooting_single(z, p1, opts_ode), z_guess_1, opts_fs);
 if ef > 0
     pp = p1;
     pp.lam_vx0 = z_ref(1); pp.lam_vy0 = z_ref(2); pp.lam_y = z_ref(3);
-    ic = [0;0;0;0;1;z_ref(4)];
-    [~,Z] = ode45(@(t,z) ode_burn(t,z,pp), [0 z_ref(5)], ic, opts_ode);
+    ic = [0;0;0;0;1;1];
+    [~,Z] = ode45(@(t,z) ode_burn(t,z,pp), [0 z_ref(4)], ic, opts_ode);
     mf_single = Z(end,5);
-    tf_single = z_ref(5);
+    tf_single = z_ref(4);
     payload_single = mf_single*(1+eta) - eta;
     fprintf('  tf = %.6f,  mf = %.6f,  payload = %.6f\n', tf_single, mf_single, payload_single);
 else
@@ -50,9 +50,9 @@ tf_two   = nan(size(ts_vec));
 pay_two  = nan(size(ts_vec));
 sol_two  = cell(size(ts_vec));
 
-% Use single-stage solution as starting guess
-z_prev = [z_ref(1); z_ref(2); z_ref(3); z_ref(4); z_ref(5); z_ref(5)*0.5];
-% z0 = [lam_vx0, lam_vy0, lam_y, lam_m0, tf, ts]
+% Use single-stage solution as starting guess (4 unknowns)
+z_prev = z_ref;
+% z0 = [lam_vx0, lam_vy0, lam_y, tf]  (ts is the swept parameter p.ts)
 
 % Start from middle of range and sweep outward
 [~, idx_mid] = min(abs(ts_vec - tf_single*0.4));
@@ -83,10 +83,10 @@ for pass = 1:2
             % Verify and extract solution
             pp = p4;
             pp.lam_vx0 = z_sol(1); pp.lam_vy0 = z_sol(2); pp.lam_y = z_sol(3);
-            tf_val = z_sol(5);
+            tf_val = z_sol(4);
 
             % Integrate stage 1
-            ic = [0;0;0;0;1;z_sol(4)];
+            ic = [0;0;0;0;1;1];
             [~,Z1] = ode45(@(t,z) ode_burn(t,z,pp), [0 ts], ic, opts_ode);
             z_s = Z1(end,:);
 
@@ -158,7 +158,7 @@ if any(valid)
     pp = struct('c', c, 'Q', Q, 'T', T, 'yf', yf, 'eta', eta, 'ts', ts_opt);
     pp.lam_vx0 = z_opt(1); pp.lam_vy0 = z_opt(2); pp.lam_y = z_opt(3);
 
-    ic = [0;0;0;0;1;z_opt(4)];
+    ic = [0;0;0;0;1;1];
     [T1, Z1] = ode45(@(t,z) ode_burn(t,z,pp), linspace(0, ts_opt, 300), ic, opts_ode);
 
     z_s = Z1(end,:);
@@ -213,54 +213,52 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function res = shooting_single(z0, p, opts_ode)
-% Single-stage shooting (same as Task 1)
-    lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3);
-    lam_m0 = z0(4);  tf = z0(5);
+% Single-stage shooting (same as Task 1), improved formulation:
+% lam_m0 = 1 (normalization) and H = 0 imposed algebraically at t0. 4 unknowns.
+    lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3); tf = z0(4);
 
     if tf <= 0 || tf > 2
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
     pp = p;
     pp.lam_vx0 = lam_vx0; pp.lam_vy0 = lam_vy0; pp.lam_y = lam_y;
 
-    ic = [0;0;0;0;1;lam_m0];
+    ic = [0;0;0;0;1;1];   % lam_m0 = 1
     try
         [~,Z] = ode45(@(t,z) ode_burn(t,z,pp), [0 tf], ic, opts_ode);
         zf = Z(end,:);
     catch
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
-    lam_vy_f = lam_vy0 - lam_y * tf;
-    lam_v_norm = sqrt(lam_vx0^2 + lam_vy_f^2);
-    H_f = lam_y*zf(4) + (p.T/zf(5))*lam_v_norm - lam_vy_f - p.Q*zf(6);
+    Lam0 = sqrt(lam_vx0^2 + lam_vy0^2);
+    H0 = -lam_vy0 + p.T*(Lam0 - 1/p.c);   % H=0 at t0 (vx0=vy0=0, m0=1, lam_m0=1)
 
-    res = [zf(2)-p.yf; zf(3)-1; zf(4); zf(6)-1; H_f];
+    res = [zf(2)-p.yf; zf(3)-1; zf(4); H0];
 end
 
 function res = shooting_twostage(z0, p, opts_ode)
 % Two-stage shooting with fixed staging time p.ts
 %   z0 = [lam_vx0; lam_vy0; lam_y; lam_m0; tf]
 
-    lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3);
-    lam_m0 = z0(4);  tf = z0(5);
+    lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3); tf = z0(4);
     ts = p.ts;
 
     if tf <= ts || tf > 2 || ts <= 0
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
     pp = p;
     pp.lam_vx0 = lam_vx0; pp.lam_vy0 = lam_vy0; pp.lam_y = lam_y;
 
     % Stage 1: integrate from 0 to ts
-    ic = [0;0;0;0;1;lam_m0];
+    ic = [0;0;0;0;1;1];   % lam_m0 = 1 (normalization)
     try
         [~,Z1] = ode45(@(t,z) ode_burn(t,z,pp), [0 ts], ic, opts_ode);
         z_s = Z1(end,:)';
     catch
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
     % Staging: drop structure of stage 1
@@ -268,7 +266,7 @@ function res = shooting_twostage(z0, p, opts_ode)
     z_s(5) = z_s(5) - ms1;
     % lam_m is continuous across staging
     if z_s(5) <= 0
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
     % Stage 2: integrate from ts to tf
@@ -276,12 +274,11 @@ function res = shooting_twostage(z0, p, opts_ode)
         [~,Z2] = ode45(@(t,z) ode_burn(t,z,pp), [ts tf], z_s, opts_ode);
         zf = Z2(end,:);
     catch
-        res = 1e6*ones(5,1); return;
+        res = 1e6*ones(4,1); return;
     end
 
-    lam_vy_f = lam_vy0 - lam_y * tf;
-    lam_v_norm = sqrt(lam_vx0^2 + lam_vy_f^2);
-    H_f = lam_y*zf(4) + (p.T/zf(5))*lam_v_norm - lam_vy_f - p.Q*zf(6);
+    Lam0 = sqrt(lam_vx0^2 + lam_vy0^2);
+    H0 = -lam_vy0 + p.T*(Lam0 - 1/p.c);   % H=0 at t0 (vx0=vy0=0, m0=1, lam_m0=1)
 
-    res = [zf(2)-p.yf; zf(3)-1; zf(4); zf(6)-1; H_f];
+    res = [zf(2)-p.yf; zf(3)-1; zf(4); H0];
 end

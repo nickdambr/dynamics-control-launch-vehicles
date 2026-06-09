@@ -37,12 +37,12 @@ for jj = 1:nyf
 
     % Initial guess: [lam_vx0, lam_vy0, lam_y, lam_m0, tf]
     if jj == 1
-        z_guess = [0.22; 1.3; 4.5; -0.5; 0.30];
+        z_guess = [0.6; 3.8; 14; 0.30];
     else
         % Use solution from previous yf at same Q
         z_guess = sol_results{idx0, jj-1};
         if isempty(z_guess)
-            z_guess = [0.22; 1.3; 4.5; -0.5; 0.30];
+            z_guess = [0.6; 3.8; 14; 0.30];
         end
     end
 
@@ -53,7 +53,7 @@ for jj = 1:nyf
 
     if ef > 0
         [~, Z] = ode45(@(t,z) ode_burn(t,z,set_costates(p,z_sol)), ...
-                        [0 z_sol(5)], [0;0;0;0;1;z_sol(4)], opts_ode);
+                        [0 z_sol(4)], [0;0;0;0;1;1], opts_ode);
         mf_results(idx0,jj) = Z(end,5);
         sol_results{idx0,jj} = z_sol;
         fprintf('  Q=%.2f  mf=%.5f  converged\n', Q_vec(idx0), Z(end,5));
@@ -70,7 +70,7 @@ for jj = 1:nyf
         [z_sol, ~, ef] = fsolve(@(z) shooting1(z, p, opts_ode), z_prev, opts_fs);
         if ef > 0
             [~, Z] = ode45(@(t,z) ode_burn(t,z,set_costates(p,z_sol)), ...
-                            [0 z_sol(5)], [0;0;0;0;1;z_sol(4)], opts_ode);
+                            [0 z_sol(4)], [0;0;0;0;1;1], opts_ode);
             mf_results(ii,jj) = Z(end,5);
             sol_results{ii,jj} = z_sol;
             z_prev = z_sol;
@@ -85,7 +85,7 @@ for jj = 1:nyf
         [z_sol, ~, ef] = fsolve(@(z) shooting1(z, p, opts_ode), z_prev, opts_fs);
         if ef > 0
             [~, Z] = ode45(@(t,z) ode_burn(t,z,set_costates(p,z_sol)), ...
-                            [0 z_sol(5)], [0;0;0;0;1;z_sol(4)], opts_ode);
+                            [0 z_sol(4)], [0;0;0;0;1;1], opts_ode);
             mf_results(ii,jj) = Z(end,5);
             sol_results{ii,jj} = z_sol;
             z_prev = z_sol;
@@ -131,10 +131,10 @@ for ii = 1:nQ
     p.c = c; p.yf = yf;
     p.Q = Q_vec(ii); p.T = c * p.Q;
     pp = set_costates(p, z_sol);
-    tf = z_sol(5);
+    tf = z_sol(4);
 
     % Integrate with losses
-    ic8 = [0; 0; 0; 0; 1; z_sol(4); 0; 0];
+    ic8 = [0; 0; 0; 0; 1; 1; 0; 0];
     [~, Z8] = ode45(@(t,z) ode_burn_losses(t, z, pp), [0 tf], ic8, opts_ode);
     Wd_vec(ii) = Z8(end,7);
     Wg_vec(ii) = Z8(end,8);
@@ -162,10 +162,10 @@ fprintf('\nOptimal Q = %.3f  ->  mf = %.5f  (yf = %.2f)\n', Q_opt, mf_opt, yf);
 p.c = c; p.yf = yf;
 p.Q = Q_opt; p.T = c * Q_opt;
 pp = set_costates(p, z_opt);
-tf = z_opt(5);
+tf = z_opt(4);
 
 % Dense integration for plotting
-ic8 = [0; 0; 0; 0; 1; z_opt(4); 0; 0];
+ic8 = [0; 0; 0; 0; 1; 1; 0; 0];
 [T_sol, Z_sol] = ode45(@(t,z) ode_burn_losses(t, z, pp), linspace(0, tf, 500), ic8, opts_ode);
 
 x_traj  = Z_sol(:,1);
@@ -225,17 +225,24 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function res = shooting1(z0, p, opts_ode)
-% Shooting residual for single burn arc
-%   z0 = [lam_vx0; lam_vy0; lam_y; lam_m0; tf]
+% Shooting residual for a single burn arc, in the improved formulation of the
+% course notes (HW1, "migliorie numeriche"):
+%   (i)  costates are NORMALIZED by fixing lam_m0 = 1 (H is homogeneous of
+%        degree 1 in lambda, so the solution is defined up to a scale);
+%   (ii) the free-time condition H = 0 is imposed at the INITIAL instant,
+%        where it is purely algebraic (vx0 = vy0 = 0) and accumulates no
+%        integration error, instead of at t_f.
+% Each move removes one unknown/condition, leaving 4 unknowns and 4 residuals;
+% lam_m never enters the residual.
+%   z0 = [lam_vx0; lam_vy0; lam_y; tf]
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);
     lam_y   = z0(3);
-    lam_m0  = z0(4);
-    tf      = z0(5);
+    tf      = z0(4);
 
     if tf <= 0 || tf > 2
-        res = 1e6 * ones(5,1);
+        res = 1e6 * ones(4,1);
         return;
     end
 
@@ -244,35 +251,25 @@ function res = shooting1(z0, p, opts_ode)
     pp.lam_vy0 = lam_vy0;
     pp.lam_y   = lam_y;
 
-    ic = [0; 0; 0; 0; 1; lam_m0];
+    ic = [0; 0; 0; 0; 1; 1];   % state + lam_m0 = 1 (normalization)
 
     try
         [~, Z] = ode45(@(t,z) ode_burn(t, z, pp), [0 tf], ic, opts_ode);
         zf = Z(end,:);
     catch
-        res = 1e6 * ones(5,1);
+        res = 1e6 * ones(4,1);
         return;
     end
 
-    y_f    = zf(2);
-    vx_f   = zf(3);
-    vy_f   = zf(4);
-    m_f    = zf(5);
-    lam_mf = zf(6);
+    % H = 0 at t0 (autonomous => H const = 0). With vx0 = vy0 = 0, m0 = 1 and
+    % lam_m0 = 1:   H0 = -lam_vy0 + T*( |lam_v0| - 1/c ).
+    Lam0 = sqrt(lam_vx0^2 + lam_vy0^2);
+    H0   = -lam_vy0 + p.T * (Lam0 - 1/p.c);
 
-    % Costate at tf
-    lam_vy_f   = lam_vy0 - lam_y * tf;
-    lam_v_norm = sqrt(lam_vx0^2 + lam_vy_f^2);
-
-    % Hamiltonian at tf
-    % H = lam_y*vy + (T/m)*|lam_v| - lam_vy - Q*lam_m
-    H_f = lam_y * vy_f + (p.T / m_f) * lam_v_norm - lam_vy_f - p.Q * lam_mf;
-
-    res = [y_f - p.yf;
-           vx_f - 1;
-           vy_f;
-           lam_mf - 1;
-           H_f];
+    res = [zf(2) - p.yf;    % y(tf)  = yf
+           zf(3) - 1;       % vx(tf) = 1
+           zf(4);           % vy(tf) = 0
+           H0];             % H(0)   = 0  (free final time)
 end
 
 function pp = set_costates(p, z_sol)

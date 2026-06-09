@@ -180,12 +180,19 @@ The system is autonomous (no explicit time dependence), so the Hamiltonian is co
 
 \subsection{Single-Shooting Method and Continuation}\label{sec:shooting}
 
-Substituting the bilinear-tangent law \eqref{eq:bilinear} into Eqs.~\eqref{eq:xdot}--\eqref{eq:mdot}, the optimal control problem reduces to a multi-point \textbf{Boundary Value Problem (BVP)}. The shooting unknowns common to all four tasks are
+Substituting the bilinear-tangent law \eqref{eq:bilinear} into Eqs.~\eqref{eq:xdot}--\eqref{eq:mdot}, the optimal control problem reduces to a \textbf{Boundary Value Problem (BVP)} solved by single shooting over the unknown costate initial conditions and the free final time.
+
+\textbf{Two numerical refinements} keep the BVP compact and well conditioned. \emph{(i) Costate normalization.} Since the Hamiltonian is homogeneous of degree one in $\boldsymbol{\lambda}$, the costates are defined only up to a positive scale; we fix it by setting $\lambda_{m,0} = 1$, which removes $\lambda_{m,0}$ as an unknown together with the terminal condition $\lambda_m(t_f) = 1$. \emph{(ii) Hamiltonian imposed at $t_0$.} As the problem is autonomous, $\mathcal{H}$ is constant and equal to zero (free $t_f$); we therefore impose $\mathcal{H} = 0$ at the \emph{initial} instant, where with $v_x = v_y = 0$ it is purely algebraic,
 \begin{equation}
-    \boldsymbol{\zeta} = \bigl[\lambda_{v_x,0},\;\lambda_{v_y,0},\;\lambda_y,\;\lambda_{m,0},\;t_f\bigr]^T.
+    \mathcal{H}(0) = -\lambda_{v_y,0} + T\Bigl(\lVert\boldsymbol{\lambda}_{v,0}\rVert - \tfrac{1}{c}\Bigr) = 0,
+    \label{eq:H0}
+\end{equation}
+instead of at $t_f$, where it would accumulate integration error. With $\lambda_x \equiv 0$ (Eq.~\ref{eq:lx}) already enforced, the shooting unknowns reduce to four,
+\begin{equation}
+    \boldsymbol{\zeta} = \bigl[\lambda_{v_x,0},\;\lambda_{v_y,0},\;\lambda_y,\;t_f\bigr]^T,
     \label{eq:unknowns}
 \end{equation}
-Given a trial $\boldsymbol{\zeta}$, the augmented state $[x, y, v_x, v_y, m, \lambda_m]^T$ is integrated forward with \texttt{ode45} (tolerances: $\mathrm{RelTol} = 10^{-10}$, $\mathrm{AbsTol} = 10^{-12}$), and the residual vector is evaluated at $t_f$. The system is solved with \texttt{fsolve} (function and step tolerances both $10^{-10}$, up to 500 iterations).
+and $\lambda_m$ no longer enters the residual. Given a trial $\boldsymbol{\zeta}$, the state $[x, y, v_x, v_y, m]^T$ is integrated forward with \texttt{ode45} ($\mathrm{RelTol} = 10^{-10}$, $\mathrm{AbsTol} = 10^{-12}$) and the four residuals are driven to zero with \texttt{fsolve} (tolerances $10^{-10}$). The same four-unknown formulation is used for the powered arcs of Tasks~1, 2 and~4; Task~3 keeps $\lambda_m$ as a fifth unknown because the engine-cutoff (switching) condition of the coast needs it.
 
 Single-shooting is sensitive to the costate initial guess, which has no direct physical interpretation. The \textbf{continuation strategy} mitigates this: the BVP is first solved at a favorable operating point ($Q \approx 3$), and each subsequent value of $Q$ is initialized with the converged solution from the neighboring point, sweeping both forward and backward across the range $Q \in [1.8, 7]$. This warm-start approach propagates the solution branch smoothly without manual retuning of the initial guess.
 

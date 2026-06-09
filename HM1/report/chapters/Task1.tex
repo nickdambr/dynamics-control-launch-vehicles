@@ -10,19 +10,18 @@ The simplest mission profile consists of a single continuous powered arc startin
 
 \subsection{Boundary Value Problem Formulation}
 
-The five shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) determine both the costate initial conditions and the free flight time. The shooting residual is
+The four shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) determine the costate initial conditions and the free flight time. The shooting residual is
 \begin{equation}
     \mathbf{r}_1(\boldsymbol{\zeta}) =
     \begin{bmatrix}
         y(t_f) - y_f \\[2pt]
         v_x(t_f) - 1 \\[2pt]
         v_y(t_f) \\[2pt]
-        \lambda_m(t_f) - 1 \\[2pt]
-        \mathcal{H}(t_f)
-    \end{bmatrix} = \mathbf{0},
+        \mathcal{H}(0)
+    \end{bmatrix} = \mathbf{0}.
     \label{eq:residual1}
 \end{equation}
-where $\mathcal{H}(t_f)$ is computed via Eq.~\eqref{eq:ham_opt}. The first three components enforce the terminal state constraints \eqref{eq:terminal}; the fourth is the transversality condition \eqref{eq:trans_m} on the mass costate; the fifth is the free-time condition \eqref{eq:trans_tf}.
+The first three components enforce the terminal state constraints \eqref{eq:terminal}; the fourth is the free-time condition $\mathcal{H} = 0$, imposed at $t_0$ through the algebraic form \eqref{eq:H0}. The mass-costate transversality $\lambda_m(t_f) = 1$ and the terminal value of $\mathcal{H}$ are no longer needed as residuals, having been folded into the $\lambda_{m,0} = 1$ normalization and the autonomy of the system.
 
 \subsection{Velocity-Loss Decomposition}
 

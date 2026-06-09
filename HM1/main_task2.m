@@ -51,15 +51,15 @@ p.vx0 = 0;
 p.vy0 = vy1;
 p.m0  = m1;
 
-% Initial guess (similar to Task 1, adjusted for vertical climb IC)
-z_guess = [0.22; 1.3; 4.5; -0.5; 0.30];
+% Initial guess (improved formulation: 4 unknowns, costates normalized to lam_m0=1)
+z_guess = [0.6; 3.8; 14; 0.30];
 
 fprintf('\nPhase 2: Solving BVP for optimal burn...\n');
 [z_sol, ~, ef] = fsolve(@(z) shooting2(z, p, opts_ode), z_guess, opts_fs);
 
 if ef <= 0
     fprintf('WARNING: fsolve did not converge. Trying alternative guess...\n');
-    z_guess2 = [0.15; 1.0; 3.5; -0.3; 0.35];
+    z_guess2 = [0.4; 3.0; 10; 0.35];
     [z_sol, ~, ef] = fsolve(@(z) shooting2(z, p, opts_ode), z_guess2, opts_fs);
 end
 
@@ -69,9 +69,9 @@ if ef > 0
     pp.lam_vx0 = z_sol(1);
     pp.lam_vy0 = z_sol(2);
     pp.lam_y   = z_sol(3);
-    t_burn = z_sol(5);
+    t_burn = z_sol(4);
 
-    ic2 = [p.x0; p.y0; p.vx0; p.vy0; p.m0; z_sol(4)];
+    ic2 = [p.x0; p.y0; p.vx0; p.vy0; p.m0; 1];
     [T2, Z2] = ode45(@(t,z) ode_burn(t, z, pp), linspace(0, t_burn, 500), ic2, opts_ode);
 
     mf_task2 = Z2(end, 5);
@@ -189,17 +189,18 @@ function [value, isterminal, direction] = event_altitude(t, z, y_target)
 end
 
 function res = shooting2(z0, p, opts_ode)
-% Shooting residual for burn arc after vertical climb
-%   z0 = [lam_vx0; lam_vy0; lam_y; lam_m0; t_burn]
+% Shooting residual for the burn arc after the vertical climb, in the improved
+% formulation (lam_m0 = 1 normalization; H = 0 imposed algebraically at the
+% START of the burn, where the state (0, y1, 0, vy1, m1) is known).
+%   z0 = [lam_vx0; lam_vy0; lam_y; t_burn]
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);
     lam_y   = z0(3);
-    lam_m0  = z0(4);
-    t_burn  = z0(5);
+    t_burn  = z0(4);
 
     if t_burn <= 0 || t_burn > 2
-        res = 1e6 * ones(5,1);
+        res = 1e6 * ones(4,1);
         return;
     end
 
@@ -208,30 +209,23 @@ function res = shooting2(z0, p, opts_ode)
     pp.lam_vy0 = lam_vy0;
     pp.lam_y   = lam_y;
 
-    ic = [p.x0; p.y0; p.vx0; p.vy0; p.m0; lam_m0];
+    ic = [p.x0; p.y0; p.vx0; p.vy0; p.m0; 1];   % lam_m0 = 1 (normalization)
 
     try
         [~, Z] = ode45(@(t,z) ode_burn(t, z, pp), [0 t_burn], ic, opts_ode);
         zf = Z(end,:);
     catch
-        res = 1e6 * ones(5,1);
+        res = 1e6 * ones(4,1);
         return;
     end
 
-    y_f    = zf(2);
-    vx_f   = zf(3);
-    vy_f   = zf(4);
-    m_f    = zf(5);
-    lam_mf = zf(6);
+    % H = 0 at the start of the burn (state known): vx0 = 0, vy0 = vy1,
+    % m0 = m1, lam_m0 = 1, lam_x = 0.
+    Lam0 = sqrt(lam_vx0^2 + lam_vy0^2);
+    H0 = lam_y * p.vy0 + (p.T / p.m0) * Lam0 - lam_vy0 - p.T / p.c;
 
-    lam_vy_f   = lam_vy0 - lam_y * t_burn;
-    lam_v_norm = sqrt(lam_vx0^2 + lam_vy_f^2);
-
-    H_f = lam_y * vy_f + (p.T / m_f) * lam_v_norm - lam_vy_f - p.Q * lam_mf;
-
-    res = [y_f - p.yf;
-           vx_f - 1;
-           vy_f;
-           lam_mf - 1;
-           H_f];
+    res = [zf(2) - p.yf;
+           zf(3) - 1;
+           zf(4);
+           H0];
 end
