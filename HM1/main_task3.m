@@ -50,22 +50,31 @@ p.vx0 = 0;
 p.vy0 = vy1;
 p.m0  = m1;
 
-% Initial guess - start from Task 2 solution if available, otherwise manual
-z_guess = [0.20; 1.2; 4.0; -0.5; 0.28];
+% Initial guess. The burn->coast switching admits a SPURIOUS root with vyc<0
+% (apogee already behind: yc + 0.5*vyc^2 = yf holds formally but the coast is
+% non-physical). A short-burn guess (t_burn ~ 0.10-0.18) lands in the basin of
+% the PHYSICAL root (vyc>0: engine cut below yf, ballistic ascent to apogee).
+% We sweep a few guesses and accept the first root with vyc>0.
+guess_list = {[0.20; 1.2; 4.0; -0.5; 0.15], ...
+              [0.25; 1.5; 5.0; -0.6; 0.18], ...
+              [0.15; 1.0; 3.0; -0.4; 0.10], ...
+              [0.20; 1.2; 4.0; -0.5; 0.12]};
 
-fprintf('\nSolving BVP for burn + coast...\n');
-[z_sol, fval, ef] = fsolve(@(z) shooting3(z, p, opts_ode), z_guess, opts_fs);
-
-if ef <= 0
-    fprintf('Trying alternative initial guesses...\n');
-    guesses = {[0.15; 1.0; 3.0; -0.3; 0.25], ...
-               [0.25; 1.5; 5.0; -0.7; 0.32], ...
-               [0.18; 1.1; 3.5; -0.4; 0.27]};
-    for gg = 1:length(guesses)
-        [z_sol, fval, ef] = fsolve(@(z) shooting3(z, p, opts_ode), guesses{gg}, opts_fs);
-        if ef > 0, break; end
+fprintf('\nSolving BVP for burn + coast (physical vyc>0 root)...\n');
+z_sol = []; ef = -1;
+for gg = 1:numel(guess_list)
+    [z_try, ~, ef_try] = fsolve(@(z) shooting3(z, p, opts_ode), guess_list{gg}, opts_fs);
+    if ef_try > 0
+        pp_chk = p;
+        pp_chk.lam_vx0 = z_try(1); pp_chk.lam_vy0 = z_try(2); pp_chk.lam_y = z_try(3);
+        [~, Zc] = ode45(@(t,z) ode_burn(t, z, pp_chk), [0 z_try(5)], ...
+                        [p.x0; p.y0; p.vx0; p.vy0; p.m0; z_try(4)], opts_ode);
+        if Zc(end,4) > 1e-6      % vyc > 0: accept the physical coast
+            z_sol = z_try; ef = ef_try; break;
+        end
     end
 end
+if isempty(z_sol), ef = -1; end
 
 if ef > 0
     pp = p;
@@ -245,9 +254,14 @@ function res = shooting3(z0, p, opts_ode)
     lam_vy_c   = lam_vy0 - lam_y * t_burn;
     lam_v_norm = sqrt(lam_vx0^2 + lam_vy_c^2);
 
-    % Switching function S = |lam_v|/m - lam_m/c (general form, Lez. 6).
-    % Condition 3 pins lam_mc = 1, so at cutoff this equals |lam_v|/mc - 1/c.
-    S = lam_v_norm / mc - lam_mc / p.c;
+    % Switching function (Lez. 6): S = |lam_v|/m - lam_m/c. Condition 3 pins
+    % lam_mc = 1 (lam_m constant along the coast), so at the cutoff this equals
+    % |lam_v|/mc - 1/c. The 1/c form (S evaluated at lam_m = 1) is kept here: it
+    % gives fsolve a tighter basin that lands on the physical (vyc > 0) root,
+    % whereas the literal lam_mc/c form lets it drift to the spurious vyc < 0
+    % branch. The report states the general lam_m/c form; the two coincide at
+    % cutoff.
+    S = lam_v_norm / mc - 1 / p.c;
 
     res = [vxc - 1;
            yc + 0.5 * vyc^2 - p.yf;
