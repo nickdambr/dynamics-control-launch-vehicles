@@ -26,31 +26,36 @@ The cost is **maximum final mass** (≡ minimum fuel ≡ maximum payload after
 applying the structural-coefficient model). The four tasks differ in mission
 sequence:
 
-| Task | Sequence                       | Free variables                         |
-|------|--------------------------------|----------------------------------------|
-| 1    | single burn arc                | `λ_vx0, λ_vy0, λ_y, λ_m0, t_f`         |
-| 2    | vertical climb → burn          | as above + initial state from climb    |
-| 3    | vertical climb → burn → coast  | adds switching condition at cutoff     |
-| 4    | burn → staging → burn (no climb)| adds staging time `t_s`               |
+| Task | Sequence                       | Shooting unknowns                               |
+|------|--------------------------------|-------------------------------------------------|
+| 1    | single burn arc                | `λ_vx0, λ_vy0, λ_y, t_f` (with `λ_m0 ≡ 1`)      |
+| 2    | vertical climb → burn          | same 4, integrated from the post-climb state    |
+| 3    | vertical climb → burn → coast  | `+ λ_m0` and burn duration; switching at cutoff |
+| 4    | burn → staging → burn (no climb)| same 4; staging time `t_s` swept in an outer loop |
 
 ## Approach
 
 - **Necessary conditions:** Euler-Lagrange / Pontryagin with linear costate
-  evolution (control-affine system → bilinear-tangent law for `φ`);
-  transversality conditions at the free terminal time give the Hamiltonian
-  vanishing condition.
-- **Single shooting:** the unknowns are the free parameters at `t = 0` (mostly
-  costate components plus the free duration); the residual is the violation
-  of the terminal/transversality conditions evaluated by integrating the state
-  + costate forward with `ode45`.
+  evolution (control-affine system → bilinear-tangent law for `φ`); the free
+  terminal time gives the Hamiltonian-vanishing condition `H = 0`.
+- **Numerical refinements (course-notes "migliorie"):** the costates are
+  normalized by fixing `λ_m0 = 1` (`H` is homogeneous of degree 1 in `λ`), and
+  `H = 0` is imposed at the *initial* instant, where with `v_x = v_y = 0` it is
+  algebraic — `H(0) = −λ_vy0 + T(|λ_v0| − 1/c)`. Each move removes one
+  unknown/condition, leaving a **4-unknown** shooting in which `λ_m` never
+  enters the residual (Tasks 1, 2, 4). Task 3 keeps `λ_m0` for the coast switch.
+- **Single shooting:** for a trial of the unknowns the state `[x,y,v_x,v_y,m]`
+  is integrated forward with `ode45`, and `fsolve` drives the four residuals
+  (terminal `y, v_x, v_y` and `H(0) = 0`) to zero.
 - **Continuation strategy** — central to making the shooting converge across
   the parameter sweeps in Task 1: solve at a friendly `Q` (T/W ratio ≈ 1.8),
   then warm-start each neighboring `Q` from the previous solution. Sweep
   forward and backward from the initial point.
 - **Coast-arc handling (Task 3):** at engine cutoff the switching function
-  `S = |λ_v|/m − 1/c` must vanish; during coast `λ_m` is constant and
-  `λ_vy` ramps linearly so a closed-form ballistic match is used instead of
-  re-integrating.
+  `S = |λ_v|/m − λ_m/c` must vanish (with `λ_m = 1` at cutoff); during coast
+  `λ_m` is constant and `λ_vy` ramps linearly, so a closed-form ballistic match
+  is used instead of re-integrating. A short-burn initial guess selects the
+  physical (`v_y > 0`) root over a spurious one.
 - **Staging (Task 4):** the structural mass jettisoned at `t_s` is
   `m_s = η·Q·t_s`; total payload is `m_f·(1+η) − η`. Outer loop sweeps `t_s`
   and the inner BVP returns the corresponding final mass.
@@ -82,7 +87,9 @@ Each script writes its plots into `figures/` with a `task<N>_` prefix.
 For three target altitudes `y_f ∈ {0.04, 0.05, 0.06}` the final mass exhibits
 a clear interior maximum in `Q`: too low ⇒ gravity losses dominate,
 too high ⇒ short burn at very high T/W wastes Δv on overshooting the optimal
-flight-path angle.
+flight-path angle. The optimal rates are `Q* = 2.52, 2.33, 2.19` respectively
+(the assignment's nominal `Q = 2` sits just below them), and the single-stage
+payload turns negative at `y_f = 0.06` — a single stage cannot reach that orbit.
 
 ![Task 1a — mf vs Q](figures/task1_task_1a_final_mass_vs_q.png)
 
