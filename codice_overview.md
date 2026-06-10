@@ -28,8 +28,11 @@ script principale (main_taskN.m)
 
 I 5 stati nondimensionali sono `[x, y, vx, vy, m]`; il sesto stato aggiunto
 in ODE è il costato `λ_m` (gli altri costati hanno forma chiusa lineare).
-Le condizioni terminali sono fisse: `vx(t_f)=1, vy(t_f)=0, y(t_f)=y_f`;
-gli unknown sono i costati iniziali liberi e il tempo finale.
+Le condizioni terminali sono fisse: `vx(t_f)=1, vy(t_f)=0, y(t_f)=y_f`.
+**Migliorie numeriche** (note del corso): i costati sono normalizzati fissando
+`λ_m0=1`, e la condizione di tempo libero `H=0` è imposta a `t₀` in forma
+algebrica. Lo shooting ha così **4 unknown** `[λ_vx0, λ_vy0, λ_y, t_f]` e `λ_m`
+non entra nel residuo (Task 1/2/4); Task 3 mantiene `λ_m0` per lo switch del coast.
 
 ### Funzione condivisa
 
@@ -39,17 +42,19 @@ gli unknown sono i costati iniziali liberi e il tempo finale.
 
 ### `main_task1.m` — arco singolo, sweep su `Q`
 
-Sweep di `Q ∈ [0.6, 4]` per tre quote target `y_f ∈ {0.04, 0.05, 0.06}`,
-con **continuazione** (warm-start della successiva risoluzione dalla
-precedente) per garantire convergenza dello shooting su tutto l'intervallo.
+Sweep di `Q ∈ [1.8, 7]` (sopra la soglia di liftoff `1/c≈1.67`) per tre quote
+target `y_f ∈ {0.04, 0.05, 0.06}`, con **continuazione** (warm-start della
+successiva risoluzione dalla precedente, seme a `Q≈3`) per garantire
+convergenza dello shooting su tutto l'intervallo. Gli `Q*` ottimi risultano
+`2.52 / 2.33 / 2.19`.
 Dalla soluzione ottima vengono inoltre calcolate le perdite di gravità e
 sterzo per decomposizione.
 
 | Funzione | Riferimento | Ruolo |
 |---|---|---|
-| `shooting1` | [main_task1.m:210](HM1/main_task1.m#L210) | Residuo di shooting (5 componenti) sulle unknown `z = [λ_vx0, λ_vy0, λ_y, λ_m0, t_f]`. Integra `ode_burn` su `[0, t_f]` e impone: `y(t_f)=y_f`, `vx(t_f)=1`, `vy(t_f)=0`, `λ_m(t_f)=1` (transversality), `H(t_f)=0` (free final time). |
-| `set_costates` | [main_task1.m:261](HM1/main_task1.m#L261) | Pack helper: copia `λ_vx0, λ_vy0, λ_y` dentro la struct `p` per passarli a `ode_burn`. |
-| `ode_burn_losses` | [main_task1.m:269](HM1/main_task1.m#L269) | Versione estesa di `ode_burn` (8 stati) che integra in parallelo `dW_d/dt = (T/m)(1−cos(φ−ψ))` (perdita di sterzo) e `dW_g/dt = sin(ψ)` (perdita gravitazionale). Usata solo nel post-processing. |
+| `shooting1` | [main_task1.m:227](HM1/main_task1.m#L227) | Residuo di shooting (4 componenti) sulle unknown `z = [λ_vx0, λ_vy0, λ_y, t_f]` (con `λ_m0≡1`). Integra `ode_burn` su `[0, t_f]` e impone: `y(t_f)=y_f`, `vx(t_f)=1`, `vy(t_f)=0`, `H(0)=−λ_vy0+T(‖λ_v0‖−1/c)=0` (tempo libero, imposto a `t₀` in forma algebrica). |
+| `set_costates` | [main_task1.m:275](HM1/main_task1.m#L275) | Pack helper: copia `λ_vx0, λ_vy0, λ_y` dentro la struct `p` per passarli a `ode_burn`. |
+| `ode_burn_losses` | [main_task1.m:283](HM1/main_task1.m#L283) | Versione estesa di `ode_burn` (8 stati) che integra in parallelo `dW_d/dt = (T/m)(1−cos(φ−ψ))` (perdita di sterzo) e `dW_g/dt = sin(ψ)` (perdita gravitazionale). Usata solo nel post-processing. |
 
 ### `main_task2.m` — salita verticale + burn
 
@@ -59,9 +64,9 @@ la quota target; lo shooting BVP riparte poi dallo stato finale del climb.
 
 | Funzione | Riferimento | Ruolo |
 |---|---|---|
-| `ode_vertical` | [main_task2.m:151](HM1/main_task2.m#L151) | RHS della salita verticale: `φ=π/2`, stato ridotto `[y, vy, m]`. |
-| `event_altitude` | [main_task2.m:157](HM1/main_task2.m#L157) | Evento `ode45` che termina l'integrazione quando `y = y_target`. |
-| `shooting2` | [main_task2.m:163](HM1/main_task2.m#L163) | Stessa logica di `shooting1` ma con I.C. **non nulle** (uscita del climb) passate via `p.x0,p.y0,p.vx0,p.vy0,p.m0`. Unknown: `[λ_vx0, λ_vy0, λ_y, λ_m0, t_burn]`. |
+| `ode_vertical` | [main_task2.m:179](HM1/main_task2.m#L179) | RHS della salita verticale: `φ=π/2`, stato ridotto `[y, vy, m]`. |
+| `event_altitude` | [main_task2.m:185](HM1/main_task2.m#L185) | Evento `ode45` che termina l'integrazione quando `y = y_target`. |
+| `shooting2` | [main_task2.m:191](HM1/main_task2.m#L191) | Stessa logica (migliorata) di `shooting1` ma con I.C. **non nulle** (uscita del climb) via `p.x0,…,p.m0`. Unknown: `[λ_vx0, λ_vy0, λ_y, t_burn]` (`λ_m0≡1`); `H=0` valutato sullo stato post-climb (`H0=λ_y·vy1+(T/m1)‖λ_v0‖−λ_vy0−T/c`). |
 
 ### `main_task3.m` — salita verticale + burn + coast
 
@@ -71,9 +76,9 @@ condizione di iniezione con `y_c + ½ vy_c² = y_f` invece di integrare.
 
 | Funzione | Riferimento | Ruolo |
 |---|---|---|
-| `ode_vertical` | [main_task3.m:185](HM1/main_task3.m#L185) | Identica a Task 2. |
-| `event_altitude` | [main_task3.m:190](HM1/main_task3.m#L190) | Identica a Task 2. |
-| `shooting3` | [main_task3.m:196](HM1/main_task3.m#L196) | Residuo 5-d alla fine del **burn** (non al fine missione). Impone: `vx_c=1`, `y_c + ½ vy_c² = y_f` (match balistico), `λ_m(t_c)=1`, `λ_vy(t_c) = λ_y · vy_c` (ottimalità coast), `S(t_c) = ‖λ_v‖/m_c − 1/c = 0` (switching function). |
+| `ode_vertical` | [main_task3.m:200](HM1/main_task3.m#L200) | Identica a Task 2. |
+| `event_altitude` | [main_task3.m:205](HM1/main_task3.m#L205) | Identica a Task 2. |
+| `shooting3` | [main_task3.m:211](HM1/main_task3.m#L211) | Residuo 5-d alla fine del **burn** (Task 3 mantiene `λ_m0` per lo switch). Impone: `vx_c=1`, `y_c + ½ vy_c² = y_f` (match balistico), `λ_m(t_c)=1`, `λ_vy(t_c) = λ_y · vy_c` (ottimalità coast), `S(t_c) = ‖λ_v‖/m_c − λ_m/c = 0` (switching; `λ_m=1` al cutoff). Una guess a burn corto seleziona la radice fisica `vy_c>0`. |
 
 ### `main_task4.m` — staging
 
@@ -83,8 +88,8 @@ warm-start sulla soluzione single-stage di Task 1.
 
 | Funzione | Riferimento | Ruolo |
 |---|---|---|
-| `shooting_single` | [main_task4.m:207](HM1/main_task4.m#L207) | Identico a `shooting1` (riferimento single-stage usato per warm-start). |
-| `shooting_twostage` | [main_task4.m:234](HM1/main_task4.m#L234) | Integra `ode_burn` su `[0, t_s]`, applica `m⁺ = m⁻ − η·Q·t_s` (`λ_m` continua), integra di nuovo su `[t_s, t_f]` e impone gli stessi 5 residui di `shooting1` al tempo finale. `t_s` è parametro fissato per ciascuna iterazione dello sweep. |
+| `shooting_single` | [main_task4.m:215](HM1/main_task4.m#L215) | Identico a `shooting1` (4 unknown, `H0=0`); riferimento single-stage per warm-start. |
+| `shooting_twostage` | [main_task4.m:241](HM1/main_task4.m#L241) | Integra `ode_burn` su `[0, t_s]`, applica `m⁺ = m⁻ − η·Q·t_s` (`λ_m` continua), integra di nuovo su `[t_s, t_f]` e impone gli stessi 4 residui di `shooting1` (`H0=0`). `t_s` è parametro fissato per ciascuna iterazione dello sweep. |
 
 ---
 
