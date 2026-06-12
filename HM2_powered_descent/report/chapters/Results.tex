@@ -4,13 +4,13 @@
 
 \section{Numerical Results}\label{sec:results}
 
-The NLP \eqref{eq:nlp} is solved at the nominal flight time $t_f = 38$~s with $N = 50$ collocation nodes. \texttt{fmincon} runs for approximately $30$~s of wall time and returns a final mass of $m_f = 1403.20$~kg, equivalently $596.80$~kg of propellant consumed (about $30\%$ of the initial mass). The solver terminates at the \texttt{MaxIterations} cap of $1000$ iterations; the constraint residual is below the tolerance of $10^{-6}$ and the first-order optimality reaches $\sim 10^{-4}$ in non-dim units, indicating that the algorithm has located a high-quality but not fully converged local optimum (see Section~\ref{sec:sensitivity} for the analogous behaviour across the sensitivity sweep).
+The NLP \eqref{eq:nlp} is solved at the nominal flight time $t_f = 38$~s with $N = 50$ collocation nodes. \texttt{fmincon} runs for roughly a minute of wall time on the test laptop and returns a final mass of $m_f = 1403.20$~kg, equivalently $596.80$~kg of propellant consumed (about $30\%$ of the initial mass). The solver terminates at the \texttt{MaxIterations} cap of $1000$ iterations; the constraint residual is below the tolerance of $10^{-6}$ and the first-order optimality plateaus at $\sim 10^{-3}$--$10^{-4}$ in non-dim units, indicating that the algorithm has located a high-quality but not fully converged local optimum --- the plateau is consistent with the nonsmooth coast arc discussed in Section~\ref{sec:implementation} (see Section~\ref{sec:sensitivity} for the analogous behaviour across the sensitivity sweep).
 
 The four key plots are presented below. All three sensitivity runs (Section~\ref{sec:sensitivity}) are overlaid on the same axes for reference; the discussion in this section focuses on the nominal $t_f = 38.00$~s curve.
 
 \subsection{Trajectory and Glide-Slope Corridor}
 
-Figure~\ref{fig:hm2_traj} shows the descent trajectory in the $(x, y)$ plane together with the glide-slope corridor (dashed grey lines bounding the cone of half-angle $\theta_{\max} = 60^\circ$). The vehicle enters the corridor from the upper right with significant horizontal velocity, executes a divert manoeuvre to align with the landing pad, and softly touches down at the origin (black triangle). The glide-slope constraint becomes active in the late portion of the descent, as the trajectory grazes the corridor boundary before the final approach.
+Figure~\ref{fig:hm2_traj} shows the descent trajectory in the $(x, y)$ plane together with the glide-slope corridor (dashed grey lines bounding the cone of half-angle $\theta_{\max} = 60^\circ$). The vehicle enters the corridor from the upper right with significant horizontal velocity, executes a divert manoeuvre to align with the landing pad, and softly touches down at the origin (black triangle). The trajectory approaches the corridor boundary near the apex of the divert turn, at about one third of the flight, but does not reach it: the glide-slope constraint stays (narrowly) inactive over the whole descent, as quantified in Section~\ref{sec:gs_results}.
 
 \begin{figure}[H]
     \centering
@@ -21,7 +21,7 @@ Figure~\ref{fig:hm2_traj} shows the descent trajectory in the $(x, y)$ plane tog
 
 \subsection{Thrust Magnitude}
 
-Figure~\ref{fig:hm2_thrust} shows the thrust-magnitude profile $\|\mathbf{T}(t)\|$. The fuel-optimal solution exhibits the expected \textbf{bang-bang structure}: $\|\mathbf{T}\|$ saturates at $T_{\max} = 70$~kN over an extended portion of the descent (the deceleration phase), and drops to a low coast-thrust level just before touchdown to satisfy the soft-landing terminal condition. This is the discrete-time signature of the same Pontryagin-style optimality principle that produced the bilinear-tangent law in Homework~1, applied here to a problem with linear-in-control dynamics and a control-magnitude bound: the optimal control switches between the extreme values of its admissible set.
+Figure~\ref{fig:hm2_thrust} shows the thrust-magnitude profile $\|\mathbf{T}(t)\|$. The fuel-optimal solution exhibits the expected three-arc \textbf{max--coast--max} (bang--off--bang) structure: an initial braking burn at $\|\mathbf{T}\| = T_{\max} = 70$~kN cancels most of the divert velocity, the thrust then drops to essentially zero along a midcourse coast arc, and a second saturated burn performs the terminal braking down to the soft touchdown. For the nominal $t_f = 38$~s the switches occur at $t \approx 14.0$~s and $t \approx 33.1$~s, leaving a coast arc of about $19$~s. This is the discrete-time signature of the same Pontryagin-style optimality principle that produced the bilinear-tangent law in Homework~1, applied here to a problem with linear-in-control dynamics and a control-magnitude bound: the optimal thrust magnitude never sits at intermediate values, but switches between the extremes of its admissible set ($T_{\max}$ and the lower bound $T_{\min} = 0$).
 
 \begin{figure}[H]
     \centering
@@ -30,11 +30,11 @@ Figure~\ref{fig:hm2_thrust} shows the thrust-magnitude profile $\|\mathbf{T}(t)\
     \label{fig:hm2_thrust}
 \end{figure}
 
-\subsection{Mass and Glide-Slope Angle}
+\subsection{Mass and Glide-Slope Angle}\label{sec:gs_results}
 
-Figure~\ref{fig:hm2_mass} shows the vehicle mass $m(t)$, which decreases monotonically at a rate proportional to $\|\mathbf{T}\|$ (Eq.~\ref{eq:hm2_mdot}). The slope is therefore approximately constant during the high-thrust deceleration phase and flattens during the low-thrust terminal segment, mirroring the bang-bang structure of the thrust profile.
+Figure~\ref{fig:hm2_mass} shows the vehicle mass $m(t)$, which decreases at a rate proportional to $\|\mathbf{T}\|$ (Eq.~\ref{eq:hm2_mdot}): the slope is steep and approximately constant during the two saturated burns and the mass stays constant along the midcourse coast arc, mirroring the max--coast--max thrust profile.
 
-Figure~\ref{fig:hm2_gs} shows the instantaneous glide-slope angle $\theta(t) = \arctan(|x|/y)$, bounded above by $\theta_{\max} = 60^\circ$ (dashed). The trajectory remains strictly inside the corridor for most of the descent and approaches the boundary only briefly near landing.
+Figure~\ref{fig:hm2_gs} shows the instantaneous glide-slope angle $\theta(t) = \arctan(|x|/y)$, bounded above by $\theta_{\max} = 60^\circ$ (dashed). The angle peaks at $\theta \approx 58.4^\circ$ around $t \approx 12$~s, near the apex of the divert turn, leaving a minimum margin of $\approx 1.6^\circ$: the glide-slope constraint is \emph{never active} at the optimum. The KKT multipliers returned by \texttt{fmincon} confirm this quantitatively: the multipliers of the two glide-slope half-space rows are numerically zero at every node, while the upper thrust-magnitude bound carries strictly positive multipliers on the two burn arcs --- by complementary slackness, the thrust bound is the only path constraint shaping the solution. Nodes below $1$~m altitude are omitted from the plot: as $(x, y) \to (0, 0)$ the ratio $|x|/y$ is numerically indeterminate, and millimetre-level residuals (well within the \texttt{ConstraintTolerance} of the linear form \eqref{eq:glide_slope_linear}) would produce arbitrary spurious angles.
 
 \begin{figure}[H]
     \centering
@@ -48,11 +48,32 @@ Figure~\ref{fig:hm2_gs} shows the instantaneous glide-slope angle $\theta(t) = \
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task1_glide_slope}
-        \caption{Glide-slope angle $\arctan(|x|/y)$.}
+        \caption{Glide-slope angle $\arctan(|x|/y)$ (nodes below $1$~m altitude omitted).}
         \label{fig:hm2_gs}
     \end{subfigure}
     \caption{Mass profile and instantaneous glide-slope angle for the nominal solution.}
     \label{fig:hm2_mg}
 \end{figure}
+
+\subsection{Grid Convergence}\label{sec:grid_convergence}
+
+To verify that $N = 50$ nodes are adequate, the nominal problem is re-solved on coarser and finer grids. For each $N$ the converged piecewise-linear control is replayed through the continuous-time dynamics with \texttt{ode45} (the same fidelity metric used in Section~\ref{sec:zoh_validation}) and the maximum position+velocity node error is recorded. The results are summarised in Table~\ref{tab:hm2_grid}.
+
+\begin{table}[H]
+\centering
+\caption{Grid-convergence study at the nominal $t_f = 38$~s.}
+\label{tab:hm2_grid}
+\begin{tabular}{cccc}
+\toprule
+$N$ & $m_f$ [kg] & Max node error [--] & Wall time [s] \\
+\midrule
+25  & $1402.47$ & $6.39\cdot 10^{-3}$ & $8$ \\
+50  & $1403.20$ & $1.55\cdot 10^{-3}$ & $65$ \\
+100 & $1402.42$ & $3.81\cdot 10^{-4}$ & $90$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The replay error drops by almost exactly a factor of four per mesh halving, a clean experimental confirmation of the $O(\Delta t^2)$ global order of the trapezoidal rule. The final mass, by contrast, fluctuates within $\pm 0.8$~kg ($\approx 0.13\%$ of the propellant) with no systematic trend: the cost landscape is flat enough that the three grids stop at slightly different engineering-quality iterates (the $N = 25$ and $N = 100$ runs stop on the step-size criterion, the $N = 50$ run at the iteration cap). $N = 50$ is retained as the working compromise, with the forward-integration assessment of Section~\ref{sec:zoh_validation} as the fidelity cross-check.
 
 \end{document}

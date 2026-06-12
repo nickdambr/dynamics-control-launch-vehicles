@@ -85,6 +85,8 @@ The linearisation is only locally accurate, so a \textbf{Successive Convexificat
     This is the canonical SCvx trust-region update and converges to the local optimum without the unphysical mass creation seen with a fixed unsafeguarded box.
 \end{itemize}
 
+The trust region is the cure for \emph{artificial unboundedness}. The companion pathology, \emph{artificial infeasibility}, arises when the linearised constraint set becomes empty even though the nonlinear problem is feasible; the canonical cure adds heavily penalised virtual controls $\boldsymbol{\nu}_k$ to the defect equations. The pathology does surface transiently in this implementation: after the first four rejections shrink the trust region onto the trapezoidal reference (which is not exactly consistent with the ZOH dynamics), the inner solver reports the subproblem infeasible once, in both the \texttt{fmincon} and the \texttt{ECOS} variants. The loop survives without virtual controls only because the inner solver still returns its least-infeasible iterate, which is then vetted by the nonlinear replay ratio test before being accepted as the new reference. A production implementation --- and any cold-started run --- should carry the virtual-control safeguard explicitly.
+
 For the nonlinear powered-descent dynamics, the Jacobians evaluate to
 \begin{equation}
     \mathbf{A} = \begin{bmatrix}
@@ -106,19 +108,19 @@ The denominator $\|\mathbf{T}\|$ in $\mathbf{B}$ is regularised with a small add
 
 \subsubsection*{Variant (c): SCvx with a conic inner solver (\texttt{YALMIP}+\texttt{ECOS})}\label{sec:scvx_yalmip}
 
-Variant~(b) feeds the LTV sub-problem to \texttt{fmincon} as a generic NLP, which discards the convex structure of the inner step and pays the cost of a quasi-Newton SQP iteration. Variant~(c) keeps the same outer SCvx loop (warm-start from the trapezoidal solution, identical adaptive trust-region update, identical convergence tolerance) but re-models the inner sub-problem as a Second-Order Cone Program. With LTV dynamics ($\bar{\mathbf{A}}_k,\bar{\mathbf{B}}_k,\bar{\mathbf{c}}_k$) as linear equalities, glide-slope and box bounds as linear inequalities, and the thrust-magnitude bound as the second-order cone constraint $\|\mathbf{u}_k\|_2 \leq T_{\max}$, the inner step is a pure SOCP. The problem is assembled in \texttt{YALMIP} via \texttt{sdpvar} and solved by \texttt{ECOS}, which exploits the conic structure directly. The two outer loops produce nearly indistinguishable trajectories (see Section~\ref{sec:zoh_results}) but the YALMIP/ECOS path is markedly cleaner numerically: the inner subproblem retains the cone constraint as a primitive rather than approximating it through SQP linearisations, and the per-step fidelity of the linearisation improves accordingly. The total wall time of the conic variant is approximately $14$~s for the full $15$-iteration outer loop on a modern laptop.
+Variant~(b) feeds the LTV sub-problem to \texttt{fmincon} as a generic NLP, which discards the convex structure of the inner step and pays the cost of a quasi-Newton SQP iteration. Variant~(c) keeps the same outer SCvx loop (warm-start from the trapezoidal solution, identical adaptive trust-region update, identical convergence tolerance) but re-models the inner sub-problem as a Second-Order Cone Program. With LTV dynamics ($\bar{\mathbf{A}}_k,\bar{\mathbf{B}}_k,\bar{\mathbf{c}}_k$) as linear equalities, glide-slope and box bounds as linear inequalities, and the thrust-magnitude bound as the second-order cone constraint $\|\mathbf{u}_k\|_2 \leq T_{\max}$, the inner step is a pure SOCP. The problem is assembled in \texttt{YALMIP} via \texttt{sdpvar} and solved by \texttt{ECOS}, which exploits the conic structure directly. The two outer loops produce nearly indistinguishable trajectories (see Section~\ref{sec:zoh_results}) but the YALMIP/ECOS path is markedly cleaner numerically: the inner subproblem retains the cone constraint as a primitive rather than approximating it through SQP linearisations, and the per-step fidelity of the linearisation improves accordingly. The total wall time of the conic variant is approximately $29$~s for the full $15$-iteration outer loop, about three times faster than the \texttt{fmincon}-based variant~(b) measured in the same session (Table~\ref{tab:hm2_replay}).
 
 \subsection{Forward-Integration Validation}\label{sec:zoh_validation}
 
-The transcription accuracy of the four approaches (trapezoidal, ZOH--RK4, ZOH--LTV+SCvx with \texttt{fmincon}, ZOH--LTV+SCvx with \texttt{YALMIP}+\texttt{ECOS}) is assessed by forward-integrating the continuous-time dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} with \texttt{ode45} (RelTol $= 10^{-10}$, AbsTol $= 10^{-12}$) using the optimised control schedule, and comparing the resulting trajectory $\mathbf{x}^{\mathrm{ode45}}(t_k)$ against the discretised values $\mathbf{x}_k^{\mathrm{NLP}}$ at every grid node. The control interpolation matches the transcription assumption: piecewise-linear (PWL) for the trapezoidal rule, piecewise-constant (PWC) for the three ZOH variants. The state-norm error
+The transcription accuracy of the four approaches (trapezoidal, ZOH--RK4, ZOH--LTV+SCvx with \texttt{fmincon}, ZOH--LTV+SCvx with \texttt{YALMIP}+\texttt{ECOS}) is assessed by forward-integrating the continuous-time dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} with \texttt{ode45} (RelTol $= 10^{-10}$, AbsTol $= 10^{-12}$) using the optimised control schedule, and comparing the resulting trajectory against the discretised values at every grid node. The control interpolation matches the transcription assumption: piecewise linear (PWL) for the trapezoidal rule, piecewise constant (PWC) for the three ZOH variants. The node error
 \begin{equation}
-    e_k = \bigl\|\mathbf{x}_k^{\mathrm{NLP}} - \mathbf{x}^{\mathrm{ode45}}(t_k)\bigr\|_2
+    e_k = \bigl\|(\mathbf{r}, \mathbf{v})_k^{\mathrm{NLP}} - (\mathbf{r}, \mathbf{v})^{\mathrm{ode45}}(t_k)\bigr\|_2
 \end{equation}
-quantifies how well each transcription represents the continuous-time problem.
+is the norm, in non-dim units, of the position and velocity components; the mass channel is monitored separately through the replayed final mass, which also drives the SCvx ratio test of Section~\ref{sec:zoh_nonlinear}. This metric quantifies how well each transcription represents the continuous-time problem.
 
 \subsection{Results}\label{sec:zoh_results}
 
-The four transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All four respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal solution yields a piecewise-linear thrust whereas the three ZOH variants are naturally piecewise-constant (rendered as staircases). All four exhibit the bang-bang structure with $\|\mathbf{T}\|$ saturated at $T_{\max}$ for most of the descent.
+The four transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All four respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal solution yields a piecewise-linear thrust whereas the three ZOH variants are naturally piecewise-constant (rendered as staircases). All four exhibit the max--coast--max structure, with $\|\mathbf{T}\|$ saturated at $T_{\max}$ on the two burn arcs and at zero in between.
 
 \begin{figure}[H]
     \centering
@@ -162,16 +164,17 @@ The transcription-fidelity plot (Fig.~\ref{fig:hm2_t2_fidelity}) is the diagnost
 
 \begin{table}[H]
 \centering
+\small
 \caption{Four-way comparison at $t_f = 38$~s, $N = 50$ nodes.}
 \label{tab:hm2_compare4}
 \begin{tabular}{lcccc}
 \toprule
-Transcription                     & $m_f$ [kg] & Fuel [kg] & Order            & Max nondim node-error \\
+Transcription                     & $m_f$ [kg] & Fuel [kg] & Order            & Max node error [--] \\
 \midrule
 Trapezoidal                       & $1403.20$  & $596.80$  & $O(\Delta t^2)$  & $1.55\cdot 10^{-3}$ \\
 Nonlinear ZOH (RK4)               & $1403.37$  & $596.63$  & $O(\Delta t^4)$  & $1.40\cdot 10^{-8}$ \\
 LTV ZOH + SCvx (\texttt{fmincon}) & $1399.54$  & $600.46$  & \texttt{ode45}-based & $4.08\cdot 10^{-4}$ \\
-LTV ZOH + SCvx (\texttt{YALMIP}+\texttt{ECOS}) & $1400.84$  & $599.16$  & \texttt{ode45}-based & $4.09\cdot 10^{-5}$ \\
+LTV ZOH + SCvx (\texttt{YALMIP}) & $1400.84$  & $599.16$  & \texttt{ode45}-based & $4.09\cdot 10^{-5}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -181,11 +184,32 @@ The trapezoidal transcription has a global $O(\Delta t^2)$ error and sits at $\s
 The trapezoidal and nonlinear-ZOH transcriptions agree to within $0.2$~kg on $m_f$, indicating both have located the same local optimum. The two SCvx solutions sit $2$--$4$~kg below this (slightly more fuel burnt) and agree with each other to within $1.3$~kg. Two contributing effects are at play:
 \begin{itemize}
     \item Trapezoidal collocation enforces the dynamics only to second order in $\Delta t$, so its converged ``optimum'' is allowed a small dynamical residual ($\sim 10^{-3}$ above) that translates into a marginally optimistic final mass.
-    \item Both SCvx outer loops terminate as soon as the trust region collapses to where the LTV linearisation is exact; they are therefore strictly feasible against the nonlinear dynamics, at the cost of stopping in a slightly different (but nearby) local optimum.
+    \item Both SCvx outer loops stop at the $15$-iteration cap with $\|\Delta\mathbf{x}\| \approx 10^{-2}$, above the convergence tolerance of $10^{-3}$. Every \emph{accepted} step, however, has passed the ratio test against an \texttt{ode45} replay of the nonlinear dynamics, so the returned iterate is genuinely realisable; the residual gap simply means the loop settles in a slightly different (but nearby) local optimum.
 \end{itemize}
 Both effects are below the engineering accuracy of the model (no aerodynamics, no attitude). Within numerical noise the four transcriptions describe the same physical solution.
 
-The SCvx convergence traces are reported in Fig.~\ref{fig:hm2_t2_scvx}. For each variant the top panel overlays the iterate change $\|\mathbf{x}^{(j+1)} - \mathbf{x}^{(j)}\|_2$, the trust-region scale $\rho$, and the final mass $m_f^{(j)}$; the bottom panel shows the trust-region ratio $\eta$ against its acceptance band $[\eta_l, \eta_h] = [0.25, 0.7]$ (rejected steps are flagged in orange). Warm-started from the Task~1 trapezoidal solution, both algorithms initially overshoot the linearisation's region of validity and reject the first four candidate steps, shrinking $\rho$; once $\rho$ is small enough that the LTV prediction matches the nonlinear forward integration, the steps are accepted, $\rho$ stops decreasing, and $\|\Delta \mathbf{x}\|$ drops below $\sim 10^{-2}$ at the iteration cap. The final mass $m_f$ stabilises within a fraction of a kilogram of the trapezoidal and nonlinear-ZOH values.
+The same \texttt{ode45} replay also yields the most operationally meaningful figure of merit: the \emph{touchdown dispersion} obtained by flying each optimised control schedule through the true continuous-time dynamics. Table~\ref{tab:hm2_replay} reports the resulting position and velocity error norms at $t_f$ (target: the origin at rest), the drift of the replayed final mass with respect to the transcription's own $m_f$, and the wall time of each solve.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Replay touchdown dispersion (SI units) and wall time, $t_f = 38$~s, $N = 50$.}
+\label{tab:hm2_replay}
+\begin{tabular}{lcccc}
+\toprule
+Transcription & Pos.\ err [m] & Vel.\ err [m/s] & $\Delta m_f$ [kg] & Wall [s] \\
+\midrule
+Trapezoidal (PWL)                 & $4.3$              & $0.11$             & $-0.03$            & $90$ \\
+Nonlinear ZOH (RK4)               & $6.1\cdot 10^{-6}$ & $2.4\cdot 10^{-6}$ & $1.6\cdot 10^{-5}$ & $100$ \\
+LTV ZOH + SCvx (\texttt{fmincon}) & $0.18$             & $0.069$            & $0.45$             & $82$ \\
+LTV ZOH + SCvx (\texttt{YALMIP})  & $0.019$            & $0.0069$           & $0.045$            & $29$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Flying the trapezoidal PWL controls open-loop lands the vehicle $4.3$~m from the pad at $0.11$~m/s --- entirely adequate for an offline reference trajectory, and exactly the level of dispersion expected from its $\sim 10^{-3}$ transcription error. The ZOH--RK4 schedule replays to micrometre accuracy (its defects \emph{are} the RK4 flow map), while the two SCvx variants land within centimetres to decimetres. All wall times are measured in the same batch session on the same laptop; the conic inner solver makes the SCvx loop about three times faster than every \texttt{fmincon}-based solve.
+
+The SCvx convergence traces are reported in Fig.~\ref{fig:hm2_t2_scvx}. For each variant the top panel overlays the iterate change $\|\mathbf{x}^{(j+1)} - \mathbf{x}^{(j)}\|_2$, the trust-region scale $\rho$, and the final mass $m_f^{(j)}$; the bottom panel shows the trust-region ratio $\eta$ against its acceptance band $[\eta_l, \eta_h] = [0.25, 0.7]$ (rejected steps are flagged in orange). Warm-started from the Task~1 trapezoidal solution, both algorithms initially overshoot the linearisation's region of validity and reject the first four candidate steps, shrinking $\rho$; from then on accepted and rejected steps alternate as the ratio test probes the trust radius, and $\|\Delta \mathbf{x}\|$ settles at the $10^{-2}$ level by the iteration cap. The final mass $m_f$ stabilises within a few kilograms of the trapezoidal and nonlinear-ZOH values.
 
 \begin{figure}[H]
     \centering

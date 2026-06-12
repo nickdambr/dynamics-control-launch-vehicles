@@ -63,7 +63,7 @@ The control guess is a constant hover thrust $\mathbf{T}^{(0)} = (0,\, m_0\, g)^
 
 \subsection{Constraints}
 
-\paragraph{Linear equality (boundary conditions).} The nine scalar conditions are encoded in $\mathbf{A}_{\mathrm{eq}}\mathbf{z} = \mathbf{b}_{\mathrm{eq}}$ as a sparse $9 \times 7N$ matrix: five rows fix the initial state and four rows fix the terminal $(x, y, v_x, v_y) = (0,0,0,0)$. The terminal mass is left free (its bound, $m \geq 1$, is a box constraint).
+\paragraph{Linear equality (boundary conditions).} The nine scalar conditions are encoded in $\mathbf{A}_{\mathrm{eq}}\mathbf{z} = \mathbf{b}_{\mathrm{eq}}$ as a sparse $9 \times 7N$ matrix: five rows fix the initial state and four rows fix the terminal $(x, y, v_x, v_y) = (0,0,0,0)$. The terminal mass is left free; its strictly-positive lower bound is enforced as a box constraint (see below).
 
 \paragraph{Nonlinear equality (defects).} The function \texttt{trap\_nonlcon} reshapes $\mathbf{z}$ into a $7\times N$ matrix, evaluates the right-hand side $\mathbf{f}_k$ at every node via \texttt{dyn\_rhs}, and assembles the $5(N-1) = 245$ defect entries of Eq.~\eqref{eq:defects}.
 
@@ -101,6 +101,8 @@ Option                          & Value \\
 \end{tabular}
 \end{table}
 
-The SQP algorithm was preferred over the interior-point method (\texttt{fmincon}'s default) for two reasons: SQP exploits a warm start more effectively when sweeping $t_f$ in the sensitivity study, and it tracks the active-set structure of the bang-bang optimum more efficiently than barrier-based interior-point iterations. Gradients are not provided explicitly, so \texttt{fmincon} computes them via finite differences; the typical wall time at $N = 50$ is approximately $30$~s per solve on a modern laptop.
+The SQP algorithm was preferred over the interior-point method (\texttt{fmincon}'s default) because it tracks the active-set structure of the max--coast--max optimum --- with the thrust bound binding on entire arcs --- more efficiently than barrier-based interior-point iterations, and it copes well with the equality-dense defect block. Gradients are not provided explicitly, so \texttt{fmincon} computes them via finite differences; the typical wall time at $N = 50$ is on the order of one minute per solve on the test laptop.
+
+A practical remark on the convergence tail: on the coast arc the optimal control sits exactly at $\mathbf{T} = \mathbf{0}$, which is the nonsmooth point of $\|\mathbf{T}\|$ in the mass equation \eqref{eq:hm2_mdot} and in the thrust-magnitude constraint. Under finite-difference gradients this caps the attainable first-order optimality at the $10^{-3}$--$10^{-4}$ level (non-dim) and explains why some runs stop at the iteration limit with feasible, engineering-quality iterates rather than at the optimality tolerance (Sections~\ref{sec:results}--\ref{sec:sensitivity}). The standard remedies --- left to the roadmap --- are either analytical gradients with a smoothed norm, or the lossless-convexification slack $\Gamma \geq \|\mathbf{T}\|$ of A\c{c}ikme\c{s}e--Ploen, which removes the norm from the dynamics altogether.
 
 \end{document}

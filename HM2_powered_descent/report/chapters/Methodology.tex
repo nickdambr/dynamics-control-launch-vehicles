@@ -84,7 +84,7 @@ A point $\mathbf{z}^*$ is a local minimiser if there exist multipliers $(\boldsy
     \mu_j^*\, c_{\mathrm{ineq},j}(\mathbf{z}^*) &= 0,\quad \forall j
         && \text{(complementary slackness).}
 \end{align}
-Complementarity expresses that an inequality is either active ($c_j = 0$, with $\mu_j > 0$) or strictly inactive ($c_j < 0$, with $\mu_j = 0$). At the optimum of the powered-descent problem the upper thrust bound $\|\mathbf{T}\| = T_{\max}$ is active over a substantial portion of the trajectory, mirroring the bang-bang nature of the optimal control law for fuel-optimal problems with linear-in-control dynamics; the corresponding KKT multipliers are positive, identifying the binding constraints that shape the solution.
+Complementarity expresses that an inequality is either active ($c_j = 0$, with $\mu_j > 0$) or strictly inactive ($c_j < 0$, with $\mu_j = 0$). At the optimum of the powered-descent problem the upper thrust bound $\|\mathbf{T}\| = T_{\max}$ is active on the two burn arcs (about half of the nodes), mirroring the max--coast--max structure of the fuel-optimal control law for problems with linear-in-control dynamics; the corresponding KKT multipliers are positive, identifying the binding constraint that shapes the solution.
 
 \subsection{Sequential Quadratic Programming}\label{sec:sqp}
 

@@ -51,16 +51,19 @@ Or headless:
 matlab -batch "run('main_task1.m')"
 ```
 
-Expected runtime: ~30 s per `tf` value on a modern laptop (three runs total).
+Expected runtime: ~1–1.5 min per `tf` value on a modern laptop (three sweep
+runs plus a three-point grid-convergence study).
 
 ## Files
 
 | File              | Role                                                 |
 | ----------------- | ---------------------------------------------------- |
-| `main_task1.m`    | Top-level script: data, sensitivity sweep, plots.    |
+| `main_task1.m`    | Top-level script: data, sensitivity sweep, grid study, plots. |
 |                   | `solve_trapcol` — builds and solves the NLP.         |
 |                   | `trap_nonlcon` — defects + thrust bounds + glide-slope. |
 |                   | `dyn_rhs` — continuous dynamics (Eq. 2-6 of PDF).    |
+|                   | `diagnostics` — switching times, glide-slope margin, KKT activity. |
+|                   | `fwd_integrate_pwl` / `node_err` — ode45 replay fidelity metric. |
 |                   | `plot_results` — trajectory, thrust, mass, glide-slope plots. |
 
 ## Results
@@ -72,11 +75,23 @@ Expected runtime: ~30 s per `tf` value on a modern laptop (three runs total).
 | 39.90    | 1398.82    | 601.18    |
 
 Fuel consumption grows monotonically with `tf` over the swept window
-(longer hover ⇒ more gravity losses). All three solutions respect the
-glide-slope corridor and the thrust-magnitude bounds. The two shorter-`tf`
-runs terminate at the `MaxIterations` cap of 1000 with first-order
-optimality of order `1e-4` in non-dim units; constraint violations are
-below `1e-6` in all cases.
+(longer coast ⇒ more gravity losses). The thrust profile is the classic
+**max–coast–max** (bang-off-bang): for the nominal run the burns switch at
+`t ≈ 14.0 s` and `t ≈ 33.1 s`, and the `tf` variation is absorbed almost
+entirely by the coast arc. The KKT multipliers confirm that the upper
+thrust bound is the **only active path constraint** (glide-slope multipliers
+are numerically zero; minimum corridor margin 1.0–2.1° across the sweep).
+The two shorter-`tf` runs terminate at the `MaxIterations` cap of 1000 with
+first-order optimality of order `1e-3`–`1e-4` in non-dim units; constraint
+violations are below `1e-6` in all cases.
+
+A grid-convergence study at the nominal `tf` (N = 25/50/100) shows the
+ode45-replay node error dropping by ×4 per mesh halving — the expected
+`O(Δt²)` of the trapezoidal rule — while `m_f` fluctuates by less than
+±0.8 kg. Replaying the optimized controls open-loop through ode45 lands
+the trapezoidal solution 4.3 m from the pad at 0.11 m/s; the ZOH (RK4)
+variant replays to micrometre accuracy and the SCvx variants land within
+centimetres to decimetres (see the report for the full tables).
 
 | Trajectory (3 sensitivity runs + glide-slope corridor) | Thrust magnitude |
 |:-:|:-:|
@@ -104,6 +119,10 @@ below `1e-6` in all cases.
       `T_min > 0` via the slack-variable change of variable
       (Açikmeşe–Ploen), preserving the SOCP structure of variant (c).
 - [ ] **Tighten convergence at short `tf`.** The 36.10 s and 38.00 s
-      sensitivity runs currently hit the `MaxIterations = 1000` cap with
-      `OptimalityTolerance ≈ 1e-4` non-dim. Either raise the cap further,
-      supply analytical gradients, or warm-start from the nominal solution.
+      sensitivity runs hit the `MaxIterations = 1000` cap with first-order
+      optimality stalled at `1e-3`–`1e-4` non-dim. Root cause: the coast arc
+      sits exactly at the nonsmooth point `T = 0` of `‖T‖` under
+      finite-difference gradients. Fixes, in order of elegance: the
+      lossless-convexification slack `Γ ≥ ‖T‖` (removes the norm from the
+      dynamics), analytical gradients with a smoothed norm, or continuation
+      (warm-start each sweep run from the nominal solution).
