@@ -55,25 +55,33 @@ end
 
 %% Solve all three transcriptions
 fprintf('\n=== Trapezoidal transcription (Task 1 baseline) ===\n');
+t0 = tic;
 sol_trap_nd = solve_trap(tf_nd, N, dnd);
+t_trap = toc(t0);
 sol_trap = dim_sol(sol_trap_nd, ref);
-fprintf('  m_f = %.2f kg, fuel = %.2f kg\n', sol_trap.m_f, sol_trap.fuel);
+fprintf('  m_f = %.2f kg, fuel = %.2f kg, wall = %.1f s\n', ...
+    sol_trap.m_f, sol_trap.fuel, t_trap);
 
 fprintf('\n=== Nonlinear ZOH with RK4 propagation (Task 2 variant a) ===\n');
+t0 = tic;
 sol_zoh_nd = solve_zoh(tf_nd, N, dnd, n_sub);
+t_zoh = toc(t0);
 sol_zoh = dim_sol(sol_zoh_nd, ref);
-fprintf('  m_f = %.2f kg, fuel = %.2f kg\n', sol_zoh.m_f, sol_zoh.fuel);
+fprintf('  m_f = %.2f kg, fuel = %.2f kg, wall = %.1f s\n', ...
+    sol_zoh.m_f, sol_zoh.fuel, t_zoh);
 
 fprintf('\n=== LTV-linearized ZOH with SCvx (Task 2 variant b, Appendix A) ===\n');
 % Warm-start from the trapezoidal solution: the LTV linearisation is only
 % locally accurate, so a near-optimal initial reference + a hard trust region
 % on each decision variable are needed to keep SCvx from drifting.
+t0 = tic;
 [sol_scvx_nd, scvx_hist] = solve_scvx(tf_nd, N, dnd, scvx_max, scvx_tol, ...
                                       sol_trap_nd, trust);
+t_scvx = toc(t0);
 sol_scvx = dim_sol(sol_scvx_nd, ref);
 sol_scvx.iter = sol_scvx_nd.iter;
-fprintf('  m_f = %.2f kg, fuel = %.2f kg, iter = %d\n', ...
-    sol_scvx.m_f, sol_scvx.fuel, sol_scvx.iter);
+fprintf('  m_f = %.2f kg, fuel = %.2f kg, iter = %d, wall = %.1f s\n', ...
+    sol_scvx.m_f, sol_scvx.fuel, sol_scvx.iter, t_scvx);
 
 if yalmip_ok
     fprintf('\n=== LTV-linearized ZOH with SCvx + YALMIP/ECOS (Task 2 variant c) ===\n');
@@ -107,6 +115,33 @@ fprintf('  ZOH (RK4)                : max ||delta x|| = %.4e\n', max(err_zoh));
 fprintf('  ZOH (LTV + SCvx)         : max ||delta x|| = %.4e\n', max(err_scvx));
 if yalmip_ok
     fprintf('  ZOH (LTV + SCvx YALMIP)  : max ||delta x|| = %.4e\n', max(err_yscvx));
+end
+
+%% Replay landing accuracy + wall-time summary (SI units)
+%  Touchdown dispersion when the optimised control schedule is flown through
+%  the continuous-time nonlinear dynamics (ode45 replay): position and
+%  velocity error norms at t_f w.r.t. the (0,0,0,0) target, and final-mass
+%  drift w.r.t. the transcription's own m_f.
+land = @(s_nd, X) [norm(X(end,1:2)) * ref.L, ...
+                   norm(X(end,3:4)) * ref.V, ...
+                   (s_nd.m_f - X(end,5)) * ref.m];
+acc_trap = land(sol_trap_nd, X_tfi);
+acc_zoh  = land(sol_zoh_nd,  X_zfi);
+acc_scvx = land(sol_scvx_nd, X_sfi);
+
+fprintf('\n=== Replay landing accuracy (ode45, SI) and wall time ===\n');
+fprintf('%-26s | %12s | %14s | %14s | %9s\n', ...
+    'Transcription', 'pos err [m]', 'vel err [m/s]', 'm_f drift [kg]', 'wall [s]');
+fprintf('%-26s | %12.3e | %14.3e | %14.3e | %9.1f\n', ...
+    'Trapezoidal (PWL)', acc_trap, t_trap);
+fprintf('%-26s | %12.3e | %14.3e | %14.3e | %9.1f\n', ...
+    'ZOH (RK4)', acc_zoh, t_zoh);
+fprintf('%-26s | %12.3e | %14.3e | %14.3e | %9.1f\n', ...
+    'ZOH (LTV + SCvx)', acc_scvx, t_scvx);
+if yalmip_ok
+    acc_yscvx = land(sol_yscvx_nd, X_yfi);
+    fprintf('%-26s | %12.3e | %14.3e | %14.3e | %9.1f\n', ...
+        'ZOH (LTV + SCvx YALMIP)', acc_yscvx, t_yalmip);
 end
 
 %% Plots

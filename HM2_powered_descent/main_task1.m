@@ -48,6 +48,15 @@ for k = 1:numel(tf_list)
     sols{k} = dim_sol(sol_nd, ref);
     fprintf('  final mass = %.2f kg, fuel used = %.2f kg\n', ...
         sols{k}.m_f, sols{k}.fuel);
+    dg = diagnostics(sols{k}, data, N);
+    fprintf('  burn 1 ends t = %.2f s | burn 2 starts t = %.2f s | coast %.2f s\n', ...
+        dg.t_sw1, dg.t_sw2, dg.coast);
+    fprintf('  min glide-slope margin = %.2f deg (nodes above 1 m altitude)\n', ...
+        dg.gs_margin);
+    fprintf('  KKT: thrust upper bound active at %d/%d nodes, max glide-slope multiplier = %.1e\n', ...
+        dg.n_thr_active, N, dg.max_gs_mult);
+    fprintf('  fmincon: %d iterations, first-order optimality %.1e, exitflag %d\n', ...
+        sols{k}.iters, sols{k}.fopt, sols{k}.exitflag);
 end
 
 %% Plots
@@ -76,6 +85,23 @@ fprintf('\n--- Sensitivity summary ---\n');
 fprintf('%8s | %10s | %10s\n', 'tf [s]', 'm_f [kg]', 'fuel [kg]');
 for k = 1:numel(tf_list)
     fprintf('%8.2f | %10.2f | %10.2f\n', tf_list(k), sols{k}.m_f, sols{k}.fuel);
+end
+
+%% Grid-convergence study (nominal tf, increasing N)
+%  Fidelity metric: forward-integrate the PWL control through the nonlinear
+%  dynamics with ode45 and take the max position+velocity node error (nondim),
+%  same metric used for the Task 2 transcription comparison.
+N_list = [25, 50, 100];
+fprintf('\n--- Grid convergence (tf = %.2f s) ---\n', tf_nom);
+fprintf('%6s | %10s | %14s | %10s\n', 'N', 'm_f [kg]', 'max err [-]', 'wall [s]');
+for k = 1:numel(N_list)
+    t0 = tic;
+    s_nd = solve_trapcol(tf_nom / ref.t, N_list(k), dnd);
+    wall = toc(t0);
+    [~, X_fi] = fwd_integrate_pwl(s_nd, dnd);
+    err = max(node_err(s_nd, X_fi));
+    fprintf('%6d | %10.2f | %14.3e | %10.1f\n', ...
+        N_list(k), s_nd.m_f * ref.m, err, wall);
 end
 
 %% =====================================================================
@@ -116,6 +142,11 @@ function sol = dim_sol(s_nd, ref)
     sol.tf   = s_nd.tf  * ref.t;
     sol.m_f  = s_nd.m_f * ref.m;
     sol.fuel = (s_nd.m0 - s_nd.m_f) * ref.m;
+    % Solver diagnostics carried over unchanged (lambda stays non-dim)
+    sol.exitflag = s_nd.exitflag;
+    sol.iters    = s_nd.iters;
+    sol.fopt     = s_nd.fopt;
+    sol.lambda   = s_nd.lambda;
 end
 
 function sol = solve_trapcol(tf, N, d)
@@ -184,8 +215,8 @@ function sol = solve_trapcol(tf, N, d)
         'ConstraintTolerance',    1e-6, ...
         'StepTolerance',          1e-10);
 
-    [z_opt, ~, exitflag] = fmincon(f_obj, z0, [], [], full(Aeq), beq, ...
-                                   lb, ub, nlc, opts);
+    [z_opt, ~, exitflag, out, lam] = fmincon(f_obj, z0, [], [], full(Aeq), beq, ...
+                                             lb, ub, nlc, opts);
 
     if exitflag <= 0
         warning('fmincon did not converge cleanly (exitflag = %d)', exitflag);
@@ -204,6 +235,10 @@ function sol = solve_trapcol(tf, N, d)
     sol.tf  = tf;
     sol.m_f = sol.m(end);
     sol.m0  = d.m0;
+    sol.exitflag = exitflag;
+    sol.iters    = out.iterations;
+    sol.fopt     = out.firstorderopt;
+    sol.lambda   = lam;
 end
 
 function [c_ineq, c_eq] = trap_nonlcon(z, N, dt, d)
@@ -243,6 +278,58 @@ function dx = dyn_rhs(s, Vc)
            s(6) / s(5);
            s(7) / s(5) - 1;
           -Vc * Tmag ];
+end
+
+function dg = diagnostics(sol, d, N)
+    % Post-solve diagnostics on the SI solution:
+    %   - switching times of the max-coast-max thrust profile (linear
+    %     interpolation of the |T| crossings at 0.5*Tmax) and coast length;
+    %   - minimum glide-slope margin over the nodes above 1 m altitude
+    %     (atan(|x|/y) is 0/0 at the pad, so sub-metre nodes are excluded);
+    %   - KKT activity from the (non-dim) fmincon multipliers; ineqnonlin
+    %     rows are stacked as [thr_lo; thr_hi; gs_pos; gs_neg], N rows each.
+    thr = 0.5 * d.Tmax;
+    Tm  = sol.Tmag;  t = sol.t;
+    i_dn = find(Tm(1:end-1) >= thr & Tm(2:end) <  thr, 1, 'first');
+    i_up = find(Tm(1:end-1) <  thr & Tm(2:end) >= thr, 1, 'last');
+    cross = @(i) t(i) + (thr - Tm(i)) * (t(i+1) - t(i)) / (Tm(i+1) - Tm(i));
+    dg.t_sw1 = cross(i_dn);
+    dg.t_sw2 = cross(i_up);
+    dg.coast = dg.t_sw2 - dg.t_sw1;
+
+    ok = sol.y > 1;
+    th = atan2(abs(sol.x(ok)), sol.y(ok));
+    dg.gs_margin = rad2deg(d.theta_mx) - max(rad2deg(th));
+
+    lam = sol.lambda.ineqnonlin;
+    dg.n_thr_active = sum(lam(N+1:2*N) > 1e-6);
+    dg.max_gs_mult  = max(lam(2*N+1:4*N));
+end
+
+function [t, X] = fwd_integrate_pwl(sol, d)
+    % Forward-integrate the nonlinear (non-dim) dynamics under the
+    % piecewise-linear control implied by the trapezoidal transcription,
+    % sampling at the grid nodes (same construction as in main_task2.m).
+    N = numel(sol.t);
+    X = zeros(N, 5);
+    X(1,:) = [d.x0, d.y0, d.vx0, d.vy0, d.m0];
+    opts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
+    for k = 1:N-1
+        t_k = sol.t(k);  t_kp = sol.t(k+1);
+        u_fcn = @(tt) [
+            sol.Tx(k) + (sol.Tx(k+1)-sol.Tx(k))*(tt-t_k)/(t_kp-t_k);
+            sol.Ty(k) + (sol.Ty(k+1)-sol.Ty(k))*(tt-t_k)/(t_kp-t_k)];
+        rhs_t = @(tt, x) dyn_rhs([x; u_fcn(tt)], d.Vc);
+        [~, Y] = ode45(rhs_t, [t_k, t_kp], X(k,:).', opts);
+        X(k+1,:) = Y(end,:);
+    end
+    t = sol.t;
+end
+
+function e = node_err(sol, X)
+    % Per-node position+velocity error norm (non-dim) between the NLP
+    % solution and the ode45 replay.  Mass is monitored separately.
+    e = vecnorm([sol.x sol.y sol.vx sol.vy] - X(:,1:4), 2, 2);
 end
 
 function plot_results(sols, tf_list, d)
@@ -290,14 +377,19 @@ function plot_results(sols, tf_list, d)
     legend('Location','best');
 
     % --- Glide-slope angle vs time ---
+    % Nodes below 1 m altitude are masked: atan(|x|/y) -> 0/0 at the pad,
+    % where mm-level (within-tolerance) residuals produce arbitrary angles.
     figure('Name','Glide-slope','Position',[100 100 600 400]);
     hold on; grid on;
     for k = 1:numel(sols)
-        th = atan2(abs(sols{k}.x), sols{k}.y);
-        plot(sols{k}.t, rad2deg(th), '-', 'Color', colors(k,:), ...
+        ok = sols{k}.y > 1;
+        th = atan2(abs(sols{k}.x(ok)), sols{k}.y(ok));
+        plot(sols{k}.t(ok), rad2deg(th), '-', 'Color', colors(k,:), ...
             'LineWidth', 1.6, 'DisplayName', lbl{k});
     end
-    yline(rad2deg(d.theta_mx), 'k--', '\theta_{max}', 'HandleVisibility','off');
+    yline(rad2deg(d.theta_mx), 'k--', '\theta_{max}', ...
+        'LabelHorizontalAlignment', 'left', 'HandleVisibility', 'off');
+    yl = ylim; ylim([yl(1), rad2deg(d.theta_mx) + 4]);   % keep the bound off the frame
     xlabel('t  [s]'); ylabel('atan(|x|/y)  [deg]');
     title('Glide-slope angle');
     legend('Location','best');
