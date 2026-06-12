@@ -7,8 +7,8 @@
 \subsection{Rigid model and loop}
 
 Neglecting the bending mode, the plant reduces to the four states
-$[\,z,\dot z,\theta,\dot\theta\,]$ and the actuator is taken as ideal
-($W_{TVC}\!=\!e^{-\tau s}\!=\!1$). The open-loop transfer broken at the TVC
+$[\,z,\dot z,\theta,\dot\theta\,]$ and the actuator is taken as ideal:
+$W_{TVC}(s)=1$ and no transport delay. The open-loop transfer broken at the TVC
 deflection, in the $1+L$ convention, is obtained by closing the static
 PD law of Eq.~\eqref{eq:control} around the plant:
 \begin{equation}
@@ -33,18 +33,26 @@ fixed at $K_{P,z}=K_{D,z}=-10^{-3}$. The resulting design is
 K_{P,\theta} = 1.98,\quad K_{D,\theta} = 1.40,\quad
 K_{P,z}=K_{D,z}=-10^{-3},
 \end{equation}
-giving $|GM| = 6.0$~dB at $0.34$~rad/s and $|PM| = 30^\circ$ at $0.21$~rad/s.
+with margins $|GM| = 6.0$~dB at $0.34$~rad/s and $|PM| = 30^\circ$ at
+$0.21$~rad/s.
+In the pole-placement language of the course notes the retained gains place
+the dominant pitch pair at $\omega_c = \sqrt{K_1 K_{P,\theta}-A_6} = 2.4$~rad/s
+--- inside the typical $1$--$4$~rad/s control band --- with an equivalent
+damping $\zeta = K_1 K_{D,\theta}/(2\omega_c) = 1.34$, deliberately above the
+$0.7$--$0.8$ pole-placement range because here the damping is driven by the
+phase-margin target rather than by a step-response specification.
 The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve threading
 between the two critical points $(-180^\circ,0\,\text{dB})$ and
 $(-540^\circ,0\,\text{dB})$ --- the geometric signature of conditional
-stability --- and clearing the $6$~dB closed-loop contour.
+stability --- and clearing the $6$~dB closed-loop contour; the markers locate
+the phase and gain crossovers where the margins are read.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\textwidth]{task1_nichols.png}
 \caption{Task 1 --- Nichols chart of the rigid open-loop transfer. The loop is
 conditionally stable; the design meets $|GM|\approx 6$~dB and
-$|PM|\approx 30^\circ$.}
+$|PM|\approx 30^\circ$ (markers at the crossover frequencies).}
 \label{fig:t1nichols}
 \end{figure}
 
@@ -53,11 +61,12 @@ $|PM|\approx 30^\circ$.}
 The closed loop is excited by a deterministic ``1-cosine'' wind gust whose
 amplitude ($V_g = 6.4$~m/s) is taken from the reference dry-wind dispersion
 (\texttt{drywind.mat}, severe regime) at the current altitude, converted to a
-wind angle of attack $\alpha_w = v_w/V$. The four key time histories requested
-by the assignment are shown in Figure~\ref{fig:t1gust}: the pitch attitude stays
-below $0.14^\circ$, the TVC deflection peaks at $0.38^\circ$, and the lateral
-drift builds up smoothly to a few metres, as expected from the weak drift
-feedback. The response is well damped and the actuator effort is modest.
+wind angle of attack $\alpha_w = v_w/V$ with a peak of $0.39^\circ$. The four
+key time histories requested by the assignment are shown in
+Figure~\ref{fig:t1gust}: the pitch attitude peaks at $0.139^\circ$, the TVC
+deflection at $0.38^\circ$, and the lateral drift builds up smoothly to
+$2.5$~m, as expected from the weak drift feedback. The response is well damped
+and the actuator effort is modest.
 
 \begin{figure}[H]
 \centering
@@ -65,6 +74,26 @@ feedback. The response is well damped and the actuator effort is modest.
 \caption{Task 1 --- response to a severe wind gust: pitch attitude $\theta$,
 lateral drift $z$, drift rate $\dot z$ and TVC deflection $\delta$.}
 \label{fig:t1gust}
+\end{figure}
+
+Since max-$\bar q$ is the load-critical point of the trajectory, the total
+angle of attack $\alpha = \theta + \dot z/V + \alpha_w$ and the structural-load
+indicator $\bar q\,\alpha$ are also monitored (Figure~\ref{fig:t1alpha}). The
+attitude loop pitches the vehicle slightly into the wind
+($\theta \to -0.14^\circ$ at the gust peak), so the peak total incidence,
+$0.31^\circ$, stays \emph{below} the wind contribution alone --- a mild
+load-relieving action. With $\bar q = 81$~kPa the peak load indicator is
+$\bar q\,\alpha = 25$~kPa\,deg, far from typical structural allowables, so at
+this gust level the drift-minimum--oriented gain choice does not conflict with
+the load-minimum requirement.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{task1_alpha_load.png}
+\caption{Task 1 --- angle-of-attack budget $\alpha = \theta + \dot z/V +
+\alpha_w$ (left) and aerodynamic load indicator $\bar q\,\alpha$ (right) during
+the severe gust.}
+\label{fig:t1alpha}
 \end{figure}
 
 \end{document}

@@ -39,9 +39,9 @@ unstable, the loop is *conditionally stable* and `margin()` reports the
 
 | Task | Model | Result |
 |------|-------|--------|
-| **1** | Rigid body, ideal actuator | PD tuned to **\|GM\| = 6.0 dB, \|PM\| = 30°** (auto-tuner) |
-| **2** | + TVC + 20 ms delay + bending mode (INS coupling) | bending resonance is +39 dB → loop unstable; a **gain-stabilising notch** (Eq. 4) at ω_BM restores stability while preserving the rigid margins |
-| **3** | ±30 % on `μα` and `μc` (4 corners) | controller **fixed**; all corners remain stable |
+| **1** | Rigid body, ideal actuator | PD tuned to **\|GM\| = 6.0 dB, \|PM\| = 30°** (auto-tuner); equivalent pitch pair ω_c = 2.4 rad/s (course-typical 1–4) |
+| **2** | + TVC + 20 ms delay + bending mode (INS coupling) | bending resonance is +39 dB → loop unstable; a **four-way filter trade** (Eq.-4 lead-lag alone, deep notch, notch triplet, notch+lead-lag) selects a **gain-stabilising notch** at ω_BM that restores stability and preserves the rigid margins |
+| **3** | ±30 % on `μα` and `μc` | controller **fixed**; all four **uncertainty-box vertices** stable (worst, μα↑ μc↓: 1.5 dB / 9.1°) |
 
 The lateral gains are `Kp_z = Kd_z = −1×10⁻³` (per the assignment guidelines);
 the pitch gains found by the tuner are `Kp_θ = 1.98`, `Kd_θ = 1.40`.
@@ -52,35 +52,56 @@ the pitch gains found by the tuner are `Kp_θ = 1.98`, `Kd_θ = 1.40`.
 
 The Nichols curve threads between the two critical points (signature of
 conditional stability) and clears the 6 dB contour; the response to a severe
-wind gust (`V_g = 6.4 m/s`) keeps the pitch excursion below 0.14°.
+wind gust (`V_g = 6.4 m/s`, peak `α_w = 0.39°`) keeps the pitch excursion below
+0.14°. Since max-q̄ is the load-critical point, the angle-of-attack budget
+`α = θ + ż/V + α_w` and the load indicator `q̄α` are also monitored: the loop
+pitches slightly into the wind, so peak `α = 0.31°` stays *below* the wind
+contribution (mild load relief), with `q̄α = 25 kPa·deg`.
 
 ![Task 1 Nichols](figures/task1_nichols.png)
 ![Task 1 gust response](figures/task1_gust_response.png)
+![Task 1 alpha budget](figures/task1_alpha_load.png)
 
 ### Task 2 — full model
 
-Without the notch the +39 dB bending peak destabilises the loop (red); the notch
-drives `|L(ω_BM)|` to −12 dB and recovers stability (blue), with the time
-response virtually unchanged from the rigid case.
+Without compensation the +39 dB bending peak destabilises the loop (red).
+Four bending filters are traded with fixed PD gains:
+
+| Candidate | min \|GM\| [dB] | \|PM\| [°] | DM [ms] | \|L(ω_BM)\| [dB] | stable |
+|-----------|----------------|-----------|---------|------------------|--------|
+| Eq.-4 lead-lag alone (best of 75 in the suggested ranges) | 0.61 | 9.0 | — | +23.2 | ❌ |
+| **deep notch (retained)** | 1.81 | 26.5 | 58.8 | −12.1 | ✅ |
+| notch triplet 0.9/1/1.1·ω_BM | 1.48 | 11.6 | — | −46.0 | ❌ (~30° lag at the rigid crossover) |
+| notch + lead-lag | 0.73 | 9.2 | 21.9 | −18.3 | ✅ |
+
+The deep notch drives `|L(ω_BM)|` to −12 dB and keeps the rigid margins, with
+the time response virtually unchanged from the rigid case. Its price is
+**exact ω_BM knowledge**: ±5 % detuning destabilises the loop, while the
+notch+lead-lag variant tolerates [−5 %, +10 %] at the cost of thinner nominal
+margins — both documented in the report.
 
 ![Task 2 Nichols](figures/task2_nichols.png)
 ![Task 2 rigid vs full](figures/task2_comparison_rigid_vs_full.png)
 
 ### Task 3 — robustness (±30 %)
 
-| Case | μα | μc | rigid \|GM\| [dB] | \|PM\| [°] | peak θ [°] | peak z [m] | stable |
-|------|----|----|------------------|-----------|-----------|-----------|--------|
-| Nominal | 1.00 | 1.00 | 6.58 | 26.5 | 0.132 | 2.37 | ✅ |
-| C1 | 0.70 | 1.00 | 9.44 | 25.7 | 0.085 | 1.91 | ✅ |
-| C2 | 1.30 | 1.00 | 4.47 | 22.1 | 0.187 | 2.88 | ✅ |
-| C3 | 1.00 | 0.70 | 3.59 | 18.6 | 0.219 | 3.16 | ✅ |
-| C4 | 1.00 | 1.30 | 8.79 | 11.8 | 0.093 | 2.01 | ✅ |
+The four **uncertainty-box vertices** (the assignment corner cases) plus the
+one-at-a-time sensitivities S1–S4, all with the fixed Task-2 controller:
 
-Higher aerodynamic instability (`μα↑`, C2) erodes the **rigid** margin and
-worsens the gust response, while higher control authority (`μc↑`, C4) raises the
-loop gain and erodes the **bending** margin — the two uncertainties stress
-different parts of the loop, but the fixed controller tolerates the full ±30 %
-box.
+| Case | μα | μc | rigid \|GM\| [dB] | min \|GM\| [dB] | \|PM\| [°] | DM [ms] | peak θ [°] | peak z [m] | stable |
+|------|----|----|------------------|----------------|-----------|---------|-----------|-----------|--------|
+| Nominal | 1.00 | 1.00 | 6.58 | 1.81 | 26.5 | 58.8 | 0.132 | 2.37 | ✅ |
+| V1 | 0.70 | 0.70 | 6.42 | 2.81 | 31.3 | 134.9 | 0.136 | 2.38 | ✅ |
+| V2 | 0.70 | 1.30 | 11.68 | 0.88 | 11.3 | 19.2 | 0.061 | 1.67 | ✅ |
+| **V3** | **1.30** | **0.70** | **1.53** | 1.53 | **9.1** | 156.4 | **0.353** | **4.20** | ✅ |
+| V4 | 1.30 | 1.30 | 6.66 | 0.93 | 12.3 | 21.3 | 0.130 | 2.36 | ✅ |
+| S1–S4 | one-at-a-time ±30 % | | 3.59–9.44 | 0.91–2.82 | 11.8–25.7 | 20–145 | 0.085–0.219 | 1.91–3.16 | ✅ |
+
+`μα↑` erodes the **rigid** margin and the gust response, `μc↑` erodes the
+**bending/delay** margins, and the worst-case vertex V3 (more unstable airframe
+*and* less authority) compounds them to 1.5 dB / 9.1° — still stable, but the
+quantitative argument for gain scheduling in a flight design. The S* rows
+attribute the effects parameter by parameter.
 
 ![Task 3 Nichols corners](figures/task3_nichols_corners.png)
 ![Task 3 gust corners](figures/task3_gust_corners.png)

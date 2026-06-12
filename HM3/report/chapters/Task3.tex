@@ -7,73 +7,101 @@
 The aerodynamic moment $\mu_\alpha = A_6$ and the control effectiveness
 $\mu_c = K_1$ are treated as uncertain. The controller designed in Task~2
 (PD gains plus bending notch) is held \textbf{fixed} and its robustness is
-assessed over the four corner cases obtained by varying $\mu_\alpha$ and $\mu_c$
-independently by $\pm 30\%$, together with the nominal case.
+assessed over the \emph{four corner cases} of the uncertainty box, i.e.\ the
+vertices V1--V4 obtained by independently varying $\mu_\alpha$ and $\mu_c$ by
+$\pm 30\%$. Since each vertex perturbs both parameters at once, the four
+one-at-a-time variations S1--S4 ($\pm 30\%$ on a single parameter) are also
+evaluated: they sit on the edge midpoints of the box rather than on its
+corners, but they cleanly attribute the observed effects to each parameter.
 
 \subsection{Frequency- and time-domain analysis}
 
-Table~\ref{tab:corners} collects, for each corner, the rigid-body (low-frequency)
-gain margin, the smallest gain margin over the whole loop (which is governed by
-the bending shoulder), the phase margin, and the peak pitch and lateral-drift
-excursions to the same severe gust. \emph{All four corners remain stable.}
+Table~\ref{tab:corners} collects, for every case, the rigid-body
+(low-frequency) gain margin, the smallest gain margin over the whole loop
+(governed by the bending shoulder), the phase margin, the delay margin, and
+the peak pitch and lateral-drift excursions to the same severe gust.
+\emph{All vertices remain stable}: the fixed Task-2 controller tolerates the
+entire $\pm 30\%$ uncertainty box without re-design.
 
 \begin{table}[H]
 \centering
-\caption{Task 3 --- margins and gust-response peaks over the $\pm 30\%$ corners.}
+\caption{Task 3 --- margins and gust-response peaks: box vertices (V1--V4, the
+assignment corner cases) and one-at-a-time sensitivities (S1--S4).}
 \label{tab:corners}
-\begin{tabular}{lccccccc}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccccc}
 \toprule
-Case & $\mu_\alpha$ & $\mu_c$ & rigid $|GM|$ [dB] & min $|GM|$ [dB] & $|PM|$ [$^\circ$] & peak $\theta$ [$^\circ$] & peak $z$ [m] \\
+Case & $\mu_\alpha$ & $\mu_c$ & rigid $|GM|$ [dB] & min $|GM|$ [dB] & $|PM|$ [$^\circ$] & DM [ms] & peak $\theta$ [$^\circ$] & peak $z$ [m] \\
 \midrule
-Nominal & 1.00 & 1.00 & 6.58 & 1.81 & 26.5 & 0.132 & 2.37 \\
-C1 & 0.70 & 1.00 & 9.44 & 1.79 & 25.7 & 0.085 & 1.91 \\
-C2 & 1.30 & 1.00 & 4.47 & 1.83 & 22.1 & 0.187 & 2.88 \\
-C3 & 1.00 & 0.70 & 3.59 & 2.82 & 18.6 & 0.219 & 3.16 \\
-C4 & 1.00 & 1.30 & 8.79 & 0.91 & 11.8 & 0.093 & 2.01 \\
+Nominal & 1.00 & 1.00 & 6.58  & 1.81 & 26.5 & 58.8  & 0.132 & 2.37 \\
+\midrule
+V1 & 0.70 & 0.70 & 6.42  & 2.81 & 31.3 & 134.9 & 0.136 & 2.38 \\
+V2 & 0.70 & 1.30 & 11.68 & 0.88 & 11.3 & 19.2  & 0.061 & 1.67 \\
+V3 & 1.30 & 0.70 & \textbf{1.53} & 1.53 & \textbf{9.1} & 156.4 & \textbf{0.353} & \textbf{4.20} \\
+V4 & 1.30 & 1.30 & 6.66  & 0.93 & 12.3 & 21.3  & 0.130 & 2.36 \\
+\midrule
+S1 & 0.70 & 1.00 & 9.44  & 1.79 & 25.7 & 56.1  & 0.085 & 1.91 \\
+S2 & 1.30 & 1.00 & 4.47  & 1.83 & 22.1 & 61.8  & 0.187 & 2.88 \\
+S3 & 1.00 & 0.70 & 3.59  & 2.82 & 18.6 & 144.6 & 0.219 & 3.16 \\
+S4 & 1.00 & 1.30 & 8.79  & 0.91 & 11.8 & 20.2  & 0.093 & 2.01 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The Nichols overlay (Figure~\ref{fig:t3nichols}) shows the corners clustering
-tightly at low frequency and fanning out near the bending frequency; the
-time-domain overlay (Figure~\ref{fig:t3gust}) shows the spread of the gust
-response.
+The Nichols overlay over the nominal case and the four vertices
+(Figure~\ref{fig:t3nichols}) shows the curves clustering at low frequency and
+fanning out near the bending frequency; the time-domain overlay
+(Figure~\ref{fig:t3gust}) shows the corresponding spread of the gust response.
 
 \subsection{Discussion}
 
-The two uncertainties stress different parts of the loop:
+The sensitivities S1--S4 attribute the effects: $\mu_\alpha$ moves the unstable
+airframe pole ($\pm 30\%$ shifts the rigid margin by roughly $\mp 2$--$3$~dB
+and scales the gust excursions), while $\mu_c$ scales the whole loop gain
+($+30\%$ improves the rigid margin but pushes the gain-stabilised bending
+shoulder $2.3$~dB closer to $0$~dB and halves the delay margin). The vertices
+then combine these mechanisms:
+
 \begin{itemize}
-\item A larger aerodynamic moment ($\mu_\alpha\!\uparrow$, case C2) makes the
-airframe \emph{more} unstable (the RHP pole moves further right), which erodes
-the rigid-body gain margin (from $6.6$ to $4.5$~dB) and produces the largest
-pitch and drift excursions together with the low-$\mu_c$ case.
-\item A larger control effectiveness ($\mu_c\!\uparrow$, case C4) raises the
-overall loop gain by $\approx 2.3$~dB; this \emph{improves} the rigid margin but
-pushes the bending resonance closer to instability, collapsing the minimum gain
-margin to $0.9$~dB. The bending channel, not the rigid one, is the binding
-constraint in this corner.
-\item The benign corners are C1 ($\mu_\alpha\!\downarrow$, a less unstable
-airframe) and, for the bending margin, C3.
+\item \textbf{V3} ($\mu_\alpha\!\uparrow$, $\mu_c\!\downarrow$) is the
+\emph{worst case for the rigid loop and for performance}, as the two effects
+compound: the airframe is more unstable \emph{and} the authority to fight it is
+reduced. The rigid gain margin collapses to $1.5$~dB with $|PM| = 9.1^\circ$,
+and the gust excursions grow to $0.35^\circ$ in pitch and $4.2$~m of drift ---
+roughly $60\%$ beyond the worst one-at-a-time case (S3), which is why testing
+the actual vertices, and not only the single-parameter variations, is
+essential.
+\item \textbf{V2 and V4} ($\mu_c\!\uparrow$) are the \emph{worst cases for the
+bending channel}: the loop-gain increase squeezes the minimum gain margin to
+$0.9$~dB and the delay margin to ${\sim}20$~ms. The binding constraint in
+these corners is the flexible side of the loop, not the rigid one.
+\item \textbf{V1} ($\mu_\alpha\!\downarrow$, $\mu_c\!\downarrow$) is benign on
+both counts: the two reductions nearly cancel in the rigid loop and relax the
+bending shoulder.
 \end{itemize}
 
-In summary, performance is worst for high aerodynamic instability while
-stability robustness is tightest for high control authority; nevertheless the
-fixed Task~2 controller tolerates the entire $\pm 30\%$ uncertainty box without
-re-design, confirming the adequacy of the classical design at the max-$\bar q$
-condition.
+In summary, performance degradation is driven by $\mu_\alpha$ and mitigated by
+$\mu_c$, stability of the bending channel is eroded by $\mu_c$, and the
+worst-case combination V3 leaves single-digit margins. The fixed classical
+design survives the whole box --- but a requirement of, say, $\ge 3$~dB and
+$\ge 10^\circ$ in every corner would already call for either gain scheduling
+on $\bar q$ or a robust-synthesis retune, which is the practical takeaway of
+this exercise.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{task3_nichols_corners.png}
-\caption{Task 3 --- Nichols overlay over the nominal and four corner cases.}
+\includegraphics[width=0.72\textwidth]{task3_nichols_corners.png}
+\caption{Task 3 --- Nichols overlay over the nominal case and the four
+uncertainty-box vertices.}
 \label{fig:t3nichols}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{task3_gust_corners.png}
-\caption{Task 3 --- wind-gust response across the corner cases: pitch attitude
-(left) and lateral drift (right).}
+\caption{Task 3 --- wind-gust response over the nominal case and the four
+vertices: pitch attitude (left) and lateral drift (right).}
 \label{fig:t3gust}
 \end{figure}
 

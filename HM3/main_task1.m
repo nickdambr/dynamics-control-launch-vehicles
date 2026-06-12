@@ -26,6 +26,13 @@ G = build_plant_rigid(p);
 fprintf('\n=== Controller tuning (rigid, ideal actuator) ===\n');
 [K, m] = design_controller(G, []);    % [] => ideal actuator Wact = 1
 
+% Cross-check against the pole-placement view of the course notes: the
+% pitch-only closed loop s^2 + K1*Kd*s + (K1*Kp - A6) has
+wc_eq = sqrt(p.K1*K.Kp_th - p.A6);
+ze_eq = p.K1*K.Kd_th/(2*wc_eq);
+fprintf(['  Equivalent pitch CL pair: wc = %.2f rad/s (course-typical 1-4), ' ...
+         'zeta = %.2f (margin-driven,\n  above the 0.71-0.81 pole-placement range)\n'], wc_eq, ze_eq);
+
 [L, T] = assemble_loop(G, K);
 
 %% Frequency-domain margins
@@ -39,16 +46,26 @@ fprintf('  Closed-loop stable: %d\n', m.stable);
 %% Wind-gust time response (theta, z, zdot, delta)
 w = load_wind_profile(p);
 r = simulate_gust_response(T, w);
-fprintf('\n--- Gust response (%s gust, Vg = %.2f m/s) ---\n', w.severity, w.Vg);
+fprintf('\n--- Gust response (%s gust, Vg = %.2f m/s -> peak alpha_w = %.2f deg) ---\n', ...
+        w.severity, w.Vg, w.Vg/p.V*180/pi);
 fprintf('  peak |theta| = %.3f deg\n', r.peak_theta*180/pi);
 fprintf('  peak |z|     = %.2f m\n',   r.peak_z);
 fprintf('  peak |delta| = %.3f deg\n', r.peak_delta*180/pi);
+fprintf('  peak |alpha| = %.3f deg  -> peak qbar*alpha = %.1f kPa deg (qbar = %.1f kPa)\n', ...
+        r.peak_alpha*180/pi, p.qbar/1000*r.peak_alpha*180/pi, p.qbar/1000);
 
 %% ---------------------------------------------------------------- Figures
 % Nichols chart of the open-loop transfer
 f1 = figure('Name','nichols','Color','w','Position',[100 100 620 560]);
 nichols(L); hold on; grid on;
 ngrid;
+% Mark the points where the margins are read (phase/gain crossovers)
+[magG, phG] = bode(L, m.wc_gain);    % GM: phase-crossover frequency
+[magP, phP] = bode(L, m.wc_phase);   % PM: gain-crossover frequency
+plot(phG(:), 20*log10(magG(:)), 'rs', 'MarkerSize',8, 'LineWidth',1.4);
+plot(phP(:), 20*log10(magP(:)), 'rd', 'MarkerSize',8, 'LineWidth',1.4);
+text(phG(:)+8, 20*log10(magG(:)), sprintf('|GM| @ %.2f rad/s', m.wc_gain), 'FontSize',8);
+text(phP(:)+8, 20*log10(magP(:))-2, sprintf('|PM| @ %.2f rad/s', m.wc_phase), 'FontSize',8);
 title(sprintf('Task 1 - Rigid loop Nichols  (|GM|=%.1f dB, |PM|=%.0f^\\circ)', ...
       abs(m.GM_dB), abs(m.PM_deg)));
 
@@ -69,10 +86,28 @@ xlabel('t [s]'); ylabel('$\dot z$ [m/s]','Interpreter','latex'); title('Lateral 
 nexttile; plot(r.t, r.delta*180/pi,'LineWidth',1.4); grid on;
 xlabel('t [s]'); ylabel('\delta [deg]'); title('TVC deflection');
 
+% Angle-of-attack budget and aerodynamic load indicator (course Lec. 16-17:
+% alpha = theta + zdot/V + alpha_w drives the structural load qbar*alpha,
+% the sizing quantity at max-qbar)
+f3 = figure('Name','alpha_load','Color','w','Position',[100 100 820 340]);
+tl2 = tiledlayout(f3,1,2,'TileSpacing','compact','Padding','compact');
+title(tl2,'Task 1 - Angle-of-attack budget and aerodynamic load');
+nexttile; hold on; grid on;
+plot(r.t, r.alpha *180/pi, 'LineWidth',1.6);
+plot(r.t, r.theta *180/pi, '--','LineWidth',1.2);
+plot(r.t, r.zdot/p.V*180/pi, '-.','LineWidth',1.2);
+plot(r.t, r.alphaw*180/pi, ':','LineWidth',1.2);
+xlabel('t [s]'); ylabel('[deg]');
+legend({'$\alpha$','$\theta$','$\dot z/V$','$\alpha_w$'},'Interpreter','latex','Location','best');
+title('$\alpha = \theta + \dot z/V + \alpha_w$','Interpreter','latex');
+nexttile; plot(r.t, p.qbar/1000*r.alpha*180/pi, 'LineWidth',1.6); grid on;
+xlabel('t [s]'); ylabel('$\bar q\,\alpha$ [kPa deg]','Interpreter','latex');
+title(sprintf('Aerodynamic load  (peak %.1f kPa deg)', p.qbar/1000*r.peak_alpha*180/pi));
+
 %% Export figures (PNG, 200 dpi) next to the script
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
-for f = [f1 f2]
+for f = [f1 f2 f3]
     try, theme(f,'light'); catch, end          % publication (light) theme
     exportgraphics(f, fullfile(fig_dir, ['task1_' get(f,'Name') '.png']), ...
                    'Resolution', 200);

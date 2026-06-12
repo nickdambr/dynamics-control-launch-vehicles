@@ -83,7 +83,7 @@ Control effectiveness & $K_1=\mu_c$     & $4.565~\text{s}^{-2}$ \\
 Drift coefficients    & $a_1,a_3,a_4$   & $-0.0154,\ 20.61,\ -27.27~\text{s}^{-2}$ \\
 Relative velocity      & $V$            & $937.7~\text{m/s}$ \\
 Bending mode           & $\omega_{BM},\zeta_{BM}$ & $18.9~\text{rad/s},\ 0.005$ \\
-INS coupling           & $\phi_{1,ins},\sigma_{1,ins}$ & $0.8,\ 0.178$ \\
+INS coupling           & $\phi_{1,ins}$ [--], $\sigma_{1,ins}$ [rad/m] & $0.8,\ 0.178$ \\
 TVC actuator           & $\omega_{TVC},\zeta_{TVC},\tau$ & $70~\text{rad/s},\ 0.7,\ 20~\text{ms}$ \\
 \bottomrule
 \end{tabular}
@@ -91,8 +91,8 @@ TVC actuator           & $\omega_{TVC},\zeta_{TVC},\tau$ & $70~\text{rad/s},\ 0.
 
 \subsection{Control architecture}
 
-A proportional--derivative attitude law is adopted, augmented by a weak negative
-feedback on the lateral-drift channel (the \emph{drift-minimum} principle):
+A proportional--derivative attitude law is adopted, augmented by a weak feedback
+on the lateral-drift channel:
 \begin{equation}
 \delta_{cmd} =
 K_{P,\theta}\,(\theta_{ref}-\theta_m) - K_{D,\theta}\,\dot\theta_m
@@ -100,7 +100,15 @@ K_{P,\theta}\,(\theta_{ref}-\theta_m) - K_{D,\theta}\,\dot\theta_m
 \label{eq:control}
 \end{equation}
 with $K_{P,z},K_{D,z}$ small and negative, of order $10^{-3}$, as recommended in
-the assignment guidelines. The actual deflection follows from the actuator and
+the assignment guidelines. Closing the loop also on $(z_m,\dot z_m)$ trades
+between two classical objectives in wind: containing the lateral
+drift (\emph{drift minimum}) and containing the angle of attack
+$\alpha = \theta + \dot z/V + \alpha_w$, hence the structural load
+$\bar q\,\alpha$ (\emph{load minimum}) --- the binding concern precisely at the
+max-$\bar q$ condition studied here. The weak negative gains keep the drift
+bounded without fighting the natural load-relieving weathercock of the
+airframe; both $z$ and $\bar q\,\alpha$ are therefore monitored in the gust
+simulations. The actual deflection follows from the actuator and
 the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\,\delta_{cmd}$.
 
 \subsection{A note on conditional stability}
@@ -112,6 +120,6 @@ Because the open-loop airframe carries a right-half-plane pole, the loop is
 and the assignment targets $|GM|\approx 6$~dB and $|PM|\approx 30^\circ$ are
 interpreted in magnitude, as read off the Nichols chart. This is standard
 practice for the attitude control of aerodynamically unstable
-launchers~\cite{wie2008}.
+launchers~\cite{wie2008,franklin2015}.
 
 \end{document}

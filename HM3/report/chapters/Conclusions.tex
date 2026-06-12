@@ -16,15 +16,22 @@ $|PM|\approx 30^\circ$. The conditional-stability nature of the loop was
 identified and accounted for in the interpretation of the margins.
 \item \textbf{Task 2.} Introducing the TVC actuator, the transport delay and the
 lightly damped bending mode destabilises the loop through a $+39$~dB resonance.
-A gain-stabilising notch centred on $\omega_{BM}$ restores stability while
-preserving the rigid margins, with negligible change to the nominal gust
-response. Gain stabilisation was preferred to phase stabilisation because the
-resonance is too large to be tamed by a phase shift alone.
+A four-way filter trade showed that the Eq.-4 lead-lag alone never stabilises
+the loop within the suggested parameter ranges ($0/75$ combinations), and that
+a notch triplet sacrifices too much phase at low frequency for a
+conditionally stable loop; a deep gain-stabilising notch centred on
+$\omega_{BM}$ restores stability while preserving the rigid margins, with
+negligible change to the nominal gust response. Its reliance on exact
+bending-frequency knowledge was quantified ($\pm 5\%$ detuning is fatal) and a
+robust notch$+$lead-lag variant, tolerating nearly $\pm 10\%$ at the price of
+thinner nominal margins, was identified.
 \item \textbf{Task 3.} The fixed Task~2 controller is robust to $\pm 30\%$
-independent variations of $\mu_\alpha$ and $\mu_c$: all four corners remain
-stable. Aerodynamic uncertainty primarily erodes the rigid-body margin and
-nominal performance, whereas control-effectiveness uncertainty primarily erodes
-the bending margin.
+independent variations of $\mu_\alpha$ and $\mu_c$: all four vertices of the
+uncertainty box remain stable. Uncertainty on $\mu_\alpha$ erodes the rigid
+margin and the gust performance, uncertainty on $\mu_c$ erodes the bending and
+delay margins, and the worst vertex (high $\mu_\alpha$ with low $\mu_c$)
+compounds them, leaving only $1.5$~dB and $9^\circ$ --- the quantitative
+argument for gain scheduling in a flight design.
 \end{itemize}
 
 The design illustrates the textbook trade-offs of launch-vehicle attitude

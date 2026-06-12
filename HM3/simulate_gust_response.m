@@ -8,7 +8,9 @@ function r = simulate_gust_response(T, w)
 %
 %   The output struct r contains the time vector and the key time
 %   histories requested by the assignment: theta, z, zdot, delta, plus the
-%   driving alpha_w and scalar peak metrics.
+%   driving alpha_w, the total angle of attack alpha = theta + zdot/V +
+%   alpha_w (the aerodynamic-load driver at max-qbar) and scalar peak
+%   metrics.
 %
 %   See also LOAD_WIND_PROFILE, ASSEMBLE_LOOP.
 
@@ -22,8 +24,10 @@ r.theta  = y(:,1);
 r.z      = y(:,2);
 r.zdot   = y(:,3);
 r.delta  = y(:,4);
+r.alpha  = r.theta + r.zdot/w.V + r.alphaw;   % total angle of attack
 
 r.peak_theta = max(abs(r.theta));
 r.peak_z     = max(abs(r.z));
 r.peak_delta = max(abs(r.delta));
+r.peak_alpha = max(abs(r.alpha));
 end

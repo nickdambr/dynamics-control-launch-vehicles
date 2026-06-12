@@ -68,6 +68,6 @@ switch lower(o.profile)
         error('load_wind_profile:profile','unknown profile ''%s''.',o.profile);
 end
 
-w = struct('t',t,'vw',vw,'alphaw',vw/p.V, ...
+w = struct('t',t,'vw',vw,'alphaw',vw/p.V, 'V',p.V, ...
            'Vg',Vg,'Tg',o.Tg,'profile',o.profile,'severity',o.severity);
 end

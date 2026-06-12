@@ -43,6 +43,9 @@ p.Iyy           = 3.28e6;        % kg m^2
 p.Alt           = 15143;         % m
 p.Tt_minus_D    = 1.71e6;        % N
 p.N_alpha       = 1.07e6;        % N/rad
+% NOTE: Table 1 is internally inconsistent on a4: -(Tt-D)/m = -23.17 1/s^2
+% with the Tt-D and m above, yet the table lists a4 = -27.2710. The LPV data
+% set agrees with the latter, so a4 (not Tt-D) is what enters the dynamics.
 % --- aero/control coefficients (Table 1 nominal) ---
 p.A6            = 3.3818;        % 1/s^2  aerodynamic moment (mu_alpha)
 p.K1            = 4.5647;        % 1/s^2  control effectiveness (mu_c)
@@ -85,6 +88,10 @@ if isfile(datafile)
 else
     p.src = 'Table 1 literals (data file not found)';
 end
+
+%% Derived: dynamic pressure at the reference altitude (exponential atmosphere)
+p.rho  = 1.225 * exp(-p.Alt/8000);  % kg/m^3
+p.qbar = 0.5 * p.rho * p.V^2;       % Pa     (~81 kPa at max-qbar)
 
 %% Apply Task-3 uncertainty scaling on the nominal coefficients
 p.mu_alpha_scale = opt.mu_alpha_scale;
