@@ -120,18 +120,17 @@ is the norm, in non-dim units, of the position and velocity components; the mass
 
 \subsection{Results}\label{sec:zoh_results}
 
-The four transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All four respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal solution yields a piecewise-linear thrust whereas the three ZOH variants are naturally piecewise-constant (rendered as staircases). All four exhibit the max--coast--max structure, with $\|\mathbf{T}\|$ saturated at $T_{\max}$ on the two burn arcs and at zero in between.
+The four transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All four respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal thrust is piecewise linear, whereas the three ZOH variants are naturally piecewise constant (rendered as staircases). All four exhibit the max--coast--max structure, with $\|\mathbf{T}\|$ saturated at $T_{\max}$ on the two burn arcs and at zero in between.
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}{0.75\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_trajectory_comparison}
         \caption{Trajectory in the $(x,y)$ plane.}
         \label{fig:hm2_t2_traj}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \end{subfigure}\\[1.5ex]
+    \begin{subfigure}{0.75\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_thrust_comparison}
         \caption{Thrust magnitude: PWL (trapezoidal) vs PWC (ZOH).}
@@ -143,14 +142,13 @@ The four transcriptions converge to qualitatively identical trajectories (Fig.~\
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}{0.75\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_mass_comparison}
         \caption{Vehicle mass profile.}
         \label{fig:hm2_t2_mass}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \end{subfigure}\\[1.5ex]
+    \begin{subfigure}{0.75\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_transcription_fidelity}
         \caption{Forward-integration error at grid nodes (log scale).}
@@ -213,14 +211,13 @@ The SCvx convergence traces are reported in Fig.~\ref{fig:hm2_t2_scvx}. For each
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}{0.85\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_scvx_convergence_fmincon_sqp}
         \caption{Variant (b): SCvx with \texttt{fmincon}/SQP inner solver.}
         \label{fig:hm2_t2_scvx_b}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \end{subfigure}\\[1.5ex]
+    \begin{subfigure}{0.85\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_scvx_convergence_yalmip_ecos}
         \caption{Variant (c): SCvx with \texttt{YALMIP}+\texttt{ECOS} inner solver.}
