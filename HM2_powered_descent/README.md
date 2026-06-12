@@ -112,12 +112,12 @@ centimetres to decimetres (see the report for the full tables).
 - [x] **Task 2 — SCvx with conic inner solver (YALMIP + ECOS).** Same outer
       loop; inner sub-problem cast as an SOCP and solved by ECOS. Per-step
       fidelity is an order of magnitude tighter than the fmincon path.
-- [ ] **Free-time variant.** Lift the `tf`-fixed assumption and minimise fuel
-      over a variable horizon — the right framing for a GFOLD-like
-      formulation.
-- [ ] **Lossless convexification.** Handle a non-zero lower thrust bound
-      `T_min > 0` via the slack-variable change of variable
-      (Açikmeşe–Ploen), preserving the SOCP structure of variant (c).
+- [ ] **Lossless convexification → single SOCP (variant d).** Log-mass change
+      of variables + slack `Γ`: the whole OCP becomes one convex SOCP — no
+      SCvx loop, no warm start, sub-second ECOS solve with a global-optimality
+      certificate. Also covers `T_min > 0` (quadratic lower bound) and the
+      free-`tf` variant (1-D search over the SOCP). Full plan:
+      [`tickets/open/T006_hm2-lossless-socp.md`](../tickets/open/T006_hm2-lossless-socp.md).
 - [ ] **Tighten convergence at short `tf`.** The 36.10 s and 38.00 s
       sensitivity runs hit the `MaxIterations = 1000` cap with first-order
       optimality stalled at `1e-3`–`1e-4` non-dim. Root cause: the coast arc
