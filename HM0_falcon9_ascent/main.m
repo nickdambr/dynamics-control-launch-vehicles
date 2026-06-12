@@ -124,16 +124,12 @@ Vrel = sqrt(urel.^2 + vrel.^2 + wrel.^2);
 
 % --- Atmospheric quantities ---
 rho_traj = rho0 * exp(-h / Hscale);
-p_traj   = p0   * exp(-h / Hscale);
 
 % --- Dynamic pressure ---
 qdyn = 0.5 * rho_traj .* Vrel.^2;
 
 % --- Mach number ---
 Mach = Vrel / a_sound;
-
-% --- Thrust magnitude ---
-Tmag = Tvac1 - p_traj * Aex1;
 
 % --- Thrust elevation and aerodynamic flight-path angle ---
 gammaT = zeros(size(t));
@@ -362,7 +358,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    fname = fullfile(fig_dir, [slugify(get(fig_handles(kk), 'Name')) '.png']);
+    try
+        theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
+        drawnow;
+    catch
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
+    end
+    fname = fullfile(fig_dir, [slugify(fig_handles(kk).Name) '.png']);
     exportgraphics(fig_handles(kk), fname, 'Resolution', 200);
 end
 

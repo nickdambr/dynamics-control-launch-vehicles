@@ -183,13 +183,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task3_' slugify(nm) '.png']), 'Resolution', 200);
@@ -197,12 +197,12 @@ end
 
 %% ===================== LOCAL FUNCTIONS =====================
 
-function dz = ode_vertical(t, z, T, Q)
+function dz = ode_vertical(~, z, T, Q)
     vy = z(2); m = z(3);
     dz = [vy; T/m - 1; -Q];
 end
 
-function [value, isterminal, direction] = event_altitude(t, z, y_target)
+function [value, isterminal, direction] = event_altitude(~, z, y_target)
     value = z(1) - y_target;
     isterminal = 1;
     direction = 1;

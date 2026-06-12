@@ -35,7 +35,7 @@ for jj = 1:nyf
     % Start from Q near 3 (good T/W ratio)
     [~, idx0] = min(abs(Q_vec - 3));
 
-    % Initial guess: [lam_vx0, lam_vy0, lam_y, lam_m0, tf]
+    % Initial guess: [lam_vx0, lam_vy0, lam_y, tf]  (lam_m0 = 1 normalization)
     if jj == 1
         z_guess = [0.6; 3.8; 14; 0.30];
     else
@@ -210,13 +210,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task1_' slugify(nm) '.png']), 'Resolution', 200);

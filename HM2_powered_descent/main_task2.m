@@ -160,13 +160,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task2_' slugify(nm) '.png']), 'Resolution', 200);
@@ -174,9 +174,17 @@ end
 
 %% =====================================================================
 %  Local functions
+%  The continuous dynamics and the ZOH propagator live in their own files
+%  (ode_descent.m, rk4_zoh.m) shared with main_task1.m and the test suite.
+%  Note: hot-loop functions (jacobians, ltv_aug_rhs and the
+%  *_nonlcon/path_ineq constraints) deliberately skip arguments validation
+%  -- they sit inside the fmincon/ode45 inner loop.
 %  =====================================================================
 
 function [ref, dnd] = nondim(d)
+    arguments
+        d (1,1) struct
+    end
     ref.L = d.y0;
     ref.g = d.g;
     ref.t = sqrt(ref.L / ref.g);
@@ -195,6 +203,10 @@ function [ref, dnd] = nondim(d)
 end
 
 function sol = dim_sol(s_nd, ref)
+    arguments
+        s_nd (1,1) struct
+        ref  (1,1) struct
+    end
     sol.t   = s_nd.t  * ref.t;
     sol.x   = s_nd.x  * ref.L;
     sol.y   = s_nd.y  * ref.L;
@@ -207,12 +219,6 @@ function sol = dim_sol(s_nd, ref)
     sol.tf   = s_nd.tf  * ref.t;
     sol.m_f  = s_nd.m_f * ref.m;
     sol.fuel = (s_nd.m0 - s_nd.m_f) * ref.m;
-end
-
-function dx = rhs(x, u, Vc)
-    % Non-dim continuous dynamics.
-    Tmag = sqrt(u(1)^2 + u(2)^2);
-    dx = [ x(3); x(4); u(1)/x(5); u(2)/x(5) - 1; -Vc * Tmag ];
 end
 
 function [A_jac, B_jac] = jacobians(x, u, Vc)
@@ -231,18 +237,6 @@ function [A_jac, B_jac] = jacobians(x, u, Vc)
     B_jac(5,2) = -Vc * Ty / Tmag_reg;
 end
 
-function x_next = rk4_zoh(x, u, dt, Vc, n_sub)
-    h = dt / n_sub;
-    for ii = 1:n_sub
-        k1 = rhs(x,                u, Vc);
-        k2 = rhs(x + 0.5*h*k1,     u, Vc);
-        k3 = rhs(x + 0.5*h*k2,     u, Vc);
-        k4 = rhs(x +     h*k3,     u, Vc);
-        x  = x + (h/6)*(k1 + 2*k2 + 2*k3 + k4);
-    end
-    x_next = x;
-end
-
 function dz = ltv_aug_rhs(~, z, u_k, Vc)
     % Augmented state for the Appendix A construction.
     %   z(1:5)   = x_ref(t)
@@ -254,7 +248,7 @@ function dz = ltv_aug_rhs(~, z, u_k, Vc)
     Bhat  = reshape(z(31:40), 5, 2);
     chat  = z(41:45);
     [A_jac, B_jac] = jacobians(x_ref, u_k, Vc);
-    f_val = rhs(x_ref, u_k, Vc);
+    f_val = ode_descent(x_ref, u_k, Vc);
     c_off = f_val - A_jac * x_ref - B_jac * u_k;
     dx_ref = f_val;
     dPhi   = A_jac * Phi;
@@ -264,6 +258,12 @@ function dz = ltv_aug_rhs(~, z, u_k, Vc)
 end
 
 function [Abar, Bbar, cbar] = compute_ltv_zoh(ref, tf, N, d)
+    arguments
+        ref (1,1) struct
+        tf  (1,1) double {mustBePositive, mustBeFinite}
+        N   (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d   (1,1) struct
+    end
     dt = tf / (N - 1);
     Abar = zeros(5, 5, N-1);
     Bbar = zeros(5, 2, N-1);
@@ -282,15 +282,25 @@ function [Abar, Bbar, cbar] = compute_ltv_zoh(ref, tf, N, d)
 end
 
 function sol = solve_ltv_nlp(tf, N, d, Abar, Bbar, cbar, ref, trust)
+    arguments
+        tf   (1,1) double {mustBePositive, mustBeFinite}
+        N    (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d    (1,1) struct
+        Abar (5,5,:) double
+        Bbar (5,2,:) double
+        cbar (5,:)   double
+        ref   = []
+        trust = []
+    end
     nz  = 7*N;
     idx = @(i) (i-1)*7 + (1:7);
-    if nargin >= 7 && ~isempty(ref)
+    if ~isempty(ref)
         z0 = ref_to_z(ref, idx, N);
     else
         z0 = init_guess(N, d, idx, true);
     end
     [lb, ub] = box_bounds(N, d, idx, true);
-    if nargin >= 8 && ~isempty(trust) && ~isempty(ref)
+    if ~isempty(trust) && ~isempty(ref)
         [lb, ub] = apply_trust(lb, ub, ref, idx, N, trust);
     end
 
@@ -340,7 +350,7 @@ function [c_ineq, c_eq] = ltv_nonlcon(z, N, d)
     c_eq   = [];
 end
 
-function [sol, hist] = solve_scvx(tf, N, d, max_iter, tol, init_ref, base_trust)
+function [sol, conv_hist] = solve_scvx(tf, N, d, max_iter, tol, init_ref, base_trust)
     % SCvx outer loop with adaptive trust-region ratio.  At each iteration
     % the LTV NLP is solved within the current trust region; the candidate
     % step is then validated against the nonlinear dynamics by forward
@@ -351,15 +361,20 @@ function [sol, hist] = solve_scvx(tf, N, d, max_iter, tol, init_ref, base_trust)
     %   eta >= eta_h      -> accept step, grow rho
     % This stabilises SCvx against linearisation-error exploitation that
     % otherwise causes oscillation around the true optimum.
+    arguments
+        tf       (1,1) double {mustBePositive, mustBeFinite}
+        N        (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d        (1,1) struct
+        max_iter (1,1) double {mustBeInteger, mustBePositive}
+        tol      (1,1) double {mustBePositive}
+        init_ref         = []
+        base_trust (1,1) struct = struct('pos', 0.17, 'vel', 0.6, 'mass', 0.1, 'thrust', 1.0)
+    end
     idx = @(i) (i-1)*7 + (1:7);
-    if nargin < 6 || isempty(init_ref)
-        z0  = init_guess(N, d, idx, true);
-        ref = unpack(z0, tf, N, d);
+    if isempty(init_ref)
+        ref = unpack(init_guess(N, d, idx, true), tf, N, d);
     else
         ref = init_ref;
-    end
-    if nargin < 7
-        base_trust = struct('pos', 0.17, 'vel', 0.6, 'mass', 0.1, 'thrust', 1.0);
     end
 
     rho     = 1.0;       % trust-region scale (multiplies base_trust radii)
@@ -368,11 +383,11 @@ function [sol, hist] = solve_scvx(tf, N, d, max_iter, tol, init_ref, base_trust)
     eta_l   = 0.25;
     eta_h   = 0.7;
 
-    hist.m_f   = nan(max_iter, 1);
-    hist.delta = nan(max_iter, 1);
-    hist.rho   = nan(max_iter, 1);
-    hist.eta   = nan(max_iter, 1);
-    hist.acc   = false(max_iter, 1);
+    conv_hist.m_f   = nan(max_iter, 1);
+    conv_hist.delta = nan(max_iter, 1);
+    conv_hist.rho   = nan(max_iter, 1);
+    conv_hist.eta   = nan(max_iter, 1);
+    conv_hist.acc   = false(max_iter, 1);
 
     sol_best = ref;
     converged = false;
@@ -403,11 +418,11 @@ function [sol, hist] = solve_scvx(tf, N, d, max_iter, tol, init_ref, base_trust)
              sol_cand.m  - ref.m]);
 
         accepted = (eta >= eta_l);
-        hist.m_f(iter)   = sol_cand.m_f;
-        hist.delta(iter) = delta_x;
-        hist.rho(iter)   = rho;
-        hist.eta(iter)   = eta;
-        hist.acc(iter)   = accepted;
+        conv_hist.m_f(iter)   = sol_cand.m_f;
+        conv_hist.delta(iter) = delta_x;
+        conv_hist.rho(iter)   = rho;
+        conv_hist.eta(iter)   = eta;
+        conv_hist.acc(iter)   = accepted;
         fprintf('  SCvx iter %2d:  rho=%.3f  eta=%+7.3f  delta_x=%.3e  m_f=%.4f  %s\n', ...
             iter, rho, eta, delta_x, sol_cand.m_f, ...
             ternary(accepted,'ACCEPTED','rejected'));
@@ -481,6 +496,11 @@ function [lb, ub] = apply_trust(lb, ub, ref, idx, N, trust)
 end
 
 function sol = solve_trap(tf, N, d)
+    arguments
+        tf (1,1) double {mustBePositive, mustBeFinite}
+        N  (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d  (1,1) struct
+    end
     dt = tf / (N - 1);  idx = @(i) (i-1)*7 + (1:7);
     z0 = init_guess(N, d, idx, false);
     [lb, ub]   = box_bounds(N, d, idx, false);
@@ -493,6 +513,12 @@ function sol = solve_trap(tf, N, d)
 end
 
 function sol = solve_zoh(tf, N, d, n_sub)
+    arguments
+        tf    (1,1) double {mustBePositive, mustBeFinite}
+        N     (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d     (1,1) struct
+        n_sub (1,1) double {mustBeInteger, mustBePositive}
+    end
     dt = tf / (N - 1);  idx = @(i) (i-1)*7 + (1:7);
     z0 = init_guess(N, d, idx, true);
     [lb, ub]   = box_bounds(N, d, idx, true);
@@ -550,10 +576,12 @@ function [Aeq, beq] = bcs(N, d, idx)
     Aeq(8, sN(3)) = 1;  Aeq(9, sN(4)) = 1;
 end
 
-function opts = fmincon_opts(display)
-    if nargin < 1, display = 'final'; end
+function opts = fmincon_opts(display_mode)
+    arguments
+        display_mode {mustBeTextScalar} = 'final'
+    end
     opts = optimoptions('fmincon', ...
-        'Algorithm', 'sqp', 'Display', display, ...
+        'Algorithm', 'sqp', 'Display', display_mode, ...
         'MaxIterations', 1000, 'MaxFunctionEvaluations', 1e6, ...
         'OptimalityTolerance', 1e-5, 'ConstraintTolerance', 1e-6, ...
         'StepTolerance', 1e-10);
@@ -576,7 +604,7 @@ function [c_ineq, c_eq] = trap_nonlcon(z, N, dt, d)
     Z = reshape(z, 7, N);
     f = zeros(5, N);
     for i = 1:N
-        f(:,i) = rhs(Z(1:5,i), Z(6:7,i), d.Vc);
+        f(:,i) = ode_descent(Z(1:5,i), Z(6:7,i), d.Vc);
     end
     defs = zeros(5, N-1);
     for k = 1:N-1
@@ -611,6 +639,11 @@ function [t, X] = fwd_integrate(sol, d, mode)
     % Forward-integrate the *continuous-time* nonlinear dynamics using the
     % optimised (non-dim) control schedule, sampling at grid nodes for
     % direct comparison with the discretised solution.
+    arguments
+        sol  (1,1) struct
+        d    (1,1) struct
+        mode {mustBeTextScalar}
+    end
     N = numel(sol.t);
     X = zeros(N, 5);
     X(1,:) = [d.x0, d.y0, d.vx0, d.vy0, d.m0];
@@ -627,7 +660,7 @@ function [t, X] = fwd_integrate(sol, d, mode)
             otherwise
                 error('Unknown mode: %s', mode);
         end
-        rhs_t = @(tt, x) rhs(x, u_fcn(tt), d.Vc);
+        rhs_t = @(tt, x) ode_descent(x, u_fcn(tt), d.Vc);
         [~, Y] = ode45(rhs_t, [t_k, t_kp], X(k,:).', opts);
         X(k+1,:) = Y(end,:);
     end
@@ -639,7 +672,7 @@ function e = node_err(sol, X)
         [sol.x sol.y sol.vx sol.vy] - X(:,1:4), 2, 2);
 end
 
-function plot_compare3(s_t, s_z, s_s, err_t, err_z, err_s, hist, d)
+function plot_compare3(s_t, s_z, s_s, err_t, err_z, err_s, conv_hist, d)
     cT = [0.0 0.4 0.8];
     cZ = [0.85 0.33 0.1];
     cS = [0.47 0.67 0.19];
@@ -692,30 +725,31 @@ function plot_compare3(s_t, s_z, s_s, err_t, err_z, err_s, hist, d)
     legend('Location','best');
 
     % --- SCvx convergence trace (adaptive trust region) ---
-    valid = ~isnan(hist.delta);
+    valid = ~isnan(conv_hist.delta);
     iters = find(valid);
     figure('Name','SCvx convergence','Position',[100 100 800 500]);
-    subplot(2,1,1);
+    tiledlayout(2, 1);
+    nexttile;
     yyaxis left;
-    semilogy(iters, max(hist.delta(valid), eps), '-o', 'LineWidth', 1.4, 'DisplayName','||\Delta x||');
+    semilogy(iters, max(conv_hist.delta(valid), eps), '-o', 'LineWidth', 1.4, 'DisplayName','||\Delta x||');
     hold on;
-    semilogy(iters, max(hist.rho(valid),   eps), '-s', 'LineWidth', 1.4, 'DisplayName','\rho (trust scale)');
+    semilogy(iters, max(conv_hist.rho(valid),   eps), '-s', 'LineWidth', 1.4, 'DisplayName','\rho (trust scale)');
     ylabel('log scale');
     yyaxis right;
-    plot(iters, hist.m_f(valid), '-d', 'LineWidth', 1.4, 'Color',[0.4 0.4 0.4], 'DisplayName','m_f (nondim)');
+    plot(iters, conv_hist.m_f(valid), '-d', 'LineWidth', 1.4, 'Color',[0.4 0.4 0.4], 'DisplayName','m_f (nondim)');
     ylabel('m_f / m_0');
     grid on;
     legend('Location','best');
     title('SCvx convergence: state delta, trust scale, final mass');
 
-    subplot(2,1,2);
-    bar_h = bar(iters, hist.eta(valid), 0.7);
+    nexttile;
+    bar_h = bar(iters, conv_hist.eta(valid), 0.7);
     ylim([-0.5 2]);
     yline(0.25, 'k--', '\eta_l = 0.25');
     yline(0.7,  'k--', '\eta_h = 0.7');
-    if isfield(hist, 'acc')
+    if isfield(conv_hist, 'acc')
         for k = 1:length(iters)
-            if ~hist.acc(iters(k))
+            if ~conv_hist.acc(iters(k))
                 bar_h.FaceColor = 'flat';
                 bar_h.CData(k,:) = [0.85 0.33 0.1];
             end
@@ -731,12 +765,22 @@ function sol = solve_ltv_nlp_yalmip(tf, N, d, Abar, Bbar, cbar, ref_sol, trust)
 % Inner SOCP for one SCvx iteration, solved via YALMIP + ECOS.
 % The LTV dynamics are linear equalities; thrust upper-bound is a
 % second-order cone constraint; glide-slope and trust-region are linear.
+    arguments
+        tf   (1,1) double {mustBePositive, mustBeFinite}
+        N    (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d    (1,1) struct
+        Abar (5,5,:) double
+        Bbar (5,2,:) double
+        cbar (5,:)   double
+        ref_sol = []
+        trust   = []
+    end
     X = sdpvar(5, N,   'full');   % state  [x; y; vx; vy; m] at each node
     U = sdpvar(2, N-1, 'full');   % control [Tx; Ty] per ZOH interval
 
     tt = tan(d.theta_mx);
 
-    cstr = [X(:,1) == [d.x0; d.y0; d.vx0; d.vy0; d.m0]];   % I.C.
+    cstr = (X(:,1) == [d.x0; d.y0; d.vx0; d.vy0; d.m0]);   % I.C.
     cstr = [cstr, X(1:4, N) == 0];                            % terminal BCs
 
     for k = 1:N-1   % LTV dynamics (linear equalities)
@@ -755,7 +799,7 @@ function sol = solve_ltv_nlp_yalmip(tf, N, d, Abar, Bbar, cbar, ref_sol, trust)
     cstr = [cstr, X(2,:) >= 0];                          % altitude >= 0
     cstr = [cstr, X(5,:) >= 1e-3, X(5,:) <= d.m0];      % mass bounds
 
-    if nargin >= 7 && ~isempty(ref_sol) && nargin >= 8 && ~isempty(trust)
+    if ~isempty(ref_sol) && ~isempty(trust)
         for k = 1:N
             cstr = [cstr, X(1,k) >= ref_sol.x(k)  - trust.pos,  X(1,k) <= ref_sol.x(k)  + trust.pos];
             cstr = [cstr, X(2,k) >= ref_sol.y(k)  - trust.pos,  X(2,k) <= ref_sol.y(k)  + trust.pos];
@@ -785,25 +829,31 @@ function sol = solve_ltv_nlp_yalmip(tf, N, d, Abar, Bbar, cbar, ref_sol, trust)
     sol.tf   = tf;   sol.m_f = sol.m(end);   sol.m0 = d.m0;
 end
 
-function [sol, hist] = solve_scvx_yalmip(tf, N, d, max_iter, tol, init_ref, base_trust)
+function [sol, conv_hist] = solve_scvx_yalmip(tf, N, d, max_iter, tol, init_ref, base_trust)
 % SCvx outer loop — same adaptive trust-region logic as solve_scvx;
 % inner subproblem solved as an SOCP via solve_ltv_nlp_yalmip instead of fmincon.
+    arguments
+        tf       (1,1) double {mustBePositive, mustBeFinite}
+        N        (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d        (1,1) struct
+        max_iter (1,1) double {mustBeInteger, mustBePositive}
+        tol      (1,1) double {mustBePositive}
+        init_ref         = []
+        base_trust (1,1) struct = struct('pos', 0.17, 'vel', 0.6, 'mass', 0.1, 'thrust', 1.0)
+    end
     idx = @(i) (i-1)*7 + (1:7);
-    if nargin < 6 || isempty(init_ref)
+    if isempty(init_ref)
         ref = unpack(init_guess(N, d, idx, true), tf, N, d);
     else
         ref = init_ref;
-    end
-    if nargin < 7
-        base_trust = struct('pos', 0.17, 'vel', 0.6, 'mass', 0.1, 'thrust', 1.0);
     end
 
     rho = 1.0;   rho_min = 1e-3;   rho_max = 1.0;
     eta_l = 0.25;   eta_h = 0.7;
 
-    hist.m_f   = nan(max_iter, 1);   hist.delta = nan(max_iter, 1);
-    hist.rho   = nan(max_iter, 1);   hist.eta   = nan(max_iter, 1);
-    hist.acc   = false(max_iter, 1);
+    conv_hist.m_f   = nan(max_iter, 1);   conv_hist.delta = nan(max_iter, 1);
+    conv_hist.rho   = nan(max_iter, 1);   conv_hist.eta   = nan(max_iter, 1);
+    conv_hist.acc   = false(max_iter, 1);
 
     sol_best  = ref;   converged = false;
     for iter = 1:max_iter
@@ -822,9 +872,9 @@ function [sol, hist] = solve_scvx_yalmip(tf, N, d, max_iter, tol, init_ref, base
                         sol_cand.vx - ref.vx; sol_cand.vy - ref.vy; sol_cand.m - ref.m]);
 
         accepted = (eta >= eta_l);
-        hist.m_f(iter) = sol_cand.m_f;   hist.delta(iter) = delta_x;
-        hist.rho(iter) = rho;             hist.eta(iter)   = eta;
-        hist.acc(iter) = accepted;
+        conv_hist.m_f(iter) = sol_cand.m_f;   conv_hist.delta(iter) = delta_x;
+        conv_hist.rho(iter) = rho;             conv_hist.eta(iter)   = eta;
+        conv_hist.acc(iter) = accepted;
         fprintf('  SCvx-Y iter %2d:  rho=%.3f  eta=%+7.3f  delta_x=%.3e  m_f=%.4f  %s\n', ...
             iter, rho, eta, delta_x, sol_cand.m_f, ternary(accepted,'ACCEPTED','rejected'));
 
@@ -908,35 +958,36 @@ function plot_compare4(s_t, s_z, s_s, s_y, err_t, err_z, err_s, err_y, hist_s, h
 
     % --- SCvx convergence: fmincon vs YALMIP side by side ---
     for ii = 1:2
-        if ii == 1,  hist = hist_s;  lbl = 'fmincon/SQP';  col = cS;
-        else,        hist = hist_y;  lbl = 'YALMIP/ECOS';  col = cY;
+        if ii == 1,  conv_hist = hist_s;  lbl = 'fmincon/SQP';  col = cS;
+        else,        conv_hist = hist_y;  lbl = 'YALMIP/ECOS';  col = cY;
         end
-        valid = ~isnan(hist.delta);
+        valid = ~isnan(conv_hist.delta);
         iters = find(valid);
         figure('Name', sprintf('SCvx convergence — %s', lbl), 'Position',[100+400*(ii-1) 600 800 500]);
-        subplot(2,1,1);
+        tiledlayout(2, 1);
+        nexttile;
         yyaxis left;
-        semilogy(iters, max(hist.delta(valid), eps), '-o', 'LineWidth', 1.4, ...
+        semilogy(iters, max(conv_hist.delta(valid), eps), '-o', 'LineWidth', 1.4, ...
             'Color', col, 'DisplayName','||\Delta x||');
         hold on;
-        semilogy(iters, max(hist.rho(valid), eps), '-s', 'LineWidth', 1.4, ...
+        semilogy(iters, max(conv_hist.rho(valid), eps), '-s', 'LineWidth', 1.4, ...
             'Color', col*0.6, 'DisplayName','\rho (trust scale)');
         ylabel('log scale');
         yyaxis right;
-        plot(iters, hist.m_f(valid), '-d', 'LineWidth', 1.4, 'Color',[0.4 0.4 0.4], ...
+        plot(iters, conv_hist.m_f(valid), '-d', 'LineWidth', 1.4, 'Color',[0.4 0.4 0.4], ...
             'DisplayName','m_f (nondim)');
         ylabel('m_f / m_0');
         grid on; legend('Location','best');
         title(sprintf('SCvx convergence [%s]: state delta, trust scale, final mass', lbl));
-        subplot(2,1,2);
-        bar_h = bar(iters, hist.eta(valid), 0.7);
+        nexttile;
+        bar_h = bar(iters, conv_hist.eta(valid), 0.7);
         bar_h.FaceColor = col;
         ylim([-0.5 2]);
         yline(0.25, 'k--', '\eta_l = 0.25');
         yline(0.7,  'k--', '\eta_h = 0.7');
-        if isfield(hist, 'acc')
+        if isfield(conv_hist, 'acc')
             for k = 1:length(iters)
-                if ~hist.acc(iters(k))
+                if ~conv_hist.acc(iters(k))
                     bar_h.FaceColor = 'flat';
                     bar_h.CData(k,:) = [0.85 0.33 0.1];
                 end

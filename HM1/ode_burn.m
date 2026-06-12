@@ -10,6 +10,9 @@ function dz = ode_burn(t, z, p)
 %   lam_vy = linear   = p.lam_vy0 - p.lam_y * t
 %
 % Optimal thrust angle: phi = atan2(lam_vy, lam_vx)
+%
+% No arguments validation by design: this RHS is called ~1e6+ times by
+% ode45 inside the fsolve shooting loops; validate at the call site.
 
 vx = z(3); vy = z(4); m = z(5);
 

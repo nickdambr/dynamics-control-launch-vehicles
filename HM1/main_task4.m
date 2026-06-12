@@ -51,7 +51,6 @@ pay_two  = nan(size(ts_vec));
 sol_two  = cell(size(ts_vec));
 
 % Use single-stage solution as starting guess (4 unknowns)
-z_prev = z_ref;
 % z0 = [lam_vx0, lam_vy0, lam_y, tf]  (ts is the swept parameter p.ts)
 
 % Start from middle of range and sweep outward
@@ -59,18 +58,19 @@ z_prev = z_ref;
 
 for pass = 1:2
     if pass == 1
-        range = idx_mid:length(ts_vec);
+        idx_range = idx_mid:length(ts_vec);
     else
-        range = idx_mid-1:-1:1;
+        idx_range = idx_mid-1:-1:1;
     end
 
     z_prev_loc = [];
 
-    for ii = range
+    for ii = idx_range
         ts = ts_vec(ii);
         p4.c = c; p4.Q = Q; p4.T = T; p4.yf = yf; p4.eta = eta; p4.ts = ts;
 
-        % For fixed ts, solve BVP with unknowns [lam_vx0, lam_vy0, lam_y, lam_m0, tf]
+        % For fixed ts, solve BVP with unknowns [lam_vx0, lam_vy0, lam_y, tf]
+        % (lam_m0 = 1 normalization, H = 0 imposed at t0)
         if ~isempty(z_prev_loc)
             z_guess_4 = z_prev_loc;
         else
@@ -198,13 +198,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task4_' slugify(nm) '.png']), 'Resolution', 200);
@@ -239,8 +239,9 @@ function res = shooting_single(z0, p, opts_ode)
 end
 
 function res = shooting_twostage(z0, p, opts_ode)
-% Two-stage shooting with fixed staging time p.ts
-%   z0 = [lam_vx0; lam_vy0; lam_y; lam_m0; tf]
+% Two-stage shooting with fixed staging time p.ts, improved formulation:
+% lam_m0 = 1 (normalization) and H = 0 imposed algebraically at t0.
+%   z0 = [lam_vx0; lam_vy0; lam_y; tf]
 
     lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3); tf = z0(4);
     ts = p.ts;

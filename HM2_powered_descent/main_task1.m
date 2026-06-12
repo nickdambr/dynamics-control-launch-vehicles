@@ -68,13 +68,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task1_' slugify(nm) '.png']), 'Resolution', 200);
@@ -106,10 +106,15 @@ end
 
 %% =====================================================================
 %  Helper functions
+%  Note: hot-loop functions (dyn_rhs, trap_nonlcon) deliberately skip
+%  arguments validation -- they sit inside the fmincon/ode45 inner loop.
 %  =====================================================================
 
 function [ref, dnd] = nondim(d)
     % Reference scales (HM1-style choice: g and L set the units)
+    arguments
+        d (1,1) struct
+    end
     ref.L = d.y0;                    % length    [m]
     ref.g = d.g;                     % accel.    [m/s^2]
     ref.t = sqrt(ref.L / ref.g);     % time      [s]
@@ -130,6 +135,10 @@ end
 
 function sol = dim_sol(s_nd, ref)
     % Convert a non-dim solution struct back to SI units for output/plots.
+    arguments
+        s_nd (1,1) struct
+        ref  (1,1) struct
+    end
     sol.t   = s_nd.t  * ref.t;
     sol.x   = s_nd.x  * ref.L;
     sol.y   = s_nd.y  * ref.L;
@@ -152,6 +161,11 @@ end
 function sol = solve_trapcol(tf, N, d)
     % Trapezoidal direct collocation NLP (in non-dim variables).
     %   z = [x; y; vx; vy; m; Tx; Ty] stacked node-by-node, length 7*N.
+    arguments
+        tf (1,1) double {mustBePositive, mustBeFinite}
+        N  (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
+        d  (1,1) struct
+    end
 
     dt = tf / (N - 1);
     nz = 7 * N;
@@ -270,14 +284,9 @@ end
 
 function dx = dyn_rhs(s, Vc)
     % Non-dim continuous dynamics.  State s = [x; y; vx; vy; m; Tx; Ty];
-    % returns d/dt of [x; y; vx; vy; m].  Gravity is -1 and the only
-    % remaining parameter is Vc = V_ref/c.
-    Tmag = sqrt(s(6)^2 + s(7)^2);
-    dx = [ s(3);
-           s(4);
-           s(6) / s(5);
-           s(7) / s(5) - 1;
-          -Vc * Tmag ];
+    % returns d/dt of [x; y; vx; vy; m].  Thin wrapper around ode_descent.m
+    % (shared with main_task2.m and the test suite).
+    dx = ode_descent(s(1:5), s(6:7), Vc);
 end
 
 function dg = diagnostics(sol, d, N)
@@ -288,6 +297,11 @@ function dg = diagnostics(sol, d, N)
     %     (atan(|x|/y) is 0/0 at the pad, so sub-metre nodes are excluded);
     %   - KKT activity from the (non-dim) fmincon multipliers; ineqnonlin
     %     rows are stacked as [thr_lo; thr_hi; gs_pos; gs_neg], N rows each.
+    arguments
+        sol (1,1) struct
+        d   (1,1) struct
+        N   (1,1) double {mustBeInteger, mustBePositive}
+    end
     thr = 0.5 * d.Tmax;
     Tm  = sol.Tmag;  t = sol.t;
     i_dn = find(Tm(1:end-1) >= thr & Tm(2:end) <  thr, 1, 'first');
@@ -310,6 +324,10 @@ function [t, X] = fwd_integrate_pwl(sol, d)
     % Forward-integrate the nonlinear (non-dim) dynamics under the
     % piecewise-linear control implied by the trapezoidal transcription,
     % sampling at the grid nodes (same construction as in main_task2.m).
+    arguments
+        sol (1,1) struct
+        d   (1,1) struct
+    end
     N = numel(sol.t);
     X = zeros(N, 5);
     X(1,:) = [d.x0, d.y0, d.vx0, d.vy0, d.m0];
@@ -333,6 +351,11 @@ function e = node_err(sol, X)
 end
 
 function plot_results(sols, tf_list, d)
+    arguments
+        sols    cell
+        tf_list double {mustBeVector}
+        d       (1,1) struct
+    end
     colors = lines(numel(sols));
     lbl = arrayfun(@(t) sprintf('t_f = %.1f s', t), tf_list, 'UniformOutput', false);
 

@@ -38,8 +38,8 @@ fprintf('  m(t1)  = %.6f\n', m1);
 
 %% Phase 2: Optimal burn (same BVP as Task 1 but from vertical climb state)
 % State at start of Phase 2: x=0, y=y1, vx=0, vy=vy1, m=m1
-% BVP unknowns: [lam_vx0, lam_vy0, lam_y, lam_m0, t_burn]
-% BVP targets:  [y(tf)-yf, vx(tf)-1, vy(tf), lam_m(tf)-1, H(tf)]
+% BVP unknowns: [lam_vx0, lam_vy0, lam_y, t_burn]   (lam_m0 = 1 normalization)
+% BVP targets:  [y(tf)-yf, vx(tf)-1, vy(tf), H(0)]
 
 p.c  = c;
 p.Q  = Q;
@@ -84,7 +84,6 @@ if ef > 0
     fprintf('  Final mass:          %.6f\n', mf_task2);
 
     % Payload comparison
-    payload_task2 = mf_task2 - eta * (1 - mf_task2) / (1 + eta);
     fprintf('  Payload (approx):    %.6f\n', mf_task2 * (1 + eta) - eta);
 
     %% Plots
@@ -162,13 +161,13 @@ if ~exist(fig_dir, 'dir'); mkdir(fig_dir); end
 slugify = @(s) lower(regexprep(s, '[^a-zA-Z0-9]+', '_'));
 fig_handles = findobj(groot, 'Type', 'figure');
 for kk = 1:numel(fig_handles)
-    nm = get(fig_handles(kk), 'Name');
+    nm = fig_handles(kk).Name;
     if isempty(nm); nm = sprintf('fig%d', kk); end
     try
         theme(fig_handles(kk), 'light');    % force light theme (ignore desktop dark mode)
         drawnow;
     catch
-        set(fig_handles(kk), 'Color', 'w'); % fallback for pre-R2025a MATLAB
+        fig_handles(kk).Color = 'w';        % fallback for pre-R2025a MATLAB
     end
     exportgraphics(fig_handles(kk), ...
         fullfile(fig_dir, ['task2_' slugify(nm) '.png']), 'Resolution', 200);
@@ -176,13 +175,13 @@ end
 
 %% ===================== LOCAL FUNCTIONS =====================
 
-function dz = ode_vertical(t, z, T, Q)
+function dz = ode_vertical(~, z, T, Q)
 % Vertical climb ODE: z = [y; vy; m], phi = pi/2
     vy = z(2); m = z(3);
     dz = [vy; T/m - 1; -Q];
 end
 
-function [value, isterminal, direction] = event_altitude(t, z, y_target)
+function [value, isterminal, direction] = event_altitude(~, z, y_target)
     value = z(1) - y_target;
     isterminal = 1;
     direction = 1;

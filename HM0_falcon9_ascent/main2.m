@@ -416,14 +416,15 @@ legend('Trajectory','Location','best'); grid on; hold off;
 
 % ---- Figure 9: Non-dimensional state variables ----
 figure('Name','ND State','Position',[450 30 900 580]);
+tlo = tiledlayout(3, 2);
 
-subplot(3,2,1);
+nexttile;
 plot(tau_sol, Y_nd(:,1), 'b', 'LineWidth',1.5);
 xline(1,'k--'); xline(2,'k--');
 xlabel('\tau'); ylabel('r^* = r / R_E');
 title('Non-dim. radius'); grid on;
 
-subplot(3,2,2);
+nexttile;
 plot(tau_sol, Y_nd(:,4),'b','LineWidth',1.5); hold on;
 plot(tau_sol, Y_nd(:,5),'r--','LineWidth',1.5);
 plot(tau_sol, Y_nd(:,6),'g:','LineWidth',1.5);
@@ -431,32 +432,32 @@ xline(1,'k--'); xline(2,'k--');
 xlabel('\tau'); ylabel('V^* = V / V_{ref}');
 legend('u^*','v^*','w^*'); title('Non-dim. velocity components'); grid on;
 
-subplot(3,2,3);
+nexttile;
 plot(tau_sol, Y_nd(:,7), 'b', 'LineWidth',1.5);
 xline(1,'k--'); xline(2,'k--');
 xlabel('\tau'); ylabel('m^* = m / m_0');
 title('Non-dim. mass'); grid on;
 
-subplot(3,2,4);
+nexttile;
 plot(tau_sol, Y_nd(:,1)-1, 'b', 'LineWidth',1.5);
 xline(1,'k--'); xline(2,'k--');
 xlabel('\tau'); ylabel('h^* = h / R_E');
 title('Non-dim. altitude'); grid on;
 
-subplot(3,2,5);
+nexttile;
 Vmag_nd = sqrt(Y_nd(:,4).^2 + Y_nd(:,5).^2 + Y_nd(:,6).^2);
 plot(tau_sol, Vmag_nd, 'b', 'LineWidth',1.5);
 xline(1,'k--','Arc 1|2'); xline(2,'k--','Arc 2|3');
 xlabel('\tau  (0\rightarrow1: arc 1,  1\rightarrow2: arc 2,  2\rightarrow3: arc 3)');
 ylabel('|V^*|'); title('Non-dim. inertial speed'); grid on;
 
-subplot(3,2,6);
+nexttile;
 plot(tau_sol, t, 'b', 'LineWidth',1.5);
 xline(1,'k--'); xline(2,'k--');
 xlabel('\tau'); ylabel('t_{dim}  [s]');
 title('Dimensional time vs \tau  (shows per-arc scaling)'); grid on;
 
-sgtitle(sprintf( ...
+title(tlo, sprintf( ...
     'Non-dimensional state   (L_{ref}=R_E,  V_{ref}=%g m/s,  T_{ref}=%.1f s)', ...
     V_ref, T_ref));
 
