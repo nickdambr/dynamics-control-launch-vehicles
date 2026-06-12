@@ -43,7 +43,8 @@ else
 end
 K.Kp_th=S.Kp_th; K.Kd_th=S.Kd_th; K.Kp_z=S.Kp_z; K.Kd_z=S.Kd_z;
 [~,T] = assemble_loop(G,K,Wact);
-w = load_wind_profile(p);
+% replay the EXACT wind the model will see (any 'profile'/'severity' option)
+w = struct('t', S.wind_ts.Time(:), 'alphaw', squeeze(S.wind_ts.Data), 'V', p.V);
 rs = simulate_gust_response(T,w);
 
 %% Simulate the Simulink model
@@ -71,7 +72,12 @@ grid on; xlabel('t [s]'); ylabel('\delta [deg]'); legend('script','Simulink');
 fig_dir = fullfile(here,'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
 try, theme(f,'light'); catch, end
-exportgraphics(f, fullfile(fig_dir,sprintf('task%d_simulink_vs_script.png',task)),'Resolution',200);
+suffix = '';                       % non-default wind -> separate figure file
+ipro = find(strcmpi(varargin,'profile'), 1);
+if ~isempty(ipro) && ~strcmpi(varargin{ipro+1},'gust')
+    suffix = ['_' lower(varargin{ipro+1})];
+end
+exportgraphics(f, fullfile(fig_dir,sprintf('task%d_simulink_vs_script%s.png',task,suffix)),'Resolution',200);
 
 out = struct('script',rs,'simulink',sl);
 end

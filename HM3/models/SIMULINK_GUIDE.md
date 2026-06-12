@@ -240,17 +240,26 @@ V3 = (1.3, 0.7) with peak `theta` ≈ 0.35° and peak `z` ≈ 4.2 m — matching
 
 ## Appendix — driving the loop with the professor's wind generator
 
-`General/hw3-v3/strong_wind.slx` is a wind *generator* only (output `v_w`
-[m/s]); it contains no plant or controller. To use it instead of the From
-Workspace block:
+`General/hw3-v3/strong_wind.slx` is a wind *generator* only: a mean-wind
+envelope `v_wp(h)` (14 m/s plateau between 2 and 17.5 km) plus
+altitude-scheduled Dryden turbulence (band-limited white noise filtered by a
+Varying Transfer Function whose `sigma(h)`, `L(h)` come from `drywind.mat`
+and `V(t)` from the LPV dataset). The noise seeds are fixed, so every run is
+reproducible. It has **no root-level Outports**, so it cannot be referenced
+from a Model block; the integration happens upstream instead, in
+`load_wind_profile('profile','strongwind')`:
 
-1. Load its lookup-table data:
-   ```matlab
-   load('General/hw3-v3/drywind.mat')
-   load('General/hw3-v3/GreensiteLPV_DATA.mat')   % GreensiteLPV struct
-   ```
-   (Its own stop time is 140 s.)
-2. Add a **Model** block referencing `strong_wind.slx`.
-3. Convert wind speed to angle of attack with a **Gain** `1/p.V`
-   (`alpha_w = v_w / V`) and feed it to the `alpha_w` input of
-   `Plant_and_Actuator`.
+```matlab
+run_simulink_closed_loop(2, 'profile', 'strongwind');
+```
+
+This simulates the generator in memory (the professor's file is never
+modified), windows the total wind `v_wp + turbulence` over the 12 s around
+the max-qbar instant `p.t_ref`, converts it to `alpha_w = v_w/V`, and pushes
+it as `wind_ts` — the same input drives **both** the script baseline and the
+Simulink model, so the overlay validation still holds (~1e-7 rad with
+`RelTol = 1e-6`). The overlay figure gets a `_strongwind` suffix;
+`figures/task2_wind_profile.png` shows the full 140 s history and the
+extraction window. The loop sees a sustained `alpha_w` bias plus turbulence
+(wind shear at max-q), which is why the peaks are larger than the 1-cosine
+gust case (`theta` ≈ 0.84° vs 0.13°, `z` ≈ 20 m vs 2.4 m).

@@ -18,6 +18,8 @@ function S = init_simulink_hm3(task, varargin)
 %   Name/value options:
 %     'mu_alpha_scale', 'mu_c_scale'   corner scaling (Task 3), default 1
 %     'severity'                        wind severity, default 'severe'
+%     'profile'                         wind profile, default 'gust';
+%                                       'strongwind' = professor's generator
 %     'push', true/false                push to base workspace, default true
 %
 %   Variables exported (subset, depending on task):
@@ -38,6 +40,7 @@ ip = inputParser;
 ip.addParameter('mu_alpha_scale',1.0);
 ip.addParameter('mu_c_scale',1.0);
 ip.addParameter('severity','severe');
+ip.addParameter('profile','gust');
 ip.addParameter('push',true);
 ip.parse(varargin{:});
 o = ip.Results;
@@ -75,7 +78,7 @@ Hx = build_notch_filter(p0.wBM, 0.002, 0.7, +1);
 [S.notch_num, S.notch_den] = tfdata(Hx,'v');
 
 %% Wind disturbance as a timeseries for a From Workspace block
-w = load_wind_profile(p,'severity',o.severity);
+w = load_wind_profile(p,'severity',o.severity,'profile',o.profile);
 S.wind_ts = timeseries(w.alphaw(:), w.t(:), 'Name','alpha_w');
 S.Tstop = w.t(end);
 
