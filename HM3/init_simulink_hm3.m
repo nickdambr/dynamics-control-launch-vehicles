@@ -43,8 +43,13 @@ ip.parse(varargin{:});
 o = ip.Results;
 
 %% Parameters and controller (designed by the scripts, reused here)
+%  The controller and the notch are FROZEN at the nominal design point, as
+%  in main_task3: robustness means fixed nominal gains evaluated on the
+%  perturbed plant. Re-tuning on the corner plant would destabilize the
+%  bending-augmented loop (and is not what the assignment asks).
 p  = load_hw3_params('mu_alpha_scale',o.mu_alpha_scale,'mu_c_scale',o.mu_c_scale);
-K  = design_controller(build_plant_rigid(p), [], 'verbose', false);
+p0 = load_hw3_params();                                   % nominal design point
+K  = design_controller(build_plant_rigid(p0), [], 'verbose', false);
 
 S = struct();
 S.p = p;
@@ -66,7 +71,7 @@ S.C_plot_full = Gf.C(5:7,:);
 %% Actuator (TVC + delay) and bending notch
 Wtvc = build_tvc(p,3);
 [S.tvc_num, S.tvc_den] = tfdata(tf(Wtvc),'v');
-Hx = build_notch_filter(p.wBM, 0.002, 0.7, +1);
+Hx = build_notch_filter(p0.wBM, 0.002, 0.7, +1);
 [S.notch_num, S.notch_den] = tfdata(Hx,'v');
 
 %% Wind disturbance as a timeseries for a From Workspace block
