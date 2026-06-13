@@ -125,6 +125,17 @@ truth. See [`models/SIMULINK_GUIDE.md`](models/SIMULINK_GUIDE.md);
 `init_simulink_hm3.m` pre-computes every block parameter and
 `run_simulink_closed_loop.m` overlays the model against the script.
 
+### Beyond the assignment — full-ascent LPV (optional)
+
+A portfolio extension lifts the frozen-time design to the **whole ascent
+(0–140 s)**: the rigid plant is made time-varying (gridded on
+`GreensiteLPV_DATA.mat`), the professor's wind generator is wired **directly
+into the loop**, and a **gain-scheduled** controller is compared against the
+single max-q̄ design. The model is **authored from a script** and validated
+against an LTV ode45 baseline to ≈1×10⁻⁷ rad. See
+[`LTV_FULL_ASCENT/`](LTV_FULL_ASCENT/). This is **not** part of the HM3
+deliverable.
+
 ## Files
 
 | File | Role |
