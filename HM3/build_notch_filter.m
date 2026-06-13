@@ -20,7 +20,12 @@ function Hx = build_notch_filter(wx, zN, zD, numSign)
 %
 %   See also BUILD_TVC, ASSEMBLE_LOOP.
 
-if nargin < 4 || isempty(numSign), numSign = -1; end
+arguments
+    wx (1,1) {mustBeNumeric, mustBeReal, mustBePositive}
+    zN (1,1) {mustBeNumeric, mustBeReal, mustBeNonnegative}
+    zD (1,1) {mustBeNumeric, mustBeReal, mustBePositive}
+    numSign (1,1) {mustBeMember(numSign, [-1, 1])} = -1
+end
 
 num = [1, numSign*2*zN*wx, wx^2];
 den = [1,         2*zD*wx, wx^2];

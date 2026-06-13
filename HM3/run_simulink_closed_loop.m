@@ -1,4 +1,4 @@
-function out = run_simulink_closed_loop(task, varargin)
+function out = run_simulink_closed_loop(task, o)
 %RUN_SIMULINK_CLOSED_LOOP  Simulate hm3_closed_loop.slx and overlay vs script.
 %
 %   out = RUN_SIMULINK_CLOSED_LOOP(task) initialises the base workspace with
@@ -12,13 +12,22 @@ function out = run_simulink_closed_loop(task, varargin)
 %   interactively): follow models/SIMULINK_GUIDE.md to create it. If the
 %   model is missing, this function prints the next step and returns empty.
 %
+%   Name/value options ('mu_alpha_scale', 'mu_c_scale', 'severity',
+%   'profile') are forwarded to INIT_SIMULINK_HM3.
+%
 %   The model is expected to log four signals named (signal logging or To
 %   Workspace, format "Structure With Time" or "Timeseries"):
 %       theta_sl, z_sl, zdot_sl, delta_sl
 %
 %   See also INIT_SIMULINK_HM3, SIMULATE_GUST_RESPONSE.
 
-if nargin < 1 || isempty(task), task = 2; end
+arguments
+    task (1,1) {mustBeMember(task, [1 2 3])} = 2
+    o.mu_alpha_scale (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    o.mu_c_scale     (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    o.severity {mustBeMember(o.severity, ["light","moderate","severe"])} = 'severe'
+    o.profile  {mustBeTextScalar} = 'gust'
+end
 
 here  = fileparts(mfilename('fullpath'));
 model = 'hm3_closed_loop';
@@ -31,7 +40,8 @@ if ~isfile(mdlfile)
 end
 
 %% Initialise workspace (gains, matrices, wind, Tstop) and the script baseline
-S = init_simulink_hm3(task, varargin{:});
+optArgs = namedargs2cell(o);
+S = init_simulink_hm3(task, optArgs{:});
 
 % script baseline (same controller/plant as the model should embed)
 p = S.p;
@@ -51,8 +61,7 @@ rs = simulate_gust_response(T,w);
 addpath(fullfile(here,'models'));
 so = sim(model, 'StopTime', num2str(S.Tstop));
 
-get_ts = @(nm) getElement_safe(so, nm);
-sl.t     = []; sl.theta=[]; sl.z=[]; sl.zdot=[]; sl.delta=[];
+get_ts = @(nm) get_logged_signal(so, nm);
 [sl.t, sl.theta] = get_ts('theta_sl');
 [~,    sl.z]     = get_ts('z_sl');
 [~,    sl.zdot]  = get_ts('zdot_sl');
@@ -71,19 +80,22 @@ grid on; xlabel('t [s]'); ylabel('\delta [deg]'); legend('script','Simulink');
 
 fig_dir = fullfile(here,'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
-try, theme(f,'light'); catch, end
+try
+    theme(f, 'light');    % force light theme (ignore desktop dark mode)
+catch
+    f.Color = 'w';        % fallback for pre-R2025a MATLAB
+end
 suffix = '';                       % non-default wind -> separate figure file
-ipro = find(strcmpi(varargin,'profile'), 1);
-if ~isempty(ipro) && ~strcmpi(varargin{ipro+1},'gust')
-    suffix = ['_' lower(varargin{ipro+1})];
+if ~strcmpi(o.profile, 'gust')
+    suffix = ['_' lower(char(o.profile))];
 end
 exportgraphics(f, fullfile(fig_dir,sprintf('task%d_simulink_vs_script%s.png',task,suffix)),'Resolution',200);
 
 out = struct('script',rs,'simulink',sl);
 end
 
-function [t,y] = getElement_safe(so, name)
-%GETELEMENT_SAFE  Fetch a logged signal from a SimulationOutput by name.
+function [t,y] = get_logged_signal(so, name)
+%GET_LOGGED_SIGNAL  Fetch a logged signal from a SimulationOutput by name.
 t = []; y = [];
 try
     if isprop(so,'logsout') && ~isempty(so.logsout) && ...

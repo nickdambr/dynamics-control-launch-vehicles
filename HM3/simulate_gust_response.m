@@ -14,6 +14,11 @@ function r = simulate_gust_response(T, w)
 %
 %   See also LOAD_WIND_PROFILE, ASSEMBLE_LOOP.
 
+arguments
+    T {mustBeA(T, 'lti')}
+    w (1,1) struct
+end
+
 t = w.t(:);
 u = [w.alphaw(:), zeros(numel(t),1)];   % [alpha_w, theta_ref]
 y = lsim(T, u, t);

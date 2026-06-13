@@ -1,4 +1,4 @@
-function S = init_simulink_hm3(task, varargin)
+function S = init_simulink_hm3(task, o)
 %INIT_SIMULINK_HM3  Populate the base workspace for the Simulink model.
 %
 %   S = INIT_SIMULINK_HM3(task) computes everything the block diagram
@@ -35,15 +35,14 @@ function S = init_simulink_hm3(task, varargin)
 %   See also LOAD_HW3_PARAMS, BUILD_PLANT_RIGID, BUILD_PLANT_FULL,
 %   DESIGN_CONTROLLER, SIMULINK_GUIDE (models/SIMULINK_GUIDE.md).
 
-if nargin < 1 || isempty(task), task = 2; end
-ip = inputParser;
-ip.addParameter('mu_alpha_scale',1.0);
-ip.addParameter('mu_c_scale',1.0);
-ip.addParameter('severity','severe');
-ip.addParameter('profile','gust');
-ip.addParameter('push',true);
-ip.parse(varargin{:});
-o = ip.Results;
+arguments
+    task (1,1) {mustBeMember(task, [1 2 3])} = 2
+    o.mu_alpha_scale (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    o.mu_c_scale     (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    o.severity {mustBeMember(o.severity, ["light","moderate","severe"])} = 'severe'
+    o.profile  {mustBeTextScalar} = 'gust'
+    o.push (1,1) logical = true
+end
 
 %% Parameters and controller (designed by the scripts, reused here)
 %  The controller and the notch are FROZEN at the nominal design point, as

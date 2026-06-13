@@ -54,7 +54,8 @@ for i = 1:nC
 
     am = allmargin(L{i});
     gf = am.GMFrequency; gm = 20*log10(am.GainMargin);
-    rigidGM = abs(gm(find(gf>0.2 & gf<1,1)));
+    idx = find(gf>0.2 & gf<1, 1);
+    if isempty(idx), rigidGM = NaN; else, rigidGM = abs(gm(idx)); end
     minGM   = min(abs(gm));
     dm      = min(am.DelayMargin);
     [~,Pm]  = margin(L{i});
@@ -98,7 +99,11 @@ legend(cases(1:nPlot,1),'Location','best');
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
 for f = [f1 f2]
-    try, theme(f,'light'); catch, end
+    try
+        theme(f, 'light');    % force light theme (ignore desktop dark mode)
+    catch
+        f.Color = 'w';        % fallback for pre-R2025a MATLAB
+    end
     exportgraphics(f, fullfile(fig_dir, ['task3_' get(f,'Name') '.png']), 'Resolution', 200);
 end
 fprintf('\nFigures written to %s\n', fig_dir);

@@ -1,4 +1,4 @@
-function p = load_hw3_params(varargin)
+function p = load_hw3_params(opt)
 %LOAD_HW3_PARAMS  Launch-vehicle parameters at the max-qbar condition (t = 72 s).
 %
 %   p = LOAD_HW3_PARAMS() returns a struct with the pitch-plane model
@@ -24,13 +24,12 @@ function p = load_hw3_params(varargin)
 %     phi_tvc          TVC bending forcing          [1/kg]
 %     wTVC,zTVC,tau    TVC actuator + pure delay    [rad/s],[-],[s]
 
-%% Parse options
-ip = inputParser;
-ip.addParameter('mu_alpha_scale', 1.0, @(x) isnumeric(x) && isscalar(x));
-ip.addParameter('mu_c_scale',     1.0, @(x) isnumeric(x) && isscalar(x));
-ip.addParameter('t_ref',          72,  @(x) isnumeric(x) && isscalar(x));
-ip.parse(varargin{:});
-opt = ip.Results;
+%% Options (name-value)
+arguments
+    opt.mu_alpha_scale (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    opt.mu_c_scale     (1,1) {mustBeNumeric, mustBeReal} = 1.0
+    opt.t_ref          (1,1) {mustBeNumeric, mustBeReal} = 72
+end
 
 %% Table 1 literals (authoritative source: the assignment PDF)
 p = struct();

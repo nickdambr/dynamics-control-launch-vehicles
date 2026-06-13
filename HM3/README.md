@@ -116,7 +116,7 @@ main_task3      % ±30% corner-case robustness study
 ```
 
 Each script writes its figures to `figures/`. Requires the **Control System
-Toolbox** (and the **Optimization Toolbox** for the PD auto-tuner).
+Toolbox** only (the PD auto-tuner uses base-MATLAB `fminsearch`).
 
 ### Simulink (optional, guided)
 

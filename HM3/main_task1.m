@@ -10,7 +10,7 @@
 %
 %  Reference: Homework 3 - Attitude Control of a Launch Vehicle in
 %  Atmospheric Flight (Zavoli, v1.2, May 2026), Task 1.
-%  Toolboxes: Control System Toolbox (+ Optimization for the auto-tuner).
+%  Toolboxes: Control System Toolbox (the auto-tuner uses base-MATLAB fminsearch).
 
 clear; close all; clc;
 
@@ -108,7 +108,11 @@ title(sprintf('Aerodynamic load  (peak %.1f kPa deg)', p.qbar/1000*r.peak_alpha*
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
 for f = [f1 f2 f3]
-    try, theme(f,'light'); catch, end          % publication (light) theme
+    try
+        theme(f, 'light');    % force light theme (ignore desktop dark mode)
+    catch
+        f.Color = 'w';        % fallback for pre-R2025a MATLAB
+    end
     exportgraphics(f, fullfile(fig_dir, ['task1_' get(f,'Name') '.png']), ...
                    'Resolution', 200);
 end

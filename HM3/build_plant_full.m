@@ -21,7 +21,10 @@ function G = build_plant_full(p, meas)
 %
 %   See also BUILD_PLANT_RIGID, BUILD_INS_MODEL, BUILD_NOTCH_FILTER.
 
-if nargin < 2 || isempty(meas), meas = 'ins'; end
+arguments
+    p (1,1) struct
+    meas {mustBeTextScalar} = 'ins'   % 'ins' | 'true', matched case-insensitively
+end
 
 w = p.wBM;  z = p.zBM;
 

@@ -19,7 +19,7 @@
 %                                        perturbed by up to +/-10 %)
 %
 %  Reference: Homework 3 (Zavoli, v1.2, May 2026), Task 2.
-%  Toolboxes: Control System Toolbox (+ Optimization for the auto-tuner).
+%  Toolboxes: Control System Toolbox (the auto-tuner uses base-MATLAB fminsearch).
 
 clear; close all; clc;
 warning('off','Control:analysis:MarginUnstable');
@@ -158,7 +158,8 @@ fprintf('  |L(omega_BM)| = %.1f dB   -> closed-loop stable: %d (max Re pole = %.
         20*log10(bode(Lc,p.wBM)), isstable(Tfull), max(real(pole(Tfull))));
 am = allmargin(Lc);
 gf = am.GMFrequency; gm = 20*log10(am.GainMargin);
-rigidGM = gm(find(gf>0.2 & gf<1,1));
+idx = find(gf>0.2 & gf<1, 1);
+if isempty(idx), rigidGM = NaN; else, rigidGM = gm(idx); end
 fprintf('  rigid-body |GM| = %.2f dB,  |PM| = %.1f deg (preserved from Task 1)\n', ...
         abs(rigidGM), abs(Pm));
 fprintf('  delay margin    = %.1f ms on top of the 20 ms already modelled\n', ...
@@ -238,7 +239,11 @@ xlabel('t [s]'); ylabel('\delta [deg]'); legend('rigid','full','Location','best'
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
 for f = [f1 f2 f3]
-    try, theme(f,'light'); catch, end
+    try
+        theme(f, 'light');    % force light theme (ignore desktop dark mode)
+    catch
+        f.Color = 'w';        % fallback for pre-R2025a MATLAB
+    end
     exportgraphics(f, fullfile(fig_dir, ['task2_' get(f,'Name') '.png']), 'Resolution', 200);
 end
 fprintf('\nFigures written to %s\n', fig_dir);

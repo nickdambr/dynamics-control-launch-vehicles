@@ -1,4 +1,4 @@
-function w = load_wind_profile(p, varargin)
+function w = load_wind_profile(p, o)
 %LOAD_WIND_PROFILE  Wind angle-of-attack disturbance for the gust simulation.
 %
 %   w = LOAD_WIND_PROFILE(p) returns a struct describing a wind disturbance
@@ -33,16 +33,16 @@ function w = load_wind_profile(p, varargin)
 %
 %   See also SIMULATE_GUST_RESPONSE, LOAD_HW3_PARAMS.
 
-ip = inputParser;
-ip.addParameter('profile','gust');
-ip.addParameter('severity','severe');
-ip.addParameter('Vg',[]);
-ip.addParameter('Tg',3.0);
-ip.addParameter('Tend',12.0);
-ip.addParameter('dt',0.005);
-ip.addParameter('t0',1.0);
-ip.parse(varargin{:});
-o = ip.Results;
+arguments
+    p (1,1) struct
+    o.profile  {mustBeTextScalar} = 'gust'   % matched case-insensitively below
+    o.severity {mustBeMember(o.severity, ["light","moderate","severe"])} = 'severe'
+    o.Vg   {mustBeNumeric, mustBeReal, mustBeScalarOrEmpty} = []
+    o.Tg   (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 3.0
+    o.Tend (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 12.0
+    o.dt   (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 0.005
+    o.t0   (1,1) {mustBeNumeric, mustBeReal, mustBeNonnegative} = 1.0
+end
 
 % --- professor's generator: simulate strong_wind.slx and window at max-qbar ---
 if strcmpi(o.profile, 'strongwind')

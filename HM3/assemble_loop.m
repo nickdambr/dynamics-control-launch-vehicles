@@ -25,7 +25,13 @@ function [L, T, info] = assemble_loop(G, K, Wact)
 %   See also BUILD_PLANT_RIGID, BUILD_PLANT_FULL, BUILD_TVC,
 %   BUILD_NOTCH_FILTER, DESIGN_CONTROLLER.
 
-if nargin < 3 || isempty(Wact), Wact = tf(1); end
+arguments
+    G {mustBeA(G, 'lti')}
+    K (1,1) struct
+    Wact = tf(1)
+end
+
+if isempty(Wact), Wact = tf(1); end    % [] is the documented ideal-actuator alias
 
 % --- controller as a static gain block (named IO) ---
 % u_pd = [Kp_th, -Kp_th, -Kd_th, -Kp_z, -Kd_z] * [theta_ref;theta_m;thetadot_m;z_m;zdot_m]

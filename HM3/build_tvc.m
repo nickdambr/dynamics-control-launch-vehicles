@@ -16,7 +16,10 @@ function Wtvc = build_tvc(p, padeOrder)
 %
 %   See also BUILD_NOTCH_FILTER, ASSEMBLE_LOOP.
 
-if nargin < 2 || isempty(padeOrder), padeOrder = 3; end
+arguments
+    p (1,1) struct
+    padeOrder (1,1) {mustBeInteger, mustBeReal, mustBePositive} = 3
+end
 
 s = tf('s');
 Wact = p.wTVC^2 / (s^2 + 2*p.zTVC*p.wTVC*s + p.wTVC^2);

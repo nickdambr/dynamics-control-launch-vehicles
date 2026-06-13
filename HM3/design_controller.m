@@ -1,4 +1,4 @@
-function [K, m] = design_controller(G, Wact, varargin)
+function [K, m] = design_controller(G, Wact, o)
 %DESIGN_CONTROLLER  Tune the pitch PD gains to target gain/phase margins.
 %
 %   [K, m] = DESIGN_CONTROLLER(G, Wact) tunes the pitch proportional and
@@ -25,23 +25,27 @@ function [K, m] = design_controller(G, Wact, varargin)
 %
 %   See also ASSEMBLE_LOOP, MARGIN.
 
-ip = inputParser;
-ip.addParameter('Kp_z',-1e-3);
-ip.addParameter('Kd_z',-1e-3);
-ip.addParameter('GM',6);
-ip.addParameter('PM',30);
-ip.addParameter('K0',[2.0 1.4]);
-ip.addParameter('verbose',true);
-ip.parse(varargin{:});
-o = ip.Results;
+arguments
+    G {mustBeA(G, 'lti')}
+    Wact = tf(1)
+    o.Kp_z    (1,1) {mustBeNumeric, mustBeReal} = -1e-3
+    o.Kd_z    (1,1) {mustBeNumeric, mustBeReal} = -1e-3
+    o.GM      (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 6
+    o.PM      (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 30
+    o.K0      (1,2) {mustBeNumeric, mustBeReal, mustBePositive} = [2.0 1.4]
+    o.verbose (1,1) logical = true
+end
 
-if nargin < 2, Wact = tf(1); end
-if isempty(Wact), Wact = tf(1); end
+if isempty(Wact), Wact = tf(1); end    % [] is the documented ideal-actuator alias
+
+% MARGIN warns on every evaluation of the conditionally stable loop; mute it
+% for the whole search and restore the caller's warning state on exit.
+warnState = warning('off','Control:analysis:MarginUnstable');
+restoreWarn = onCleanup(@() warning(warnState));
 
     function c = cost(x)
         Kt.Kp_th = exp(x(1));  Kt.Kd_th = exp(x(2));
         Kt.Kp_z  = o.Kp_z;     Kt.Kd_z  = o.Kd_z;
-        warning('off','Control:analysis:MarginUnstable');
         [L,T] = assemble_loop(G, Kt, Wact);
         [Gm,Pm] = margin(L);
         gm_db = 20*log10(Gm);
@@ -59,7 +63,6 @@ K.Kd_th = exp(xopt(2));
 K.Kp_z  = o.Kp_z;
 K.Kd_z  = o.Kd_z;
 
-warning('off','Control:analysis:MarginUnstable');
 [L,T] = assemble_loop(G, K, Wact);
 [Gm,Pm,Wcg,Wcp] = margin(L);
 m = struct('GM_dB',20*log10(Gm),'PM_deg',Pm,'wc_gain',Wcg,'wc_phase',Wcp, ...
