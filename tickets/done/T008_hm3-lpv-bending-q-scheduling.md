@@ -68,14 +68,35 @@ vs descending q branches need separating).
 
 ## Acceptance criteria
 
-- [ ] Flexible LPV plant (6-state, `omega(t)`) simulates over 0–140 s in both
-      the ode45 baseline and `hm3_full_ascent.slx`
-- [ ] Varying Notch tracking `omega(t)` vs fixed HM3 notch compared (the fixed
-      notch detuning shown explicitly)
-- [ ] `q(t)`-scheduled gains implemented and compared against the `t`-scheduled
-      schedule; non-monotonic-q ambiguity discussed
-- [ ] ode45 vs Simulink overlay still ~1e-6 on theta with the new blocks
-- [ ] README section + figures; `HM3/` frozen-time deliverable untouched
+- [x] Flexible LPV plant (6-state, `omega(t)`) simulates over 0–140 s in both
+      the ode45 baseline (`ode_lpv_flex.m`, 13 states) and Simulink
+      (`hm3_full_ascent_flex.slx` — a separate model, see Outcome)
+- [x] Varying Notch tracking `omega(t)` vs fixed HM3 notch compared — fixed
+      notch detunes and the loop goes **unstable from t ≈ 75 s**; varying notch
+      holds |L(jω)| ≈ −12…−18 dB stable all ascent (`flex_notch_detuning.png`)
+- [x] `q(t)`-scheduled gains implemented and compared against the `t`-schedule;
+      **41 % gain hysteresis**, margins collapse to 0.5 dB / 2° (Mach noted as
+      the better measurable) — non-monotonic-q ambiguity quantified
+- [x] ode45 vs Simulink overlay still ~1e-6 on theta with the new blocks —
+      flexible model overlays to **5.1e-7 rad** on θ (1.3e-7 on η)
+- [x] README sections + figures; `HM3/` frozen-time deliverable untouched
+
+## Outcome (2026-06-13)
+
+Both goals delivered in `HM3/LTV_FULL_ASCENT/`. Two design choices worth noting:
+
+- **Varying notch from elementary blocks**, not the library *Varying Notch
+  Filter*: realised in controllable-canonical form with coefficients on `ω(t)`
+  (integrators + lookups), consistent with the elementary-block style of the
+  T007 model and guaranteeing the ode45 baseline and Simulink agree to ~1e-6.
+- **Separate flexible model** `hm3_full_ascent_flex.slx` (frozen gains, varying
+  notch) instead of bolting bending onto the validated rigid `hm3_full_ascent.slx`
+  — keeps each model focused and independently validated. `ode_lpv_flex.m`
+  reduces exactly to HM3 Task 2 at `t_ref = 72 s` (max|Δθ| = 1.2e-10 rad).
+
+Goal 1 holds the PD gains frozen (the showcase is the notch); Goal 2 schedules
+the rigid gains. Combining scheduled gains *and* a varying notch in one
+flexible run is recorded as a follow-up in the folder README.
 
 ## Notes
 

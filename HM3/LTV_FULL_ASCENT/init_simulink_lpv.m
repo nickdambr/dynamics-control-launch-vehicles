@@ -74,6 +74,9 @@ at   = @(f) interp1(L.(f).Time, squeeze(L.(f).Data), tg);
 V  = at('V');  A6 = at('A6'); K1 = at('K1');
 a1 = at('a1'); a3 = at('a3'); a4 = at('a4');
 Q  = at('Q');  h  = at('h');
+% bending / INS coefficients for the flexible showcase (T008): omega(t),
+% INS leakage sigma_ins(t)/phi_ins(t), TVC bending forcing aqk = -phi_tvc*Tc
+omega = at('omega'); sig = at('sigma_ins'); phi = at('phi_ins'); aqk = at('aqk');
 Vsafe = max(V, 1);                      % V(0)=0: guard A6/V and 1/V at lift-off
 
 c1   = a1;                 % * zdot
@@ -124,6 +127,16 @@ S.fKp = griddedInterpolant(tsched, Kp_sched, 'linear', 'nearest');
 S.fKd = griddedInterpolant(tsched, Kd_sched, 'linear', 'nearest');
 S.windfun = griddedInterpolant(wg.t, alphaw, 'linear', 'nearest');
 
+% --- flexible-model interpolants + LTI TVC + deep-notch constants (T008) ---
+S.fa1 = gi(a1); S.fa3 = gi(a3); S.fa4 = gi(a4); S.fA6 = gi(A6); S.fK1 = gi(K1);
+S.fomega = gi(omega); S.faqk = gi(aqk); S.fsig = gi(sig); S.fphi = gi(phi);
+Wtvc = build_tvc(p0, 3);                                  % LTI servo x Pade delay
+[At, Bt, Ct, Dt] = ssdata(ss(Wtvc));
+[tvc_num, tvc_den] = tfdata(tf(Wtvc), 'v');               % for the Transfer Fcn block
+S.tvc   = struct('At', At, 'Bt', Bt, 'Ct', Ct, 'Dt', Dt);
+S.notch = struct('zN', 0.002, 'zD', 0.7, 'zBM', p0.zBM, ...   % HM3 deep notch
+                 'wn72', interp1(L.omega.Time, squeeze(L.omega.Data), 72));
+
 %% Push to base workspace for the Simulink model
 if o.push
     base = struct( ...
@@ -133,7 +146,12 @@ if o.push
         'Kp_th0', K0.Kp_th, 'Kd_th0', K0.Kd_th, 'Kp_z0', K0.Kp_z, 'Kd_z0', K0.Kd_z, ...
         'tsched', tsched, 'Kp_sched', Kp_sched, 'Kd_sched', Kd_sched, ...
         'sched', 0, 'drywind', drywind, 'GreensiteLPV', GreensiteLPV, ...
-        'Tstart', 0, 'Tstop', o.Tstop);
+        'Tstart', 0, 'Tstop', o.Tstop, ...
+        ... % flexible model (T008): bending, INS leakage, deep notch + TVC
+        'lpv_omega', omega, 'lpv_omega2', omega.^2, 'lpv_2zBMw', 2*p0.zBM*omega, ...
+        'lpv_aqk', aqk, 'lpv_sig', sig, 'lpv_phi', phi, ...
+        'notch_zN', S.notch.zN, 'notch_zD', S.notch.zD, ...
+        'tvc_num', tvc_num, 'tvc_den', tvc_den);
     fn = fieldnames(base);
     for i = 1:numel(fn), assignin('base', fn{i}, base.(fn{i})); end
     fprintf('init_simulink_lpv: pushed %d variables to base (horizon 0-%g s, %d schedule points).\n', ...

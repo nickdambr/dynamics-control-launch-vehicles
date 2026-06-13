@@ -4,8 +4,11 @@
 > for the **max-q̄** point design (`t = 72 s`); that frozen-time analysis lives
 > in [`HM3/`](../) and is untouched. This folder extends it to the **whole
 > ascent (0–140 s)** to demonstrate gain-scheduled launch-vehicle attitude
-> control and a programmatically-built Simulink model. See ticket
-> [`T007`](../../tickets/).
+> control and programmatically-built Simulink models. Three studies:
+> the **rigid LPV plant** with frozen vs scheduled gains (T007), the
+> **flexible plant** with a bending notch that tracks `ω(t)` (T008, Goal 1),
+> and **scheduling on `q(t)`** instead of time (T008, Goal 2). See tickets
+> [`T007`](../../tickets/) / [`T008`](../../tickets/).
 
 ## Idea
 
@@ -22,8 +25,8 @@ dynamics share one clock and the generator is wired **directly into the loop**.
 Everything needed already ships with the course data: `GreensiteLPV_DATA.mat`
 holds the full time histories `A6(t), K1(t), a1(t), a3(t), a4(t), V(t)` (the
 same dataset [`load_hw3_params`](../load_hw3_params.m) samples at a single
-instant). The first bending mode and TVC are dropped — the showcase is the
-**scheduling**, not the flex model.
+instant). The rigid study (T007) drops the bending mode and TVC; the flexible
+study (T008, Goal 1) adds them back with a varying notch.
 
 ## Model
 
@@ -109,13 +112,68 @@ reproduces HM3's frozen-time response on the max-q̄ wind window:
 `max|θ_LPV − θ_HM3| ≈ 7×10⁻¹⁰ rad` — the LPV model reduces exactly to the HM3
 point design.
 
+## Flexible vehicle: a notch that tracks `ω(t)` (T008, Goal 1)
+
+HM3's Task-2 design gain-stabilises the first bending mode with a deep notch
+centred on `ω_BM(72) = 18.9 rad/s`. Over the ascent the true bending frequency
+sweeps `ω(t) ∈ [16.5, 31.8] rad/s`, so a **fixed** notch detunes. The flexible
+6-state plant of [`build_plant_full`](../build_plant_full.m) (bending + INS
+coupling + TVC + 20 ms delay) is lifted to the LPV setting in
+[`ode_lpv_flex.m`](ode_lpv_flex.m) (the source of truth) and
+[`hm3_full_ascent_flex.slx`](build_hm3_full_ascent_flex.m), with the notch
+realised from elementary blocks (controllable-canonical, coefficients on
+`ω(t)`) — a varying notch without a library block.
+
+The open-loop gain *at the instantaneous bending frequency* tells the story:
+the fixed notch only covers the resonance near `t = 72 s` and the loop goes
+**unstable from `t ≈ 75 s`** (`ω` climbs out of the notch); the varying notch
+holds `|L(jω(t))| ≈ −12…−18 dB` and stays stable across the whole ascent.
+
+![Notch detuning](figures/flex_notch_detuning.png)
+
+In the time domain the fixed-notch bending coordinate `η` grows without bound
+(divergence past `t ≈ 85 s`) while the varying notch keeps it `~10⁻³`:
+
+![Flexible response](figures/flex_flex_response.png)
+
+The Simulink flexible model overlays the ode45 baseline to **5×10⁻⁷ rad on θ**:
+
+![Flexible Simulink vs script](figures/flex_simulink_vs_script.png)
+
+## Scheduling on `q(t)` instead of time (T008, Goal 2)
+
+A flight controller cannot measure time-since-launch; the textbook LPV choice
+is to schedule on a measurable parameter such as the dynamic pressure `q`. Is
+`q` a good choice here? **No.** The aerodynamic instability `A6(t)` peaks at
+`t ≈ 72 s` but `q(t)` peaks earlier (`≈ 65 s`), so the gain-vs-`q` map is
+**hysteretic** — the rising and falling `q` branches need different gains at
+the same `q` (up to **41 %** apart) — and `q` plateaus late in flight while the
+gains keep falling.
+
+![q hysteresis](figures/qsched_q_hysteresis.png)
+
+Keying the lookup on `q` (built from the ascending branch) therefore **under-gains**
+through the high-`A6` descent: the frozen-time margins collapse from
+`6 dB / 30°` to **`0.5 dB / 2°`** around `t ≈ 105 s`, whereas the time schedule
+stays flat. The honest conclusion: for this vehicle, time (or **Mach**, which is
+monotonic) is the better scheduling variable.
+
+![q margins](figures/qsched_q_margins.png)
+
 ## How to run
 
 ```matlab
 cd HM3/LTV_FULL_ASCENT
-main_full_ascent          % LTV baseline: response, margin sweep, q.alpha, consistency check
-build_hm3_full_ascent     % (re)author hm3_full_ascent.slx from code
-run_full_ascent_simulink  % simulate the .slx, overlay vs the ode45 baseline
+% --- rigid LPV, frozen vs scheduled gains (T007) ---
+main_full_ascent           % LTV baseline: response, margin sweep, q.alpha, consistency check
+build_hm3_full_ascent      % (re)author hm3_full_ascent.slx from code
+run_full_ascent_simulink   % simulate the .slx, overlay vs the ode45 baseline
+% --- flexible plant, fixed vs varying notch (T008, Goal 1) ---
+main_flex                  % detuning sweep + fixed-vs-varying-notch time response
+build_hm3_full_ascent_flex % (re)author hm3_full_ascent_flex.slx from code
+run_flex_simulink          % simulate the flexible .slx, overlay vs ode45
+% --- scheduling on q(t) (T008, Goal 2) ---
+main_q_scheduling          % q-vs-t scheduling: hysteresis, response, margins
 ```
 
 Requires the **Control System Toolbox** (the schedule reuses HM3's `fminsearch`
@@ -134,16 +192,19 @@ high-fidelity translational kinematics.
 
 | File | Role |
 |------|------|
-| [`init_simulink_lpv.m`](init_simulink_lpv.m) | load LPV data, build coefficient lookups + gain schedule, run the wind generator, push to base |
+| [`init_simulink_lpv.m`](init_simulink_lpv.m) | load LPV data, build coefficient lookups + gain schedule + bending/notch/TVC data, run the wind generator, push to base |
 | [`ode_lpv_ascent.m`](ode_lpv_ascent.m) | LTV rigid-plant RHS (ode45 inner loop) |
-| [`main_full_ascent.m`](main_full_ascent.m) | frozen-vs-scheduled baseline, margin sweep, `q̄·α`, consistency check, figures |
-| [`build_hm3_full_ascent.m`](build_hm3_full_ascent.m) | author `hm3_full_ascent.slx` programmatically |
-| [`run_full_ascent_simulink.m`](run_full_ascent_simulink.m) | simulate the model, overlay vs the ode45 baseline |
-| `hm3_full_ascent.slx` | full-ascent LPV model (generator in-loop, frozen/scheduled controller) |
+| [`ode_lpv_flex.m`](ode_lpv_flex.m) | LTV flexible RHS — bending + INS + TVC + varying notch (13 states) |
+| [`main_full_ascent.m`](main_full_ascent.m) | rigid: frozen-vs-scheduled baseline, margin sweep, `q̄·α`, consistency check |
+| [`main_flex.m`](main_flex.m) | flexible: fixed-vs-varying-notch detuning sweep + time response |
+| [`main_q_scheduling.m`](main_q_scheduling.m) | `q`- vs `t`-scheduling: hysteresis, response, margins |
+| [`build_hm3_full_ascent.m`](build_hm3_full_ascent.m) / [`build_hm3_full_ascent_flex.m`](build_hm3_full_ascent_flex.m) | author the rigid / flexible `.slx` programmatically |
+| [`run_full_ascent_simulink.m`](run_full_ascent_simulink.m) / [`run_flex_simulink.m`](run_flex_simulink.m) | simulate each model, overlay vs the ode45 baseline |
+| `hm3_full_ascent.slx` / `hm3_full_ascent_flex.slx` | rigid (frozen/scheduled) / flexible (varying notch) LPV models, generator in-loop |
 
 ## Possible follow-ups (deferred)
 
-- Bending mode with time-varying `ω(t)` + a **Varying Notch Filter** (the fixed
-  HM3 notch detunes as `ω` sweeps the lookup range).
-- Gains scheduled on the **measurable** parameter `q(t)` instead of time — true
-  LPV scheduling.
+- Schedule on **Mach** (monotonic, measurable) to remove the `q`-hysteresis
+  found in Goal 2 — the natural fix for true single-parameter LPV scheduling.
+- Co-scheduled gains **and** notch in one flexible run (Goal 1 holds the gains
+  frozen; Goal 2 schedules the rigid gains — combining both is the next step).
