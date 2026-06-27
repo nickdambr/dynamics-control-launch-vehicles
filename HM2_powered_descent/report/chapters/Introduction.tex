@@ -8,6 +8,8 @@ This report presents the solution to Homework~2 of the course \emph{Dynamics and
 
 The powered-descent problem models the final phase of flight of a reusable rocket performing a "divert and soft land" manoeuvre, of the kind flown by the SpaceX Falcon~9 first stage and by Mars precision-landing concepts. The vehicle must reach a designated landing pad with zero residual velocity while respecting thrust bounds, a glide-slope corridor, and altitude constraints, and using minimum propellant.
 
+\paragraph{Why a direct method.} The choice of a direct transcription over the indirect route of Homework~1 is deliberate. Indirect methods \emph{optimize then discretize}---they require the analytical costate equations, the transversality conditions, and a guess for the non-physical initial costates---whereas a direct method \emph{discretizes then optimizes}, transcribing the trajectory into an NLP that a general-purpose solver handles without any of that machinery. The practical payoff is threefold: path constraints (glide-slope, thrust bounds) enter natively as algebraic inequalities; the converged NLP active set directly exposes the constrained-arc structure of the optimum (here the saturated burns of the max--coast--max law); and the convergence radius is far wider, so a crude initial guess suffices. Betts shows that the direct route can even solve high-index differential--algebraic problems on which a hand-reduced indirect formulation fails~\cite[Sec.~4.12.7]{betts2010}. The price is a larger problem and the fact that the discrete optimum need not exactly satisfy the continuous necessary conditions; the convex reformulations explored in Task~2 are the route to the real-time guidance that a dense NLP cannot provide~\cite{benedikter2022}.
+
 \subsection{Vehicle Model and Equations of Motion}\label{sec:hm2_dynamics}
 
 The vehicle is modelled as a 2D point mass moving above flat ground with no aerodynamics. The state vector is
@@ -86,6 +88,8 @@ The minimum-fuel powered-descent problem is the Mayer-form OCP
 \end{aligned}
 \label{eq:OCP}
 \end{equation}
+The objective is written in \emph{Mayer} form, as a pure terminal cost $J = -m(t_f)$. It could equally be cast in \emph{Lagrange} form through the mass dynamics, $\int_0^{t_f}\!\|\mathbf{T}\|/c\,\mathrm{d}t = m_0 - m(t_f)$; the two are special cases of the \emph{Bolza} objective, and a Lagrange integral cost can always be converted to Mayer form by appending one extra state~\cite[Sec.~4.4]{betts2010}. The Mayer form is preferred here because the terminal mass is already a decision variable, so it adds nothing to the transcription, whereas the Lagrange form would carry one additional state at every node.
+
 This continuous-time problem is approximated by an NLP using trapezoidal direct collocation, as described in Section~\ref{sec:methodology}.
 
 \end{document}
