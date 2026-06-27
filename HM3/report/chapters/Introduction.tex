@@ -13,6 +13,24 @@ wind disturbance is largest. The design is carried out entirely with
 stability indicator, following the short-period pitch-plane model of
 Greensite~\cite{greensite1970}.
 
+\subsection{Design methodology: frozen coefficients at max-$\bar q$}
+
+Launch-vehicle attitude control in atmospheric flight is classically handled by
+the \emph{time-slice} (frozen-coefficient) method: the slowly varying mass,
+inertia and aerodynamic coefficients are frozen at a representative instant, a
+linear time-invariant short-period model is built and analysed at that operating
+point, and the controller is afterwards validated against time-varying
+simulations~\cite[Sec.~2]{greensite_cr826}. The principal sizing disturbance is
+the wind profile, which drives both the trajectory dispersion and the structural
+bending loads---hence the gust analysis of Tasks~1 and~2. The instant
+$t = 72$~s is selected because it is the load- and stability-critical slice:
+the aerodynamic destabilising moment and the wind-induced angle of attack are
+both near their maxima. The caveat of the method is that point-wise Nichols
+margins certify only the frozen model and do not by themselves guarantee
+stability of the underlying time-varying system; this is what motivates the
+parametric robustness study of Task~3 and, ultimately, gain scheduling along
+the trajectory.
+
 \subsection{Plant model}
 
 The pitch-plane short-period dynamics are described by the linear
@@ -36,13 +54,26 @@ $\mathbf{x} = [\,z,\ \dot z,\ \theta,\ \dot\theta,\ \eta,\ \dot\eta\,]^\top$
 \begin{bmatrix} 0\\ -a_1 V\\ 0\\ -A_6\\ 0\\ 0 \end{bmatrix}\alpha_w .
 \label{eq:plant}
 \end{equation}
-The pitch channel $\ddot\theta = A_6\,\theta + K_1\,\delta - A_6\,\alpha_w$ is
-the core of the problem. The coefficient $A_6 = N_\alpha l_\alpha / I_{yy} > 0$
-(\emph{aerodynamic moment}, denoted $\mu_\alpha$) places an open-loop pole at
-$s = +\sqrt{A_6} = +1.84$~rad/s in the right half-plane: the airframe is
-\textbf{statically unstable} and feedback is mandatory. The coefficient
-$K_1 = T_c l_c / I_{yy}$ (\emph{control effectiveness}, $\mu_c$) sets the
-authority of the TVC.
+The pitch channel is the core of the problem and follows from a moment balance
+about the centre of mass. The aerodynamic moment $N_\alpha l_\alpha$ acts on the
+local incidence---built from the pitch attitude $\theta$, the plunging term
+$\dot z/V$ and the wind angle $\alpha_w$---while the gimballed thrust contributes
+a control moment $T_c l_c\,\delta$; dividing the balance
+$I_{yy}\ddot\theta = N_\alpha l_\alpha(\theta + \dot z/V - \alpha_w) + T_c l_c\,\delta$
+by $I_{yy}$ reproduces row~4 of Eq.~\eqref{eq:plant},
+\begin{equation}
+\ddot\theta = A_6\,\theta + \frac{A_6}{V}\,\dot z + K_1\,\delta - A_6\,\alpha_w ,
+\label{eq:pitch_channel}
+\end{equation}
+and identifies the two structural coefficients: the \emph{aerodynamic moment}
+$A_6 = N_\alpha l_\alpha / I_{yy} > 0$ (denoted $\mu_\alpha$) and the
+\emph{control effectiveness} $K_1 = T_c l_c / I_{yy}$ ($\mu_c$). With $A_6 > 0$
+the airframe transfer function $\theta/\delta = K_1/(s^2 - A_6)$ carries an
+open-loop pole at $s = +\sqrt{A_6} = +1.84$~rad/s in the right half-plane: the
+\textbf{statically unstable} airframe of a vehicle whose centre of pressure lies
+ahead of its centre of mass, for which feedback is
+mandatory~\cite[Eqs.~(9.2.25)--(9.2.26)]{barrows2020}. The TVC coefficient $K_1$
+sets the control authority available to counter it.
 
 The sensed quantities are produced by the inertial unit (assignment Eq.~2),
 which couples the bending coordinate $\eta$ into the gyro and accelerometer
@@ -54,9 +85,10 @@ z_m = z - \phi_{1,ins}\,\eta,\quad
 \dot z_m = \dot z - \phi_{1,ins}\,\dot\eta .
 \label{eq:ins}
 \end{equation}
-This contamination is exactly what makes the lightly damped bending mode
-($\omega_{BM} = 18.9$~rad/s, $\zeta_{BM}=0.005$) visible to the controller and
-drives the need for a dedicated filter (Task~2).
+This contamination is exactly what makes the lightly damped first bending
+mode---written with $\omega_1 \equiv \omega_{BM} = 18.9$~rad/s and
+$\zeta_1 \equiv \zeta_{BM} = 0.005$ in Eq.~\eqref{eq:plant}---visible to the
+controller and drives the need for a dedicated filter (Task~2).
 
 The actuator is the second-order TVC of Eq.~3,
 \begin{equation}
@@ -64,8 +96,20 @@ W_{TVC}(s) = \frac{\omega_{TVC}^2}{s^2 + 2\zeta_{TVC}\omega_{TVC}s + \omega_{TVC
 \qquad \omega_{TVC}=70~\text{rad/s},\ \zeta_{TVC}=0.7,
 \label{eq:tvc}
 \end{equation}
-in series with a pure transport delay $\tau = 20$~ms, approximated by a
-third-order Pad\'e rational function. Parameters at $t=72$~s are read from the
+in series with a pure transport delay $\tau = 20$~ms. The delay is approximated
+by a third-order Pad\'e rational function $e^{-\tau s} \approx P_3(s)$, the
+diagonal $[3/3]$ member of the family obtained by matching the Taylor expansion
+of $D(s)\,e^{-\tau s} = N(s)$ to the highest possible order; the illustrative
+second-order form is
+\begin{equation}
+e^{-\tau s} \approx \frac{12 - 6\,\tau s + (\tau s)^2}{12 + 6\,\tau s + (\tau s)^2},
+\label{eq:pade}
+\end{equation}
+an \emph{all-pass} rational function ($|P(j\omega)| = 1$ for all $\omega$) that
+reproduces the phase lag of the delay while leaving the loop gain unchanged.
+Order three is retained, matching the implementation, so that the approximation
+stays faithful up to the bending frequency, where $\omega_{BM}\tau \approx 0.38$
+is no longer negligible~\cite{franklin2015}. Parameters at $t=72$~s are read from the
 reference data set \texttt{GreensiteLPV\_DATA.mat} (cross-checked against
 Table~1 of the assignment); the salient values are reported in
 Table~\ref{tab:params}.
@@ -113,12 +157,20 @@ the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\
 
 \subsection{A note on conditional stability}
 
-Because the open-loop airframe carries a right-half-plane pole, the loop is
-\emph{conditionally stable}: closed-loop stability is lost if the loop gain is
-\emph{reduced} below a threshold, not only if it is increased. Consequently the
-\texttt{margin} routine returns the low-frequency \emph{aerodynamic} gain margin,
-and the assignment targets $|GM|\approx 6$~dB and $|PM|\approx 30^\circ$ are
-interpreted in magnitude, as read off the Nichols chart. This is standard
+Because the open-loop airframe carries a single right-half-plane pole
+($P_R = 1$, the $+1.84$~rad/s aerodynamic pole), the loop is
+\emph{conditionally stable}. By the Nyquist criterion $N = P_R - Z_R$,
+closed-loop stability ($Z_R = 0$) demands exactly one counter-clockwise
+encirclement of the critical point, so stability is lost if the loop gain is
+\emph{reduced} below a threshold, not only if it is
+increased~\cite[Eq.~(9.4.12), Figs.~9.17--9.18]{barrows2020}. An aerodynamically
+unstable vehicle driven through a second-order (or higher) actuator therefore
+has \emph{two} gain margins---a low-frequency \emph{aerodynamic} margin (reduce
+gain $\to$ unstable) and a high-frequency \emph{rigid-body} margin (increase
+gain $\to$ unstable)---which on the Nichols chart show up as two $0$~dB crossings
+of the $-180^\circ$ line. The \texttt{margin} routine is therefore read in
+magnitude, and the assignment targets $|GM|\approx 6$~dB and
+$|PM|\approx 30^\circ$ refer to this finite stable gain band. This is standard
 practice for the attitude control of aerodynamically unstable
 launchers~\cite{wie2008,franklin2015}.
 

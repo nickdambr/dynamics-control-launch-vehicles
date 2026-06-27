@@ -41,11 +41,33 @@ the dominant pitch pair at $\omega_c = \sqrt{K_1 K_{P,\theta}-A_6} = 2.4$~rad/s
 damping $\zeta = K_1 K_{D,\theta}/(2\omega_c) = 1.34$, deliberately above the
 $0.7$--$0.8$ pole-placement range because here the damping is driven by the
 phase-margin target rather than by a step-response specification.
+
+These relations invert the closed-loop characteristic polynomial: matching
+$s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta} - A_6)$ to $s^2 + 2\zeta\omega_c s + \omega_c^2$
+gives the proportional--derivative design equations
+\begin{equation}
+K_{P,\theta} = \frac{\omega_c^2 + A_6}{K_1}, \qquad
+K_{D,\theta} = \frac{2\zeta\omega_c}{K_1},
+\label{eq:poleplace}
+\end{equation}
+the form tabulated by Barrows and Orr for TVC attitude
+control~\cite[Eqs.~(9.2.37)--(9.2.38)]{barrows2020}. The same reference gives a
+closed-form estimate of the low-frequency aerodynamic gain margin,
+$GM_a \approx 20\log_{10}(K_1 K_{P,\theta}/A_6) = 20\log_{10}(4.565\times1.98/3.382)
+\approx 8.5$~dB~\cite[Eq.~(9.2.39)]{barrows2020}; this single-channel figure sits
+a couple of dB above the $|GM| = 6.0$~dB returned by \texttt{margin} on the full
+four-state loop, the difference being the weak drift channel and the
+conditionally-stable low-frequency reading. The gains themselves were obtained
+by the \texttt{fminsearch} wrapper minimising the equal-weight margin miss
+$(|GM| - 6)^2 + (|PM| - 30)^2$ from the initial guess $[2.0,\,1.4]$, so the
+reported $(1.98,\,1.40)$ is the local minimiser of that objective.
 The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve threading
 between the two critical points $(-180^\circ,0\,\text{dB})$ and
-$(-540^\circ,0\,\text{dB})$ --- the geometric signature of conditional
-stability --- and clearing the $6$~dB closed-loop contour; the markers locate
-the phase and gain crossovers where the margins are read.
+$(-540^\circ,0\,\text{dB})$ --- the geometric signature of conditional stability,
+the two crossings being the $360^\circ$ wraps of the single-encirclement Nyquist
+condition $N = P_R = 1$ of Section~\ref{sec:intro} --- and clearing the $6$~dB
+closed-loop contour; the markers locate the phase and gain crossovers where the
+margins are read.
 
 \begin{figure}[H]
 \centering
@@ -83,9 +105,24 @@ attitude loop pitches the vehicle slightly into the wind
 ($\theta \to -0.14^\circ$ at the gust peak), so the peak total incidence,
 $0.31^\circ$, stays \emph{below} the wind contribution alone --- a mild
 load-relieving action. With $\bar q = 81$~kPa the peak load indicator is
-$\bar q\,\alpha = 25$~kPa\,deg, far from typical structural allowables, so at
-this gust level the drift-minimum--oriented gain choice does not conflict with
-the load-minimum requirement.
+$\bar q\,\alpha = 25$~kPa\,deg, the incidence remaining an order of magnitude
+below the few-degree load limit typical of a slender launcher, so at this gust
+level the drift-minimum--oriented gain choice does not conflict with the
+load-minimum requirement.
+
+This drift-versus-load tension is the classical dichotomy of launch-vehicle wind
+control~\cite[Sec.~3.1]{greensite_cr826}. The characteristic equation of the
+rigid airframe in wind is a cubic with two oscillatory rigid-body roots plus one
+real \emph{drift} (flight-path) root; the final-value theorem applied to a step
+gust yields a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
+gains --- which is why the lateral drift of Figure~\ref{fig:t1gust} accumulates
+smoothly rather than being nulled. Two limiting philosophies bracket the design:
+the \emph{drift-minimum} condition (drift-channel coefficient $B_0 = 0$) holds
+the trajectory dispersion down, while the \emph{load-minimum} condition
+($K_{P,\theta} = 0$, so the steady incidence $\alpha_{ss} = 0$) minimises
+$\bar q\,\alpha$ at the cost of a slow unstable drift mode. The weak negative
+drift gains adopted here are a small step toward the drift-minimum end of this
+trade.
 
 \begin{figure}[H]
 \centering

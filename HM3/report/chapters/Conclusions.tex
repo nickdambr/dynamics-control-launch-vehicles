@@ -34,10 +34,26 @@ compounds them, leaving only $1.5$~dB and $9^\circ$ --- the quantitative
 argument for gain scheduling in a flight design.
 \end{itemize}
 
+\paragraph{Limitations and extensions.} Four modelling choices bound the scope
+of the present design. (i) The pure proportional--derivative law leaves a
+steady-state attitude error to a constant gimbal misalignment, which a
+proportional--integral--derivative extension would null. (ii) The stiff
+second-order TVC model neglects the nozzle back-reaction (the
+\emph{dog-wags-tail} feedback) and the hydraulic load-resonance of the actuator;
+retaining the gimbal angle as a state, together with the tail-wags-dog zero of
+Eq.~\eqref{eq:twd}~\cite[Sec.~6.1]{barrows2020}, is the natural next fidelity
+step. (iii) Sensor placement relative to the bending-mode nodes is a
+stabilisation lever co-equal with the filter --- an aft gyro station flips the
+sign of the modal slope and can phase-stabilise a mode that would otherwise need
+a notch~\cite[Sec.~3.3.2.2]{greensite_cr826} --- whereas here the INS station is
+fixed and only the filter is traded. (iv) Propellant sloshing is omitted; it
+would add low-frequency, lightly damped modes coupling into the rigid loop and
+the drift channel.
+
 The design illustrates the textbook trade-offs of launch-vehicle attitude
-control~\cite{greensite1970,wie2008}: enough gain to stabilise the unstable
-airframe, but not so much as to excite the structural modes, with the Nichols
-chart providing a single, unified view of both constraints. A Simulink
+control~\cite{greensite1970,wie2008,barrows2020}: enough gain to stabilise the
+unstable airframe, but not so much as to excite the structural modes, with the
+Nichols chart providing a single, unified view of both constraints. A Simulink
 block-diagram mirror of the closed loop reproduces the script results and is
 documented in the accompanying \texttt{models/SIMULINK\_GUIDE.md}.
 

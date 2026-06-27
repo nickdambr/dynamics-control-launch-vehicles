@@ -45,12 +45,20 @@ region. Phase rotation alone cannot rescue a $+39$~dB resonance here.
 \item \textbf{C-N --- deep minimum-phase notch.} Gain stabilisation needs more
 than $39$~dB of attenuation at $\omega_{BM}$, which forces the numerator
 damping far below the suggested range: $\zeta_{x,N}=0.002$, $\zeta_{x,D}=0.7$
-give a $-51$~dB null and drive $|L(\omega_{BM})|$ to $-12$~dB. The null is
+give a $-51$~dB null and drive $|L(\omega_{BM})|$ to $-12$~dB. The depth follows
+the closed-form attenuation of a second-order notch,
+$K_\mathrm{notch} = 20\log_{10}(\zeta_{x,N}/\zeta_{x,D})$, so that
+$20\log_{10}(0.002/0.7) \approx -51$~dB at
+$\omega_{BM}$~\cite[Eq.~(3.18)]{trotta2021}; pulling a $+39$~dB peak below
+$0$~dB requires $\zeta_{x,N}/\zeta_{x,D} \le 10^{-39/20} \approx 0.011$, i.e.\
+$\zeta_{x,N} \lesssim 0.008$ with $\zeta_{x,D} = 0.7$, which is precisely why the
+sizing must leave the assignment's suggested $\zeta_{x,N}\in[0.1,0.3]$ range. The null is
 deliberately narrow because the bending frequency sits only a decade above the
 rigid crossover ($\omega_{BM}/\omega_c \approx 8$): a wide band-reject section
 would leak phase lag into the conditionally stable low-frequency region.
-\item \textbf{C-T --- notch triplet.} The course-notes recipe against bending
-frequency uncertainty places three notches at $\{0.9,\,1.0,\,1.1\}\,\omega_{BM}$.
+\item \textbf{C-T --- notch triplet.} The notch-triplet recipe against
+bending-frequency uncertainty places three cascaded notches at
+$\{0.9,\,1.0,\,1.1\}\,\omega_{BM}$~\cite[Eq.~(3.19), Fig.~3.11]{trotta2021}.
 Sized to the same depth, however, the three wide ($\zeta_{x,D}=0.7$) sections
 pile up about $30^\circ$ of phase lag at the rigid crossover and the
 conditionally stable loop goes \emph{unstable at nominal} ($|PM|$ collapses to
@@ -95,9 +103,12 @@ the PD gains, consistent with the guideline note. The bending mode itself is
 left at its lightly damped but stable open-loop location. One caveat is
 recorded: the minimum gain margin of the stabilised loop, governed by the
 bending shoulder, is $1.8$~dB --- adequate for this exercise but well below the
-$\ge 6$~dB customarily required of gain-stabilised modes in industrial
-practice, where the deeper margins would be bought with a stiffer notch or a
-retuned loop gain.
+$\ge 12$~dB of gain margin (and $45^\circ$ of phase margin) customarily required
+of gain-stabilised \emph{bending} modes, as distinct from the $6$~dB$/30^\circ$
+rigid-body figure~\cite[p.~279]{barrows2020}, the heightened bending requirement
+reflecting the larger modelling uncertainty and latency sensitivity at high
+frequency. The deeper margin would be bought with a stiffer notch or a retuned
+loop gain.
 
 \begin{figure}[H]
 \centering
@@ -168,5 +179,23 @@ $\theta$, lateral drift $z$, drift rate $\dot z$ and TVC deflection $\delta$.}
 attitude, lateral drift and TVC deflection are nearly coincident.}
 \label{fig:t2cmp}
 \end{figure}
+
+\subsection{A note on the tail-wags-dog zero}
+
+A second flexible effect bounds what any filter can achieve. The gimballed
+nozzle has its own inertia, so its angular acceleration reacts back on the
+airframe: at the \emph{tail-wags-dog} (TWD) frequency
+\begin{equation}
+\omega_{TWD}^2 = -\frac{F_R X_G}{I_{EG} + X_G m_E l_E},
+\label{eq:twd}
+\end{equation}
+nozzle deflection produces zero net vehicle response, a transmission zero that
+caps the achievable closed-loop bandwidth~\cite[Eq.~(6.1.11)]{barrows2020}. The
+$-\phi_{1,TVC}T_c$ entry in the bending-forcing column of Eq.~\eqref{eq:plant} is
+the flexible-mode analogue of this nozzle-reaction term. The present model
+treats the actuator as a stiff second-order block (Eq.~\eqref{eq:tvc}) and so
+neglects the nozzle back-reaction --- the \emph{dog-wags-tail} feedback, which
+would add the gimbal angle as an extra state; a higher-fidelity design would
+retain it, one of the extensions noted in the conclusions.
 
 \end{document}

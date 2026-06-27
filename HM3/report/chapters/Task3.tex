@@ -60,7 +60,10 @@ The sensitivities S1--S4 attribute the effects: $\mu_\alpha$ moves the unstable
 airframe pole ($\pm 30\%$ shifts the rigid margin by roughly $\mp 2$--$3$~dB
 and scales the gust excursions), while $\mu_c$ scales the whole loop gain
 ($+30\%$ improves the rigid margin but pushes the gain-stabilised bending
-shoulder $2.3$~dB closer to $0$~dB and halves the delay margin). The vertices
+shoulder $2.3$~dB closer to $0$~dB --- the leading-order $20\log_{10}1.3 = 2.28$~dB
+loop-gain shift, only approximate because $K_1$ also scales the bending-forcing
+column of Eq.~\eqref{eq:plant} and not merely the loop gain --- and halves the
+delay margin). The vertices
 then combine these mechanisms:
 
 \begin{itemize}
@@ -83,11 +86,16 @@ bending shoulder.
 
 In summary, performance degradation is driven by $\mu_\alpha$ and mitigated by
 $\mu_c$, stability of the bending channel is eroded by $\mu_c$, and the
-worst-case combination V3 leaves single-digit margins. The fixed classical
-design survives the whole box --- but a requirement of, say, $\ge 3$~dB and
-$\ge 10^\circ$ in every corner would already call for either gain scheduling
-on $\bar q$ or a robust-synthesis retune, which is the practical takeaway of
-this exercise.
+worst-case combination V3 leaves single-digit margins. Because the margins are
+non-monotonic in $\mu_c$ (it helps the rigid loop while hurting the bending
+shoulder), the global worst case over the $\pm 30\%$ box is not guaranteed to
+sit on a vertex: the four corners and the one-at-a-time sensitivities are a
+screening, and a denser grid or Monte-Carlo sweep would be needed to certify an
+interior worst case. The fixed classical design survives the whole box --- but a
+requirement of, say, $\ge 3$~dB and $\ge 10^\circ$ in every corner would already
+call for either gain scheduling on $\bar q$ or a robust-synthesis retune, the
+standard routes beyond a single fixed classical design~\cite{trotta2021}, which
+is the practical takeaway of this exercise.
 
 \begin{figure}[H]
 \centering
