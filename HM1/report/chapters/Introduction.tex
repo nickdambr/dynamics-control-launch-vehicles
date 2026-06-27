@@ -6,6 +6,17 @@
 
 This report presents the solution to Homework~1 of the course \emph{Dynamics and Control of Launch Vehicles}, which concerns the minimum-fuel planar ascent of a rocket from rest on the ground to a prescribed low-Earth orbit injection state. Four progressively richer mission programs are addressed, each framed as an optimal control problem and solved by applying the Pontryagin Maximum Principle (PMP) and single-shooting over the costate initial conditions.
 
+\subsection{Indirect Optimal Control: Method Overview}\label{sec:method}
+
+All four mission programs are solved by the \emph{indirect} approach to optimal control, which follows an \emph{optimize-then-discretize} paradigm: the first-order necessary conditions of optimality are derived analytically from the Pontryagin Maximum Principle~\cite{pontryagin1962} and only the resulting boundary value problem is solved numerically. Concretely, the workflow is a four-step pipeline:
+\begin{enumerate}
+    \item form the Hamiltonian and impose its pointwise maximization to express the optimal control as a function of state and costate;
+    \item derive the costate (adjoint) dynamics $\dot{\boldsymbol{\lambda}} = -\partial\mathcal{H}/\partial\mathbf{x}$ and the transversality conditions that supply the missing boundary data;
+    \item assemble the resulting two-point boundary value problem (BVP) for the augmented state--costate system;
+    \item solve the BVP by single shooting over the unknown initial costates and the free final time.
+\end{enumerate}
+The competing \emph{direct} approach reverses this order---it discretizes the trajectory first and optimizes second, transcribing it into a large nonlinear program~\cite[Sec.~4.12.7]{betts2010}. The indirect route adopted here is attractive on three counts: it is highly accurate, since the optimality conditions are imposed exactly rather than approximated on a mesh; it carries a transparent physical structure, the velocity costate $\boldsymbol{\lambda}_v$ being the \emph{primer vector}~\cite{lawden1963} that fixes the optimal thrust direction; and it collapses the problem to a handful of unknowns. Its price is the notorious sensitivity of the shooting residual to the costate guess---which has no direct physical interpretation---together with small convergence basins and the need to postulate the thrust-arc (switching) structure a priori. Section~\ref{sec:shooting} returns to these difficulties and to the continuation strategy used to overcome them.
+
 \subsection{Vehicle Dynamics}\label{sec:dynamics}
 
 The vehicle is modelled as a point mass moving in a vertical plane above a flat, non-rotating Earth with no atmospheric drag. The state vector is
@@ -88,7 +99,7 @@ Rearranging,
     + \frac{T}{m}\underbrace{\bigl(\lambda_{v_x}\cos\varphi + \lambda_{v_y}\sin\varphi\bigr)}_{\text{control-dependent part}}.
 \end{equation}
 
-The costate equations $\dot{\boldsymbol{\lambda}} = -\partial\mathcal{H}/\partial\mathbf{x}$ yield
+The Euler--Lagrange costate equations $\dot{\boldsymbol{\lambda}} = -\partial\mathcal{H}/\partial\mathbf{x}$~\cite[Ch.~2]{bryson1975} yield
 \begin{align}
     \dot{\lambda}_x     &= 0
         &&\Longrightarrow\quad \lambda_x = 0
@@ -125,7 +136,7 @@ over $\varphi$. The first-order stationarity condition reads
     \tan\varphi^* = \frac{\lambda_{v_y}(t)}{\lambda_{v_x}}.
     \label{eq:bilinear}
 \end{equation}
-This is the \textbf{bilinear-tangent (linear-tangent) law}: since $\lambda_{v_y}$ is linear in $t$ (Eq.~\ref{eq:lvy}) and $\lambda_{v_x}$ is constant, $\tan\varphi^*$ varies linearly with time.
+This is the \textbf{bilinear-tangent (linear-tangent) law}~\cite[Sec.~2.4]{bryson1975}: since $\lambda_{v_y}$ is linear in $t$ (Eq.~\ref{eq:lvy}) and $\lambda_{v_x}$ is constant, $\tan\varphi^*$ varies linearly with time.
 
 \textbf{Geometric interpretation and branch selection.}\ Equation~\eqref{eq:bilinear} determines $\varphi^*$ only up to an additive $\pi$: it admits two roots per period. Geometrically, $\lambda_{v_x}$ and $\lambda_{v_y}$ are the two legs of a right triangle whose hypotenuse is the norm $\|\boldsymbol{\lambda}_v\| = \sqrt{\lambda_{v_x}^2 + \lambda_{v_y}^2}$, so the two candidate directions are
 \begin{equation}
@@ -158,42 +169,64 @@ Using this result, the optimal Hamiltonian simplifies to
 
 \subsubsection{Transversality Conditions}\label{sec:transversality}
 
-The costate boundary conditions follow from the transversality (natural boundary) conditions of the PMP. Adjoining the terminal constraints $\boldsymbol{\chi}(\mathbf{x}(t_f)) = [\,y - y_f,\; v_x - 1,\; v_y\,]^T = \mathbf{0}$ with multipliers $\boldsymbol{\mu}$ and the dynamics with the costates $\boldsymbol{\lambda}$, the first variation of the terminal (Mayer) payoff $\phi = m(t_f)$ produces a boundary term at $t_f$ that vanishes only if
+The costate boundary conditions follow from the transversality (natural boundary) conditions of the PMP~\cite[Ch.~2]{bryson1975}. Let $\mathcal{M} = m(t_f)$ denote the terminal (Mayer) payoff to be maximized, and adjoin the terminal constraints $\boldsymbol{\chi}(\mathbf{x}(t_f)) = [\,y - y_f,\; v_x - 1,\; v_y\,]^T = \mathbf{0}$ with multipliers $\boldsymbol{\mu}$. The augmented payoff is
 \begin{equation}
-    \boldsymbol{\lambda}(t_f) = \frac{\partial \phi}{\partial \mathbf{x}_f}
+    \bar{\mathcal{M}} = \mathcal{M} + \boldsymbol{\mu}^T\boldsymbol{\chi}\bigl(\mathbf{x}(t_f)\bigr)
+    + \int_{t_0}^{t_f}\!\boldsymbol{\lambda}^T\!\bigl(\mathbf{f} - \dot{\mathbf{x}}\bigr)\,\mathrm{d}t,
+    \label{eq:aug_payoff}
+\end{equation}
+whose integral vanishes on any feasible trajectory ($\dot{\mathbf{x}} = \mathbf{f}$) and therefore leaves the optimum unchanged. Integrating the $\boldsymbol{\lambda}^T\dot{\mathbf{x}}$ contribution by parts and collecting the terms evaluated at $t_f$, the first variation of $\bar{\mathcal{M}}$ accumulates the terminal boundary term
+\begin{equation}
+    \delta\bar{\mathcal{M}}\big|_{t_f} =
+    \left[\frac{\partial \mathcal{M}}{\partial \mathbf{x}_f}
+    + \left(\frac{\partial \boldsymbol{\chi}}{\partial \mathbf{x}_f}\right)^{\!T}\!\boldsymbol{\mu}
+    - \boldsymbol{\lambda}(t_f)\right]^{\!T}\!\delta\mathbf{x}_f ,
+\end{equation}
+which must vanish for arbitrary admissible $\delta\mathbf{x}_f$. This yields the transversality condition
+\begin{equation}
+    \boldsymbol{\lambda}(t_f) = \frac{\partial \mathcal{M}}{\partial \mathbf{x}_f}
     + \left(\frac{\partial \boldsymbol{\chi}}{\partial \mathbf{x}_f}\right)^{\!T}\!\boldsymbol{\mu}.
     \label{eq:transversality_general}
 \end{equation}
-Each terminal state falls into one of three categories. The \emph{constrained} states $y, v_x, v_y$ leave their costates $\lambda_y(t_f), \lambda_{v_x}(t_f), \lambda_{v_y}(t_f)$ undetermined: these absorb the unknown multipliers $\boldsymbol{\mu}$ and are carried as shooting unknowns (Eq.~\ref{eq:unknowns}). The horizontal position $x$ is \emph{free and absent from the payoff}, so $\partial\phi/\partial x = 0$ and Eq.~\eqref{eq:transversality_general} returns $\lambda_x(t_f) = 0$, consistent with $\lambda_x \equiv 0$ already obtained in Eq.~\eqref{eq:lx}. Finally, the terminal mass $m(t_f)$ is \emph{free but present in the payoff}, with $\partial\phi/\partial m = 1$, which fixes the only nontrivial terminal costate:
+Each terminal state falls into one of three categories~\cite[Sec.~2.3.1]{zavoli2013}. The \emph{constrained} states $y, v_x, v_y$ leave their costates $\lambda_y(t_f), \lambda_{v_x}(t_f), \lambda_{v_y}(t_f)$ undetermined: these absorb the unknown multipliers $\boldsymbol{\mu}$ and are carried as shooting unknowns (Eq.~\ref{eq:unknowns}). The horizontal position $x$ is \emph{free and absent from the payoff}, so $\partial\mathcal{M}/\partial x = 0$ and Eq.~\eqref{eq:transversality_general} returns $\lambda_x(t_f) = 0$, consistent with $\lambda_x \equiv 0$ already obtained in Eq.~\eqref{eq:lx}. Finally, the terminal mass $m(t_f)$ is \emph{free but present in the payoff}, with $\partial\mathcal{M}/\partial m = 1$, which fixes the only nontrivial terminal costate:
 \begin{equation}
-    \lambda_m(t_f) = \frac{\partial \phi}{\partial m(t_f)} = 1.
+    \lambda_m(t_f) = \frac{\partial \mathcal{M}}{\partial m(t_f)} = 1.
     \label{eq:trans_m}
 \end{equation}
-This condition carries a twofold meaning. First, $\lambda_m(t_f)$ is the sensitivity of the optimal payoff to the terminal mass (a unit increase in $m(t_f)$ improves the objective by one unit). Second, since the PMP determines $\boldsymbol{\lambda}$ only up to a positive scale factor---the Hamiltonian is homogeneous of degree one in $\boldsymbol{\lambda}$---Eq.~\eqref{eq:trans_m} fixes the normalization of the costate vector.\footnote{Notation follows the course notes (Lecture~4): $\phi$ is the terminal (Mayer) cost, $\boldsymbol{\chi}$ the boundary-constraint vector and $\boldsymbol{\mu}$ its multipliers (in the notes $\Phi$ denotes instead the running cost in $\mathcal{H} = \Phi + \boldsymbol{\lambda}^\top\mathbf{f}$, absent in this pure-Mayer problem). The lecture writes the final-node rule with a global minus sign, $\boldsymbol{\lambda}(t_f) = -\big(\partial\phi/\partial\mathbf{x}_f + \boldsymbol{\mu}^\top\partial\boldsymbol{\chi}/\partial\mathbf{x}_f\big)$, arising from the augmented functional in the $(\dot{\mathbf{x}}-\mathbf{f})$ form; the equivalent $(\mathbf{f}-\dot{\mathbf{x}})$ form adopted here carries the opposite sign and gives $\lambda_m(t_f) = +1$, consistent with the maximization form of $\mathcal{H}$ and with $\dot{\lambda}_m = (T/m^2)\|\boldsymbol{\lambda}_v\| > 0$ along the arc. Both conventions yield the same physical solution; the $+1$ normalization is the one used in the shooting residual and in \texttt{ode\_burn.m}.}
+This condition carries a twofold meaning. First, $\lambda_m(t_f)$ is the sensitivity of the optimal payoff to the terminal mass (a unit increase in $m(t_f)$ improves the objective by one unit). Second, since the PMP determines $\boldsymbol{\lambda}$ only up to a positive scale factor---the Hamiltonian is homogeneous of degree one in $\boldsymbol{\lambda}$---Eq.~\eqref{eq:trans_m} fixes the normalization of the costate vector.\footnote{Here $\mathcal{M}$ is the terminal (Mayer) payoff and $\boldsymbol{\chi}$, $\boldsymbol{\mu}$ the boundary-constraint vector and its multipliers; in the general Bolza form $\mathcal{H} = \Phi + \boldsymbol{\lambda}^\top\mathbf{f}$ the symbol $\Phi$ denotes the running cost, absent in this pure-Mayer problem~\cite[Ch.~2]{zavoli2013}. The sign of the terminal costate depends on the convention used to assemble the augmented functional: the $(\mathbf{f}-\dot{\mathbf{x}})$ form adopted in Eq.~\eqref{eq:aug_payoff}, consistent with the maximization of $\mathcal{H}$, gives $\lambda_m(t_f) = +1$ and $\dot{\lambda}_m = (T/m^2)\|\boldsymbol{\lambda}_v\| \ge 0$ along a powered arc (with equality only where $T = 0$); the opposite $(\dot{\mathbf{x}}-\mathbf{f})$ form would carry a global minus sign. Both conventions yield the same physical solution; the $+1$ normalization is the one used in the shooting residual and in \texttt{ode\_burn.m}.}
 
-Because the terminal time $t_f$ is free, the PMP supplies one further condition---the natural boundary condition for $t_f$:
+Because the terminal time $t_f$ is free, the PMP supplies one further condition---the natural boundary condition for $t_f$~\cite[Ch.~2]{bryson1975}:
 \begin{equation}
     \mathcal{H}(t_f) = 0.
     \label{eq:trans_tf}
 \end{equation}
 The system is autonomous (no explicit time dependence), so the Hamiltonian is constant along an optimal trajectory; $\mathcal{H}(t_f) = 0$ therefore implies $\mathcal{H}(t) \equiv 0$ throughout the powered arc, consistent with the optimality conditions.
 
-\subsection{Single-Shooting Method and Continuation}\label{sec:shooting}
+\subsection{Shooting Method and Convergence}\label{sec:shooting}
 
 Substituting the bilinear-tangent law \eqref{eq:bilinear} into Eqs.~\eqref{eq:xdot}--\eqref{eq:mdot}, the optimal control problem reduces to a \textbf{Boundary Value Problem (BVP)} solved by single shooting over the unknown costate initial conditions and the free final time.
 
-\textbf{Two numerical refinements} keep the BVP compact and well conditioned. \emph{(i) Costate normalization.} Since the Hamiltonian is homogeneous of degree one in $\boldsymbol{\lambda}$, the costates are defined only up to a positive scale; we fix it by setting $\lambda_{m,0} = 1$, which removes $\lambda_{m,0}$ as an unknown together with the terminal condition $\lambda_m(t_f) = 1$. \emph{(ii) Hamiltonian imposed at $t_0$.} As the problem is autonomous, $\mathcal{H}$ is constant and equal to zero (free $t_f$); we therefore impose $\mathcal{H} = 0$ at the \emph{initial} instant, where with $v_x = v_y = 0$ it is purely algebraic,
+\textbf{Two numerical refinements} keep the BVP compact and well conditioned. \emph{(i) Costate normalization.} Since the Hamiltonian is homogeneous of degree one in $\boldsymbol{\lambda}$, the costates are defined only up to a positive scale; we fix it by setting $\lambda_{m,0} = 1$, which removes $\lambda_{m,0}$ as an unknown together with the terminal condition $\lambda_m(t_f) = 1$. \emph{(ii) Hamiltonian imposed at $t_0$.} As the problem is autonomous, $\mathcal{H}$ is constant and equal to zero (free $t_f$); we therefore impose $\mathcal{H} = 0$ at the \emph{initial} instant, rather than at $t_f$ where it would accumulate integration error. Evaluating the optimal Hamiltonian~\eqref{eq:ham_opt} at $t_0$ is purely algebraic: the launch state has $v_x = v_y = 0$, so the term $\lambda_y v_y$ drops; the initial mass is $m_0 = 1$, so $T/m = T$; and with the normalization $\lambda_{m,0} = 1$ together with $Q = T/c$ at full thrust, the propellant term becomes $-\lambda_m Q = -T/c$. Collecting these contributions,
 \begin{equation}
-    \mathcal{H}(0) = -\lambda_{v_y,0} + T\Bigl(\lVert\boldsymbol{\lambda}_{v,0}\rVert - \tfrac{1}{c}\Bigr) = 0,
+    \mathcal{H}(0) = -\lambda_{v_y,0} + T\,\lVert\boldsymbol{\lambda}_{v,0}\rVert - \frac{T}{c}
+    = -\lambda_{v_y,0} + T\Bigl(\lVert\boldsymbol{\lambda}_{v,0}\rVert - \tfrac{1}{c}\Bigr) = 0,
     \label{eq:H0}
 \end{equation}
-instead of at $t_f$, where it would accumulate integration error. With $\lambda_x \equiv 0$ (Eq.~\ref{eq:lx}) already enforced, the shooting unknowns reduce to four,
+where the bracket is the initial value of the switching function $S = \|\boldsymbol{\lambda}_v\|/m - \lambda_m/c$ (Section~\ref{sec:task3}), evaluated at $m_0 = 1$ and $\lambda_{m,0} = 1$. With $\lambda_x \equiv 0$ (Eq.~\ref{eq:lx}) already enforced, the shooting unknowns reduce to four,
 \begin{equation}
     \boldsymbol{\zeta} = \bigl[\lambda_{v_x,0},\;\lambda_{v_y,0},\;\lambda_y,\;t_f\bigr]^T,
     \label{eq:unknowns}
 \end{equation}
 and $\lambda_m$ no longer enters the residual. Given a trial $\boldsymbol{\zeta}$, the state $[x, y, v_x, v_y, m]^T$ is integrated forward with \texttt{ode45} ($\mathrm{RelTol} = 10^{-10}$, $\mathrm{AbsTol} = 10^{-12}$) and the four residuals are driven to zero with \texttt{fsolve} (tolerances $10^{-10}$). The same four-unknown formulation is used for the powered arcs of Tasks~1, 2 and~4; Task~3 keeps $\lambda_m$ as a fifth unknown because the engine-cutoff (switching) condition of the coast needs it.
 
-Single-shooting is sensitive to the costate initial guess, which has no direct physical interpretation. The \textbf{continuation strategy} mitigates this: the BVP is first solved at a favorable operating point ($Q \approx 3$), and each subsequent value of $Q$ is initialized with the converged solution from the neighboring point, sweeping both forward and backward across the range $Q \in [1.8, 7]$. This warm-start approach propagates the solution branch smoothly without manual retuning of the initial guess.
+\textbf{Shooting function and convergence.}\ The residuals define the shooting function $\mathbf{S}:\boldsymbol{\zeta}\mapsto\mathbf{r}(\boldsymbol{\zeta})$, the mismatch of the forward-integrated trajectory against the boundary conditions, which \texttt{fsolve} drives to zero by a damped Newton iteration
+\begin{equation}
+    \boldsymbol{\zeta}^{k+1} = \boldsymbol{\zeta}^{k}
+    - \gamma_k\left[\frac{\partial\mathbf{S}}{\partial\boldsymbol{\zeta}}\right]^{-1}\!\mathbf{S}(\boldsymbol{\zeta}^{k}),
+    \label{eq:newton}
+\end{equation}
+with a finite-difference Jacobian (the state-transition-matrix propagation being the analytic alternative)~\cite[Sec.~2.3.2]{zavoli2013}. Single shooting is delicate precisely because the unknowns are costates with no physical meaning: a small change in $\boldsymbol{\lambda}_0$ is amplified by the forward integration into a large change in the terminal residual---the ``tail wagging the dog''---so the Jacobian is ill-conditioned, the convergence basin is small, and a cold start typically diverges. These pathologies sharpen when a switching structure is present (Task~3), where the shooting function may even become non-differentiable~\cite[Ch.~3]{zavoli2013}.
+
+The \textbf{continuation (homotopy) strategy} is the standard remedy: the BVP is first solved at a favorable operating point ($Q \approx 3$), and each subsequent value of $Q$ is initialized with the converged solution from the neighboring point, sweeping both forward and backward across the range $Q \in [1.8, 7]$. Embedding the family of problems in the scalar parameter $Q$ supplies, at every step, an initial guess inside the local basin, so the solution branch is tracked smoothly without manual retuning. The arc-splitting introduced in Tasks~2--4 (vertical climb, coast, staging) plays an analogous role, decomposing a stiff single shoot into better-conditioned sub-arcs---the indirect-method counterpart of multiple shooting~\cite[Sec.~2.3.2]{zavoli2013}.
 
 \end{document}

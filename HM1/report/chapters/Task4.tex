@@ -15,7 +15,7 @@ is jettisoned instantaneously. Here $Q\,t_s$ is the propellant the first stage b
 \begin{equation}
     m^+(t_s) = m^-(t_s) - m_{s1} = 1 - Q\,t_s - \eta\, Q\, t_s = 1 - Q\,t_s(1 + \eta).
 \end{equation}
-For $m^+(t_s) > 0$ one requires $t_s < [Q(1+\eta)]^{-1}$, which provides an upper bound on the admissible staging time. The costate vector is continuous across the staging event.
+For $m^+(t_s) > 0$ one requires $t_s < [Q(1+\eta)]^{-1}$, which provides an upper bound on the admissible staging time. The position and velocity states are continuous across the jettison---only the mass steps---and, being unconstrained interior values, the PMP interior corner conditions render their costates $\lambda_x, \lambda_y, \lambda_{v_x}, \lambda_{v_y}$ continuous across $t_s$ as well~\cite[Sec.~2.3.1]{zavoli2013}. The bilinear-tangent steering law is therefore unbroken by staging.
 
 The net payload delivered to orbit is
 \begin{equation}
@@ -41,6 +41,8 @@ For a fixed staging time $t_s$, the two burn arcs share the same costate evoluti
 The shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) are identical to Task~1.
 
 The optimal staging time $t_s^*$ is found by an \textbf{outer parametric sweep}: $t_s$ is varied over a dense grid of 50 points, the inner BVP is solved at each point (warm-started from the previous converged solution via continuation), and the payload \eqref{eq:payload} is maximized over the converged solutions. The starting guess for the inner BVP at the first grid point uses the single-stage solution from Task~1.
+
+A fully rigorous indirect treatment would instead close the free interior time $t_s$ with an \emph{interior optimality} condition---continuity of the Hamiltonian across the jettison, the Weierstrass--Erdmann corner condition associated with a free switching time~\cite[Sec.~2.3.1]{zavoli2013}. The outer sweep adopted here is an equivalent but more transparent route: since the delivered payload~\eqref{eq:pay_budget} depends only on the total burn time $t_f$ and the curve $m_\mathrm{pay}(t_s)$ has a single interior maximum (Figure~\ref{fig:task4_pay}), maximizing the payload over the converged family of inner BVPs locates the same optimal $t_s^*$ without forming the corner condition explicitly.
 
 \subsection{Results}
 
