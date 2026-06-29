@@ -23,6 +23,33 @@
 \usepackage{commath}
 \usepackage{booktabs}
 
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
+
+% --- MATLAB listing style (upright comments, no italics anywhere) ---
+\definecolor{mlcomment}{RGB}{100,110,120}
+\definecolor{mlkeyword}{RGB}{0,80,160}
+\definecolor{mlstring}{RGB}{160,60,30}
+\lstdefinestyle{matlab}{
+  language=Matlab,
+  basicstyle=\ttfamily\scriptsize,
+  keywordstyle=\color{mlkeyword}\bfseries,
+  commentstyle=\color{mlcomment},
+  stringstyle=\color{mlstring},
+  numbers=left, numberstyle=\tiny\color{gray}, numbersep=6pt,
+  showstringspaces=false,
+  columns=fullflexible, keepspaces=true,
+  breaklines=true, breakatwhitespace=false,
+  breakindent=12pt, postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  frame=single, rulecolor=\color{gray!40},
+  xleftmargin=10pt, framexleftmargin=10pt,
+  tabsize=4,
+  captionpos=b,
+}
+\lstset{style=matlab}
+
 \usepackage{amsthm}
 
 \theoremstyle{definition}
@@ -42,6 +69,10 @@
 \captionsetup[figure]{font=small}
 
 \linespread{1.2}
+
+% [none]{hyphenat} forbids breaking long compounds; give TeX a little slack
+% so it can break before them instead of overflowing.
+\emergencystretch=3em
 
 \makeatletter
 \let\thetitle\@title
@@ -64,6 +95,9 @@
 \subfile{chapters/Task3}
 \clearpage
 \subfile{chapters/Conclusions}
+\clearpage
+\appendix
+\subfile{chapters/AppendixCode}
 \clearpage
 \bibliographystyle{unsrt}
 \bibliography{ref}

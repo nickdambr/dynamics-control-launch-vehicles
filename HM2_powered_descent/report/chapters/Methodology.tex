@@ -4,7 +4,7 @@
 
 \section{Trapezoidal Direct Collocation}\label{sec:methodology}
 
-Direct transcription methods discretise the continuous optimal control problem \eqref{eq:OCP} over a finite mesh of nodes and replace the continuous-time dynamics with algebraic relations among the node values~\cite{hargraves1987,betts2010}. The resulting finite-dimensional NLP can be solved by general-purpose nonlinear programming solvers without the need to derive the costate equations and transversality conditions of the indirect approach. This is the methodological complement to the PMP-based formulation used in Homework~1.
+Direct transcription methods discretise the continuous optimal control problem \eqref{eq:OCP} over a finite mesh of nodes and replace the continuous-time dynamics with algebraic relations among the node values~\cite{hargraves1987,betts2010}. The resulting finite-dimensional NLP can be solved by general-purpose nonlinear programming solvers, so I never have to derive the costate equations and transversality conditions of the indirect approach. It is the direct counterpart to the PMP-based formulation used in Homework~1, the same indirect-versus-direct trade-off covered in the course~\cite[Lecture~8]{dclvnotes}.
 
 \subsection{Trapezoidal Quadrature Rule}\label{sec:trap_rule}
 
@@ -27,7 +27,7 @@ Approximating the integrand by a linear interpolation between the two endpoints 
     \mathbf{x}_{k+1} - \mathbf{x}_k \;\approx\; \frac{\Delta t}{2}\bigl(\mathbf{f}_k + \mathbf{f}_{k+1}\bigr).
     \label{eq:trap_rule}
 \end{equation}
-The order of the rule follows from a Taylor expansion about $t_k$: with $\mathbf{x}_{k+1} = \mathbf{x}_k + \Delta t\,\mathbf{f}_k + \tfrac{1}{2}\Delta t^2\dot{\mathbf{f}}_k + O(\Delta t^3)$ and $\tfrac{\Delta t}{2}(\mathbf{f}_k + \mathbf{f}_{k+1}) = \Delta t\,\mathbf{f}_k + \tfrac{1}{2}\Delta t^2\dot{\mathbf{f}}_k + O(\Delta t^3)$, their difference---the local truncation error---is $\boldsymbol{\tau}_k = -\tfrac{1}{12}\Delta t^3\,\ddot{\mathbf{f}}_k + O(\Delta t^4) = O(\Delta t^3)$; summed over the $O(1/\Delta t)$ intervals this yields a globally second-order, $O(\Delta t^2)$, method~\cite[Eq.~(4.56) and p.~155]{betts2010}. The rule is implicit ($\mathbf{f}_{k+1}$ depends on $\mathbf{x}_{k+1}$) and \emph{A-stable}: applied to the scalar test equation $\dot{x} = \lambda x$ it gives the amplification factor $x_{k+1}/x_k = (1 + \lambda\Delta t/2)/(1 - \lambda\Delta t/2)$, whose modulus is below unity for every $\operatorname{Re}(\lambda) < 0$ (the Crank--Nicolson scheme), so no step-size restriction is imposed by moderately stiff modes.
+The order of the rule follows from a Taylor expansion about $t_k$: with $\mathbf{x}_{k+1} = \mathbf{x}_k + \Delta t\,\mathbf{f}_k + \tfrac{1}{2}\Delta t^2\dot{\mathbf{f}}_k + O(\Delta t^3)$ and $\tfrac{\Delta t}{2}(\mathbf{f}_k + \mathbf{f}_{k+1}) = \Delta t\,\mathbf{f}_k + \tfrac{1}{2}\Delta t^2\dot{\mathbf{f}}_k + O(\Delta t^3)$, their difference---the local truncation error---is $\boldsymbol{\tau}_k = -\tfrac{1}{12}\Delta t^3\,\ddot{\mathbf{f}}_k + O(\Delta t^4) = O(\Delta t^3)$; summed over the $O(1/\Delta t)$ intervals this yields a globally second-order, $O(\Delta t^2)$, method~\cite[Eq.~(4.56) and p.~155]{betts2010}. The rule is implicit ($\mathbf{f}_{k+1}$ depends on $\mathbf{x}_{k+1}$) and A-stable: applied to the scalar test equation $\dot{x} = \lambda x$ it gives the amplification factor $x_{k+1}/x_k = (1 + \lambda\Delta t/2)/(1 - \lambda\Delta t/2)$, whose modulus stays below unity for every $\operatorname{Re}(\lambda) < 0$ (the Crank--Nicolson scheme), so stiff modes impose no step-size restriction.
 
 \subsection{Defect Constraints}\label{sec:defects}
 
@@ -37,11 +37,11 @@ Promoting \eqref{eq:trap_rule} from approximation to equality constraint produce
     \qquad k = 1,\, \ldots,\, N-1.
     \label{eq:defects}
 \end{equation}
-With $n_x$ states this generates $n_x(N-1)$ scalar nonlinear equality constraints. When all defects are satisfied to machine precision, the discrete trajectory is consistent with the continuous-time dynamics to second order in $\Delta t$, and the controls are interpreted as the nodal values of a piecewise-linear input.
+With $n_x$ states this generates $n_x(N-1)$ scalar nonlinear equality constraints. When all defects are satisfied to machine precision, the discrete trajectory matches the continuous-time dynamics to second order in $\Delta t$, and the controls are read as the nodal values of a piecewise-linear input.
 
 For the powered-descent problem ($n_x = 5$, $n_u = 2$) each node contributes $n_x + n_u = 7$ decision variables and the defect block carries $5(N-1)$ rows.
 
-\paragraph{Higher-order option.} The trapezoidal rule is the lowest-order member of the collocation family. Replacing it with the \emph{Hermite--Simpson} defect
+\paragraph{Higher-order option.} The trapezoidal rule is the lowest-order member of the collocation family. Replacing it with the Hermite--Simpson defect
 \begin{equation}
     \boldsymbol{\delta}_k = \mathbf{x}_{k+1} - \mathbf{x}_k
     - \frac{\Delta t}{6}\bigl(\mathbf{f}_k + 4\,\bar{\mathbf{f}}_{k} + \mathbf{f}_{k+1}\bigr),
@@ -49,7 +49,7 @@ For the powered-descent problem ($n_x = 5$, $n_u = 2$) each node contributes $n_
     \bar{\mathbf{x}}_{k} = \tfrac{1}{2}(\mathbf{x}_k+\mathbf{x}_{k+1}) + \tfrac{\Delta t}{8}(\mathbf{f}_k - \mathbf{f}_{k+1}),
     \label{eq:hermite_simpson}
 \end{equation}
-with $\bar{\mathbf{f}}_{k} = \mathbf{f}(\bar{\mathbf{x}}_{k},\bar{\mathbf{u}}_{k})$ evaluated at the interval midpoint, raises the global order from $O(\Delta t^2)$ to $O(\Delta t^4)$---a three-stage implicit Runge--Kutta (Lobatto~IIIA) scheme~\cite[Eqs.~(4.58)--(4.60), p.~147]{betts2010}. The price is that the midpoint controls $\bar{\mathbf{u}}_{k}$ become additional NLP unknowns and the path constraints must be enforced at midpoints as well as nodes. Such a scheme would close the $O(\Delta t^2)$-versus-$O(\Delta t^4)$ accuracy gap observed against the RK4 transcription in Table~\ref{tab:hm2_compare4}.
+with $\bar{\mathbf{f}}_{k} = \mathbf{f}(\bar{\mathbf{x}}_{k},\bar{\mathbf{u}}_{k})$ evaluated at the interval midpoint, raises the global order from $O(\Delta t^2)$ to $O(\Delta t^4)$---a three-stage implicit Runge--Kutta (Lobatto~IIIA) scheme~\cite[Eqs.~(4.58)--(4.60), p.~147]{betts2010}. The cost is that the midpoint controls $\bar{\mathbf{u}}_{k}$ become extra NLP unknowns and the path constraints have to be enforced at midpoints as well as nodes. Such a scheme would close the $O(\Delta t^2)$-versus-$O(\Delta t^4)$ accuracy gap observed against the RK4 transcription in Table~\ref{tab:hm2_compare4}.
 
 \subsection{NLP Formulation}\label{sec:nlp}
 
@@ -94,34 +94,34 @@ Under a constraint qualification such as the linear independence of the active c
     \mu_j^*\, c_{\mathrm{ineq},j}(\mathbf{z}^*) &= 0,\quad \forall j
         && \text{(complementary slackness).}
 \end{align}
-Complementarity expresses that an inequality is either active ($c_j = 0$, with $\mu_j > 0$) or strictly inactive ($c_j < 0$, with $\mu_j = 0$). At the optimum of the powered-descent problem the upper thrust bound $\|\mathbf{T}\| = T_{\max}$ is active on the two burn arcs (about half of the nodes), mirroring the max--coast--max structure of the fuel-optimal control law for problems with linear-in-control dynamics; the corresponding KKT multipliers are positive, identifying the binding constraint that shapes the solution.
+Complementarity says that an inequality is either active ($c_j = 0$, with $\mu_j > 0$) or strictly inactive ($c_j < 0$, with $\mu_j = 0$). At the optimum of the powered-descent problem the upper thrust bound $\|\mathbf{T}\| = T_{\max}$ is active on the two burn arcs (about half of the nodes), which matches the max--coast--max structure of the fuel-optimal control law for linear-in-control dynamics. The corresponding KKT multipliers are positive, so they flag the binding constraint that shapes the solution.
 
 \subsection{Fuel-Optimal Thrust Structure}\label{sec:bangbang}
 
-Although the problem is solved directly, its optimal thrust profile carries the structure that the maximum principle predicts for dynamics linear in the control. Forming the Hamiltonian of the continuous OCP~\eqref{eq:OCP},
+Even though the problem is solved directly, its optimal thrust profile carries the structure that the maximum principle predicts for dynamics linear in the control. Forming the Hamiltonian of the continuous OCP~\eqref{eq:OCP},
 \begin{equation}
     \mathcal{H} = \lambda_x v_x + \lambda_y v_y
     + \frac{\lambda_{v_x}T_x + \lambda_{v_y}T_y}{m}
     - \lambda_{v_y}\, g - \lambda_m\frac{\|\mathbf{T}\|}{c},
     \label{eq:hm2_hamiltonian}
 \end{equation}
-and aligning the thrust direction with the primer vector $\mathbf{p} = (\lambda_{v_x}, \lambda_{v_y})/m$, the Hamiltonian becomes \emph{linear} in the thrust magnitude $\|\mathbf{T}\| \in [T_{\min}, T_{\max}]$, with coefficient the switching function
+and aligning the thrust direction with the primer vector $\mathbf{p} = (\lambda_{v_x}, \lambda_{v_y})/m$, the Hamiltonian becomes linear in the thrust magnitude $\|\mathbf{T}\| \in [T_{\min}, T_{\max}]$, with coefficient the switching function
 \begin{equation}
     S = \|\mathbf{p}\| - \frac{\lambda_m}{c}.
     \label{eq:hm2_switching}
 \end{equation}
-The optimal magnitude therefore lies at a bound---$T_{\max}$ or $T_{\min}$ according to the sign of $S$, with a singular arc only if $S \equiv 0$ on an interval---producing the \textbf{max--coast--max} (bang--off--bang) profile~\cite[Sec.~3.9]{bryson1975}. This is the same bang--bang mechanism behind the bilinear-tangent law of Homework~1; here it is recovered numerically as the active set of the upper thrust bound (Section~\ref{sec:kkt}) and is plainly visible in the thrust histories of Sections~\ref{sec:results} and~\ref{sec:task2}.
+The optimal magnitude therefore lies at a bound---$T_{\max}$ or $T_{\min}$ according to the sign of $S$, with a singular arc only if $S \equiv 0$ on an interval---producing the \textbf{max--coast--max} (bang--off--bang) profile~\cite[Sec.~3.9]{bryson1975}. This is the same bang--bang mechanism behind the bilinear-tangent law of Homework~1; here it shows up numerically as the active set of the upper thrust bound (Section~\ref{sec:kkt}) and is visible in the thrust histories of Sections~\ref{sec:results} and~\ref{sec:task2}.
 
 \subsection{Discrete Multipliers as Costate Estimates}\label{sec:covector}
 
-The NLP multipliers are not merely algebraic by-products: as the mesh is refined they converge to scaled values of the continuous costates---the \emph{covector mapping} property. For the trapezoidal transcription, the discrete multipliers $\boldsymbol{\alpha}_k$ of the path constraints map to the continuous path-constraint adjoint $\hat{\boldsymbol{\mu}}_k$ (distinct from the inequality multipliers $\boldsymbol{\mu}$ of Section~\ref{sec:kkt}) through~\cite[Sec.~4.11.2, Eqs.~(4.235)--(4.237)]{betts2010}
+The NLP multipliers are not just algebraic by-products: as the mesh is refined they converge to scaled values of the continuous costates, the covector mapping property. For the trapezoidal transcription, the discrete multipliers $\boldsymbol{\alpha}_k$ of the path constraints map to the continuous path-constraint adjoint $\hat{\boldsymbol{\mu}}_k$ (distinct from the inequality multipliers $\boldsymbol{\mu}$ of Section~\ref{sec:kkt}) through~\cite[Sec.~4.11.2, Eqs.~(4.235)--(4.237)]{betts2010}
 \begin{equation}
     \hat{\boldsymbol{\mu}}_1 = -\frac{2}{h_1}\,\boldsymbol{\alpha}_1,\qquad
     \hat{\boldsymbol{\mu}}_k = -\frac{2}{h_{k-1}+h_k}\,\boldsymbol{\alpha}_k,\qquad
     \hat{\boldsymbol{\mu}}_M = -\frac{2}{h_{M-1}}\,\boldsymbol{\alpha}_M,
     \label{eq:covector}
 \end{equation}
-with $h_k$ the local step. Operationally this is why the converged active set is physically meaningful: the nodes at which the thrust-bound multiplier is non-zero are precisely the powered (constrained) arcs of the continuous solution, so the NLP recovers the max--coast--max structure of Section~\ref{sec:bangbang} without ever forming the costates explicitly.
+with $h_k$ the local step. This is why the converged active set is physically meaningful: the nodes where the thrust-bound multiplier is non-zero are the powered (constrained) arcs of the continuous solution, so the NLP recovers the max--coast--max structure of Section~\ref{sec:bangbang} without ever forming the costates explicitly.
 
 \subsection{Sequential Quadratic Programming}\label{sec:sqp}
 
@@ -136,6 +136,6 @@ The NLP \eqref{eq:nlp} is solved with MATLAB's \texttt{fmincon} configured with 
 \end{equation}
 where $\mathbf{H}^{(k)}$ is a quasi-Newton (BFGS) approximation of the Hessian of the Lagrangian. The next iterate is $\mathbf{z}^{(k+1)} = \mathbf{z}^{(k)} + \alpha^{(k)} \mathbf{d}^{(k)}$, with the step length $\alpha^{(k)}$ obtained from a line search on a merit function that balances objective decrease against constraint violation.
 
-The Jacobian of the defect block~\eqref{eq:defects} is highly sparse: each defect $\boldsymbol{\delta}_k$ couples only the two adjacent nodes $k$ and $k+1$, through constant $\pm\mathbf{I}$ blocks plus the nodal values of $\mathbf{f}$, giving a block-bidiagonal structure. Betts exploits exactly this sparsity, grouping the finite-difference perturbations so that the cost of building the Jacobian scales with the bandwidth rather than the full variable count~\cite[Sec.~4.6]{betts2010}. Here \texttt{fmincon} estimates a dense finite-difference Jacobian, which is affordable at $N = 50$ (350 variables) but is the first thing one would replace---by supplying the sparsity pattern---in order to scale the mesh up.
+The Jacobian of the defect block~\eqref{eq:defects} is highly sparse: each defect $\boldsymbol{\delta}_k$ couples only the two adjacent nodes $k$ and $k+1$, through constant $\pm\mathbf{I}$ blocks plus the nodal values of $\mathbf{f}$, giving a block-bidiagonal structure. Betts uses this sparsity, grouping the finite-difference perturbations so that the cost of building the Jacobian scales with the bandwidth rather than the full variable count~\cite[Sec.~4.6]{betts2010}. Here \texttt{fmincon} estimates a dense finite-difference Jacobian, which is fine at $N = 50$ (350 variables) but is the first thing I would replace---by supplying the sparsity pattern---to scale the mesh up.
 
 \end{document}

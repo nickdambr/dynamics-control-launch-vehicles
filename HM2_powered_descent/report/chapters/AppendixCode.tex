@@ -1,0 +1,27 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Implementation: Key Code Excerpts}\label{sec:appendix_code}
+
+The full MATLAB sources (\texttt{main\_task1.m}, \texttt{main\_task2.m}, \texttt{ode\_descent.m}, \texttt{rk4\_zoh.m}) live in the \texttt{HM2\_powered\_descent/} folder of the repository. This appendix collects the three routines that carry the two transcriptions: the non-dimensional dynamics, the trapezoidal collocation constraints, and the RK4 zero-order-hold propagator used in Task~2. Everything runs on \texttt{fmincon} alone (no CasADi, no YALMIP) except the conic SCvx variant of Task~2.
+
+Both transcriptions and the test suite call the same right-hand side in Listing~\ref{lst:hm2_rhs}, which evaluates the non-dimensional dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} with gravity normalized to $1$.
+
+\lstinputlisting[style=matlab,
+  caption={Non-dimensional point-mass descent dynamics (\texttt{ode\_descent.m}).},
+  label=lst:hm2_rhs]{../ode_descent.m}
+
+Listing~\ref{lst:hm2_defects} is the nonlinear-constraint routine of the trapezoidal NLP. It builds the $5(N-1)$ defect equalities of Eq.~\eqref{eq:defects} from the node values of the right-hand side, then stacks the $4N$ thrust-magnitude and glide-slope inequalities described in Section~\ref{sec:implementation}.
+
+\lstinputlisting[style=matlab, firstnumber=258, firstline=258, lastline=283,
+  caption={Trapezoidal defects and path constraints (\texttt{trap\_nonlcon}, \texttt{main\_task1.m}).},
+  label=lst:hm2_defects]{../main_task1.m}
+
+The Task~2 nonlinear ZOH transcription holds the thrust constant over each interval and propagates the dynamics with a fixed-step RK4 scheme; this is the propagator in Listing~\ref{lst:hm2_zoh}.
+
+\lstinputlisting[style=matlab,
+  caption={RK4 zero-order-hold propagator (\texttt{rk4\_zoh.m}).},
+  label=lst:hm2_zoh]{../rk4_zoh.m}
+
+\end{document}

@@ -1,0 +1,27 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Implementation: Key Code Excerpts}\label{sec:appendix_code}
+
+The full MATLAB sources (\texttt{main\_task1.m}--\texttt{main\_task4.m} and \texttt{ode\_burn.m}) live in the \texttt{HM1/} folder of the repository. Here I collect only the three routines that do the actual work: the powered-flight right-hand side, the shooting residual, and the continuation sweep. The four tasks reuse the same building blocks, so showing them once is enough.
+
+The optimal dynamics are integrated by the right-hand side in Listing~\ref{lst:oderhs}. Four of the five costates are written in closed form (two constants and the linear ramp $\lambda_{v_y}$), so only $\lambda_m$ is actually propagated, and the thrust angle is read off the velocity costate with a single \texttt{atan2}.
+
+\lstinputlisting[style=matlab,
+  caption={Powered-flight right-hand side with linear-tangent steering (\texttt{ode\_burn.m}).},
+  label=lst:oderhs]{../ode_burn.m}
+
+Listing~\ref{lst:shooting} is the four-residual shooting function shared by Tasks~1, 2 and~4. The two numerical refinements discussed in Section~\ref{sec:shooting} are both visible: the state is initialized with $\lambda_{m,0}=1$ (the costate normalization), and the free-time condition $\mathcal{H}(0)=0$ is imposed algebraically at $t_0$ rather than at $t_f$.
+
+\lstinputlisting[style=matlab, firstnumber=227, firstline=227, lastline=273,
+  caption={Shooting residual for a single burn arc (\texttt{main\_task1.m}).},
+  label=lst:shooting]{../main_task1.m}
+
+The parameter sweeps depend on continuation: each new value of $Q$ is solved starting from the previous converged costate vector, sweeping both forward and backward from a seed point near $Q=3$. Listing~\ref{lst:continuation} shows the two sweeps.
+
+\lstinputlisting[style=matlab, firstnumber=65, firstline=65, lastline=93,
+  caption={Continuation sweep in $Q$ (excerpt from the per-altitude loop, \texttt{main\_task1.m}).},
+  label=lst:continuation]{../main_task1.m}
+
+\end{document}

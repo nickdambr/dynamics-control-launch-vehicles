@@ -6,7 +6,7 @@
 
 \subsection{Phase 1: Vertical Climb}
 
-Practical launchers cannot pitch over immediately at liftoff because of aerodynamic loads and tower-clearance requirements. Task~2 prepends a short \emph{vertical-climb phase} ($\varphi = \pi/2$, thrust pointing straight up) until the altitude reaches $y_1 = 10^{-4}$ (dimensionally $\approx 620$~m). During this phase the horizontal position and velocity remain zero, and the 3-state sub-problem is
+Real launchers cannot pitch over right at liftoff, both because of aerodynamic loads and because they have to clear the tower first. Task~2 adds a short vertical-climb phase in front of the burn ($\varphi = \pi/2$, thrust pointing straight up) until the altitude reaches $y_1 = 10^{-4}$ (dimensionally $\approx 620$~m). During this phase the horizontal position and velocity remain zero, and the 3-state sub-problem is
 \begin{equation}
     \dot{y} = v_y, \qquad
     \dot{v}_y = \frac{T}{m} - 1, \qquad
@@ -25,14 +25,14 @@ Figure~\ref{fig:task2} shows the composite trajectory and the angle history for 
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_task_2_trajectory}
         \caption{Composite trajectory: vertical climb (red), optimal burn (blue).}
         \label{fig:task2_traj}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \\[2ex]
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task2_task_2_angles}
         \caption{Thrust angle $\varphi$ and velocity angle $\psi$ during the burn.}
@@ -56,7 +56,7 @@ Vertical-climb duration        & $t_1$             & $0.0298$ \\
 Powered-burn duration          & $t_\mathrm{burn}$ & $0.4142$ \\
 Total flight time              & $t_f$             & $0.4440$ \\
 Final mass                     & $m_f$             & $0.1119$ \\
-Delivered payload              & $m_\mathrm{pay}$  & $0.0231$ \\
+Delivered payload              & $m_u$  & $0.0231$ \\
 \midrule
 Final mass --- Task 1 (no climb) & $m_f^{(1)}$     & $0.1128$ \\
 \bottomrule

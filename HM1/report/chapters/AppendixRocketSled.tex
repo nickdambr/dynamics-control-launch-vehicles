@@ -4,7 +4,7 @@
 
 \section{A Canonical Indirect/Shooting Benchmark: the Rocket Sled}\label{sec:appendix_sled}
 
-Before tackling the ascent BVP, the single-shooting machinery is validated on a classical minimum-energy problem whose solution is known in closed form---the \emph{rocket sled}~\cite[Ch.~3]{zavoli2013}. A unit point mass moves on a frictionless rail under a force $u$,
+Before tackling the ascent BVP, I validated the single-shooting code on a classical minimum-energy problem whose solution is known in closed form, the rocket sled~\cite[Lecture~5]{dclvnotes}. A unit point mass moves on a frictionless rail under a force $u$,
 \begin{equation}
     \dot{r} = v, \qquad \dot{v} = u,
 \end{equation}
@@ -22,6 +22,6 @@ in fixed time $t_f = 2$, minimizing the control energy $J = \int_0^{2} u^2\,\mat
     \qquad\Longrightarrow\qquad
     u^*(t) = \tfrac{3}{4}\,(1 - t),
 \end{equation}
-which yields $v(t) = \tfrac{3}{4}\bigl(t - t^2/2\bigr)$ and $r(t) = \tfrac{3}{4}\bigl(t^2/2 - t^3/6\bigr)$, satisfying $r(2) = \tfrac{1}{2}$ and $v(2) = 0$ exactly. Running the same \texttt{ode45}\,+\,\texttt{fsolve} shooting code on this two-unknown problem recovers $(\lambda_{r,0}, \lambda_{v,0}) = (\tfrac{3}{2}, \tfrac{3}{2})$ and drives the terminal residual to zero to solver tolerance, validating the implementation before it is applied to the ascent BVP. The rocket sled is also the textbook illustration of shooting fragility: its convergence map shows sizeable regions of the initial-costate plane from which Newton iterations diverge~\cite[Ch.~3]{zavoli2013}, motivating the continuation strategy of Section~\ref{sec:shooting}.
+which yields $v(t) = \tfrac{3}{4}\bigl(t - t^2/2\bigr)$ and $r(t) = \tfrac{3}{4}\bigl(t^2/2 - t^3/6\bigr)$, satisfying $r(2) = \tfrac{1}{2}$ and $v(2) = 0$ exactly. Running the same \texttt{ode45}\,+\,\texttt{fsolve} shooting machinery on this two-unknown problem (\texttt{validate\_rocket\_sled.m}) recovers $(\lambda_{r,0}, \lambda_{v,0}) = (\tfrac{3}{2}, \tfrac{3}{2})$ to within $10^{-8}$ and drives the terminal residual to solver tolerance, which checks the implementation before it is applied to the ascent BVP. The rocket sled is also a good illustration of how fragile shooting can be: its convergence map has sizeable regions of the initial-costate plane from which Newton iterations diverge~\cite[Lecture~5]{dclvnotes}, which is exactly what motivates the continuation strategy of Section~\ref{sec:shooting}.
 
 \end{document}

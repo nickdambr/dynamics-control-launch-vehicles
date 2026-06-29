@@ -150,4 +150,5 @@ launchers see much smaller — but still substantial — gains from staging.
 | [`main_task3.m`](main_task3.m) | Vertical climb + burn + coast arc |
 | [`main_task4.m`](main_task4.m) | Two-stage optimization sweeping the staging time |
 | [`ode_burn.m`](ode_burn.m) | Common state + costate ODE shared by all tasks |
+| [`docs/flowcharts.md`](docs/flowcharts.md) | ISO 5807 control-flow diagrams (Mermaid) for all tasks |
 | [`figures/`](figures/) | PNGs regenerated on each `main_taskN` run |

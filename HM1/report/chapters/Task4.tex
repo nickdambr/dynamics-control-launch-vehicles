@@ -6,28 +6,28 @@
 
 \subsection{Staging Model}
 
-Task~4 removes the vertical-climb phase and introduces a single \emph{staging event} at time $t = t_s$. At staging, the first-stage structural mass
+Task~4 removes the vertical-climb phase and introduces a single staging event at time $t = t_s$. At staging, the first-stage structural mass
 \begin{equation}
     m_{s1} = \eta\, Q\, t_s
     \label{eq:ms1}
 \end{equation}
-is jettisoned instantaneously. Here $Q\,t_s$ is the propellant the first stage burns up to $t_s$ and $\eta = m_s/m_p$ is the \emph{structural coefficient} (inert mass per unit propellant, $\eta = 0.1$): to hold that propellant the stage must carry a tankage/engine mass $\eta\,Q\,t_s$. The propellant is fully consumed---the mass falls as $m(t) = 1 - Q t$---and only the inert structure is dropped, so the vehicle mass undergoes a step:
+is jettisoned instantaneously. Here $Q\,t_s$ is the propellant the first stage burns up to $t_s$, and $\eta = m_s/m_p$ is the structural coefficient (inert mass per unit propellant, $\eta = 0.1$): to hold that propellant the stage has to carry a tankage/engine mass $\eta\,Q\,t_s$. The propellant is fully consumed---the mass falls as $m(t) = 1 - Q t$---and only the inert structure is dropped, so the vehicle mass undergoes a step:
 \begin{equation}
     m^+(t_s) = m^-(t_s) - m_{s1} = 1 - Q\,t_s - \eta\, Q\, t_s = 1 - Q\,t_s(1 + \eta).
 \end{equation}
-For $m^+(t_s) > 0$ one requires $t_s < [Q(1+\eta)]^{-1}$, which provides an upper bound on the admissible staging time. The position and velocity states are continuous across the jettison---only the mass steps---and, being unconstrained interior values, the PMP interior corner conditions render their costates $\lambda_x, \lambda_y, \lambda_{v_x}, \lambda_{v_y}$ continuous across $t_s$ as well~\cite[Sec.~2.3.1]{zavoli2013}. The bilinear-tangent steering law is therefore unbroken by staging.
+For $m^+(t_s) > 0$ one requires $t_s < [Q(1+\eta)]^{-1}$, which provides an upper bound on the admissible staging time. The position and velocity states are continuous across the jettison---only the mass steps---and, being unconstrained interior values, the PMP interior corner conditions keep their costates $\lambda_x, \lambda_y, \lambda_{v_x}, \lambda_{v_y}$ continuous across $t_s$ as well~\cite[Lecture~5]{dclvnotes}. The bilinear-tangent steering law is therefore unaffected by staging.
 
 The net payload delivered to orbit is
 \begin{equation}
-    m_\mathrm{pay} = m_f - m_{s2}, \qquad m_{s2} = \eta\, Q\,(t_f - t_s),
+    m_u = m_f - m_{s2}, \qquad m_{s2} = \eta\, Q\,(t_f - t_s),
     \label{eq:payload}
 \end{equation}
 where $m_{s2}$ is the second-stage structural mass (again $\eta$ times the propellant that stage burns). Summing the budget over both stages---a total propellant $Q\,t_f$, its structure $\eta\,Q\,t_f$, and the payload, all drawn from $m_0 = 1$---collapses to the compact relation
 \begin{equation}
-    m_\mathrm{pay} = 1 - (1+\eta)\,Q\,t_f,
+    m_u = 1 - (1+\eta)\,Q\,t_f,
     \label{eq:pay_budget}
 \end{equation}
-which depends only on the \emph{total} burn time $t_f$ (equivalently, the total propellant). Staging raises the payload precisely because shedding the spent first-stage structure lets the vehicle reach orbit on a smaller total propellant load, i.e.\ a smaller $t_f$: here $t_f$ drops from $0.444$ (single stage) to $0.424$ (two-stage), lifting $m_\mathrm{pay}$ from $0.024$ to $0.068$.
+which depends only on the total burn time $t_f$ (equivalently, the total propellant). Staging raises the payload because dropping the spent first-stage structure lets the vehicle reach orbit on a smaller total propellant load, i.e.\ a smaller $t_f$: here $t_f$ drops from $0.444$ (single stage) to $0.424$ (two-stage), lifting $m_u$ from $0.024$ to $0.068$.
 
 \subsection{Optimization Procedure}
 
@@ -40,9 +40,23 @@ For a fixed staging time $t_s$, the two burn arcs share the same costate evoluti
 \end{enumerate}
 The shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) are identical to Task~1.
 
-The optimal staging time $t_s^*$ is found by an \textbf{outer parametric sweep}: $t_s$ is varied over a dense grid of 50 points, the inner BVP is solved at each point (warm-started from the previous converged solution via continuation), and the payload \eqref{eq:payload} is maximized over the converged solutions. The starting guess for the inner BVP at the first grid point uses the single-stage solution from Task~1.
+The optimal staging time $t_s^*$ is found by an \textbf{outer parametric sweep} (implemented in \texttt{main\_task4.m}): $t_s$ is varied over a dense grid of 50 points, the inner BVP is solved at each point (warm-started from the previous converged solution via continuation, as in Listing~\ref{lst:continuation}), and the payload \eqref{eq:payload} is maximized over the converged solutions. The starting guess for the inner BVP at the first grid point uses the single-stage solution from Task~1.
 
-A fully rigorous indirect treatment would instead close the free interior time $t_s$ with an \emph{interior optimality} condition---continuity of the Hamiltonian across the jettison, the Weierstrass--Erdmann corner condition associated with a free switching time~\cite[Sec.~2.3.1]{zavoli2013}. The outer sweep adopted here is an equivalent but more transparent route: since the delivered payload~\eqref{eq:pay_budget} depends only on the total burn time $t_f$ and the curve $m_\mathrm{pay}(t_s)$ has a single interior maximum (Figure~\ref{fig:task4_pay}), maximizing the payload over the converged family of inner BVPs locates the same optimal $t_s^*$ without forming the corner condition explicitly.
+A fully rigorous indirect treatment closes the free interior time $t_s$ with a corner condition at the jettison rather than sweeping for it. Since the delivered payload~\eqref{eq:pay_budget} depends only on the total burn time $t_f$, maximising it is the same as minimising $t_f$, and the optimum is the stationary point
+\begin{equation}
+    \frac{\mathrm{d}t_f}{\mathrm{d}t_s} = 0,
+    \label{eq:staging_opt}
+\end{equation}
+the peak of the $m_u(t_s)$ curve (Figure~\ref{fig:task4_pay}). Staging is a three-point junction at the free time $t_s$, so the interior-point conditions of Bryson~\cite[Sec.~3.5]{bryson1975} govern it: since the jettisoned mass depends on $t_s$ alone and not on the state, the position, velocity and mass costates all stay continuous --- and with them the bilinear-tangent steering --- while only the Hamiltonian jumps. Equating its jump from the thrust term $(T/m)\|\boldsymbol{\lambda}_v\|$ to its jump from the explicit $t_s$ of the jettisoned mass $m_{s1} = \eta Q t_s$, carried out step by step in Appendix~\ref{sec:appendix_staging}, gives the corner condition
+\begin{equation}
+\begin{gathered}
+    \eta\bigl[\lambda_m(t_f) - \lambda_m(t_s)\bigr]
+    = c\,\|\boldsymbol{\lambda}_v(t_s)\|\left(\frac{1}{m^+} - \frac{1}{m^-}\right), \\
+    m^- = 1 - Q t_s, \qquad m^+ = 1 - (1+\eta)Q t_s,
+\end{gathered}
+    \label{eq:staging_corner}
+\end{equation}
+which balances the inert mass shed at staging (left) against the propulsive gain of the lighter vehicle over the rest of the burn (right). The mass costate enters in the burnout-referenced combination $\lambda_m(t_f) - \lambda_m(t_s)$ because the staging time minimises the total burn time: the final mass is free, so transversality fixes $\lambda_m(t_f) = 0$, and taking the difference makes the condition independent of the inner BVP's $\lambda_{m,0} = 1$ scaling. Appending $t_s$ as a fifth shooting unknown and \eqref{eq:staging_corner} as a fifth residual returns $t_s^\ast \approx 0.336$, matching the swept grid value of Table~\ref{tab:task4}; the outer sweep is an equivalent but more transparent route to the same optimum.
 
 \subsection{Results}
 
@@ -77,14 +91,14 @@ Figures~\ref{fig:task4_traj} and~\ref{fig:task4_mass} show the optimal two-stage
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task4_task_4_optimal_trajectory}
         \caption{Optimal two-stage trajectory: Stage~1 (blue), Stage~2 (red), staging point (circle).}
         \label{fig:task4_traj}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \\[2ex]
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task4_task_4_mass_profile}
         \caption{Mass profile with the instantaneous jettison at $t_s^*$.}

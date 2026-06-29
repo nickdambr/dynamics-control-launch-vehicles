@@ -4,11 +4,34 @@
 
 \section{Numerical Implementation}\label{sec:implementation}
 
-This section details the practical setup of the NLP \eqref{eq:nlp} in MATLAB. The full transcription is built and solved by the script \texttt{main\_task1.m}; \texttt{fmincon} is the only solver dependency (no CasADi, no YALMIP).
+This section details the practical setup of the NLP \eqref{eq:nlp} in MATLAB. The full transcription is built and solved by the script \texttt{main\_task1.m}; \texttt{fmincon} is the only solver dependency (no CasADi, no YALMIP). Figure~\ref{fig:hm2_pipeline} shows how the script turns the OCP into an NLP and solves it.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm,
+  box/.style={rectangle, draw=black, rounded corners, align=center,
+              text width=0.74\textwidth, inner sep=5pt, font=\small},
+  cbox/.style={box, fill=black!5},
+  arr/.style={-{Latex[length=2.2mm]}, thick}]
+  \node[box] (m) {\textbf{Transcription (on paper).} Discretize the OCP \eqref{eq:OCP} on $N=50$ nodes and replace the dynamics by the trapezoidal defect equations \eqref{eq:defects} (Crank--Nicolson)};
+  \node[cbox, below=of m] (b) {\texttt{solve\_trapcol} (\texttt{main\_task1.m}): build the decision vector $\mathbf{z}\in\mathbb{R}^{7N}$, the boundary conditions $\mathbf{A}_{\mathrm{eq}}\mathbf{z}=\mathbf{b}_{\mathrm{eq}}$, the box bounds, and a linear-interpolation initial guess};
+  \node[cbox, below=of b] (c) {\texttt{trap\_nonlcon}: the $5(N-1)$ defects (right-hand side from \texttt{ode\_descent}) plus the $4N$ thrust-magnitude and glide-slope inequalities \,(Listings~\ref{lst:hm2_rhs},~\ref{lst:hm2_defects})};
+  \node[cbox, below=of c] (f) {\texttt{fmincon} (SQP): minimize $-m(t_f)$ subject to $\mathbf{A}_{\mathrm{eq}}$, the bounds and \texttt{trap\_nonlcon} $\Rightarrow$ converged $\mathbf{z}^\star$};
+  \node[box, below=of f] (o) {trajectory, thrust, mass, and KKT diagnostics; flight-time sensitivity ($t_f \pm 5\%$)};
+  \draw[arr] (m) -- (b);
+  \draw[arr] (b) -- (c);
+  \draw[arr] (c) -- (f);
+  \draw[arr] (f) -- node[right,font=\scriptsize]{converged} (o);
+  \draw[arr,dashed] (f.west) to[out=180,in=180,looseness=1.8] node[left,font=\scriptsize]{evaluate} (c.west);
+\end{tikzpicture}
+\caption{Task~1 solution pipeline: trapezoidal direct collocation turns the OCP into an NLP, which \texttt{fmincon} solves by SQP. Listing numbers refer to Appendix~\ref{sec:appendix_code}.}
+\label{fig:hm2_pipeline}
+\end{figure}
 
 \subsection{Non-Dimensionalisation}\label{sec:nondim}
 
-The decision-vector entries span four orders of magnitude in SI units (positions $\sim 10^3$~m, velocities $\sim 10^2$~m/s, mass $\sim 10^3$~kg, thrust components $\sim 7\cdot 10^4$~N). Mixing scales of this size in a single NLP yields a poorly conditioned Jacobian and slow asymptotic convergence under finite-difference gradients. Following the same approach used in Homework~1, the problem is therefore non-dimensionalised before being handed to \texttt{fmincon}. The reference scales are listed in Table~\ref{tab:nondim_scales}.
+The decision-vector entries span four orders of magnitude in SI units (positions $\sim 10^3$~m, velocities $\sim 10^2$~m/s, mass $\sim 10^3$~kg, thrust components $\sim 7\cdot 10^4$~N). Mixing scales of this size in a single NLP gives a badly conditioned Jacobian and slow convergence under finite-difference gradients. As in Homework~1, I non-dimensionalise the problem before handing it to \texttt{fmincon}. The reference scales are listed in Table~\ref{tab:nondim_scales}.
 
 \begin{table}[H]
 \centering
@@ -36,7 +59,7 @@ In non-dimensional variables (denoted by tildes), the dynamics \eqref{eq:hm2_xdo
     & \dot{\tilde{v}}_y &= \frac{\tilde{T}_y}{\tilde{m}} - 1,\\
     \dot{\tilde{m}}    &= -V_c\,\|\tilde{\mathbf{T}}\|,
 \end{align}
-where $V_c = V_{ref}/c \approx 0.0778$ is the only residual dimensionless parameter---the non-dimensional mass-flow coefficient ($\dot{\tilde{m}} = -V_c\,\|\tilde{\mathbf{T}}\|$), i.e.\ the ratio of the characteristic flight speed to the effective exhaust velocity. It is \emph{not} the Tsiolkovsky number itself: the rocket-equation ratio $\Delta v/c = \ln(m_0/m_f)$ emerges only once $V_c\|\tilde{\mathbf{T}}\|$ is integrated over a burn~\cite[Sec.~3.8.3]{benedikter2022}. All decision variables now span $O(1)$ magnitudes, with positions in $[-1/3,\,1]$, velocities in $[-1.17,\,1.75]$, mass in $[10^{-3},\,1]$, and thrust components in $[-3.57,\,3.57]$; the Jacobians of the LTV linearisation (Section~\ref{sec:task2}) become uniformly $O(1)$, sharply improving the conditioning of \texttt{fmincon}'s SQP iterations and of the SCvx outer loop. Boundary conditions, glide-slope angle, and the time horizon $t_f$ are all rescaled by their natural units; results are returned to SI before printing and plotting.
+where $V_c = V_{ref}/c \approx 0.0778$ is the only residual dimensionless parameter---the non-dimensional mass-flow coefficient ($\dot{\tilde{m}} = -V_c\,\|\tilde{\mathbf{T}}\|$), i.e.\ the ratio of the characteristic flight speed to the effective exhaust velocity. It is not the Tsiolkovsky number itself: the rocket-equation ratio $\Delta v/c = \ln(m_0/m_f)$ only appears once $V_c\|\tilde{\mathbf{T}}\|$ is integrated over a burn~\cite[Sec.~3.8.3]{benedikter2022}. All decision variables now span $O(1)$ magnitudes, with positions in $[-1/3,\,1]$, velocities in $[-1.17,\,1.75]$, mass in $[10^{-3},\,1]$, and thrust components in $[-3.57,\,3.57]$; the Jacobians of the LTV linearisation (Section~\ref{sec:task2}) become uniformly $O(1)$, which improves the conditioning of \texttt{fmincon}'s SQP iterations and of the SCvx outer loop. Boundary conditions, glide-slope angle, and the time horizon $t_f$ are all rescaled by their natural units; results are returned to SI before printing and plotting.
 
 \subsection{Decision Vector Layout}
 
@@ -51,7 +74,7 @@ A slice operator \texttt{idx(i) = (i-1)*7 + (1:7)} returns the indices of the se
 
 \subsection{Initial Guess}\label{sec:initial_guess}
 
-A reasonable initial guess is essential for SQP convergence on this nonconvex NLP. The state variables are linearly interpolated between the boundary states with $\alpha = (i-1)/(N-1)$:
+A reasonable initial guess matters a lot for SQP convergence on this nonconvex NLP. The state variables are linearly interpolated between the boundary states with $\alpha = (i-1)/(N-1)$:
 \begin{align}
     x_i^{(0)}     &= (1-\alpha)\, x_0,
     & y_i^{(0)}   &= (1-\alpha)\, y_0,\\
@@ -101,8 +124,8 @@ Option                          & Value \\
 \end{tabular}
 \end{table}
 
-The SQP algorithm was preferred over the interior-point method (\texttt{fmincon}'s default) because it tracks the active-set structure of the max--coast--max optimum --- with the thrust bound binding on entire arcs --- more efficiently than barrier-based interior-point iterations, and it copes well with the equality-dense defect block. Gradients are not provided explicitly, so \texttt{fmincon} computes them via finite differences; the typical wall time at $N = 50$ is on the order of one minute per solve on the test laptop.
+I chose the SQP algorithm over the interior-point method (\texttt{fmincon}'s default) because it tracks the active-set structure of the max--coast--max optimum --- the thrust bound binds on entire arcs --- better than barrier-based interior-point iterations, and it handles the equality-dense defect block well. Gradients are not provided explicitly, so \texttt{fmincon} computes them via finite differences; the typical wall time at $N = 50$ is about one minute per solve on the test laptop.
 
-A practical remark on the convergence tail: on the coast arc the optimal control sits exactly at $\mathbf{T} = \mathbf{0}$, which is the nonsmooth point of $\|\mathbf{T}\|$ in the mass equation \eqref{eq:hm2_mdot} and in the thrust-magnitude constraint. Under finite-difference gradients this caps the attainable first-order optimality at the $10^{-3}$--$10^{-4}$ level (non-dim) and explains why some runs stop at the iteration limit with feasible, engineering-quality iterates rather than at the optimality tolerance (Sections~\ref{sec:results}--\ref{sec:sensitivity}). The standard remedies --- left to the roadmap --- are either analytical gradients with a smoothed norm, or the lossless-convexification slack $\Gamma \geq \|\mathbf{T}\|$ of A\c{c}ikme\c{s}e--Ploen~\cite{acikmese2007}, which removes the norm from the dynamics altogether.
+One note on the convergence tail: on the coast arc the optimal control sits exactly at $\mathbf{T} = \mathbf{0}$, which is the nonsmooth point of $\|\mathbf{T}\|$ in the mass equation \eqref{eq:hm2_mdot} and in the thrust-magnitude constraint. Under finite-difference gradients this caps the attainable first-order optimality at the $10^{-3}$--$10^{-4}$ level (non-dim) and explains why some runs stop at the iteration limit with feasible, good-enough iterates rather than at the optimality tolerance (Sections~\ref{sec:results}--\ref{sec:sensitivity}). Two fixes I left to the roadmap are analytical gradients with a smoothed norm, or the lossless-convexification slack $\Gamma \geq \|\mathbf{T}\|$ of A\c{c}ikme\c{s}e--Ploen~\cite{acikmese2007}, which removes the norm from the dynamics altogether.
 
 \end{document}

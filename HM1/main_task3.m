@@ -120,16 +120,37 @@ if ef > 0
 
     %% Plots
     figure('Name','Task 3 - Trajectory');
-    hold on; grid on;
+    ax_main = axes;
     % Vertical
-    plot(zeros(size(T_vert)), Z_vert(:,1), 'r-', 'LineWidth', 2, 'DisplayName', 'Vertical');
+    plot(ax_main, zeros(size(T_vert)), Z_vert(:,1), 'r-', 'LineWidth', 2, 'DisplayName', 'Vertical');
+    hold(ax_main, 'on');
     % Burn
-    plot(Z2(:,1), Z2(:,2), 'b-', 'LineWidth', 1.5, 'DisplayName', 'Burn');
+    plot(ax_main, Z2(:,1), Z2(:,2), 'b-', 'LineWidth', 1.5, 'DisplayName', 'Burn');
     % Coast
-    plot(x_coast, y_coast, 'g--', 'LineWidth', 1.5, 'DisplayName', 'Coast');
-    xlabel('x (nondim)'); ylabel('y (nondim)');
-    title('Task 3: Trajectory (vertical + burn + coast)');
-    legend('Location','best');
+    plot(ax_main, x_coast, y_coast, 'g--', 'LineWidth', 1.5, 'DisplayName', 'Coast');
+    xlabel(ax_main, 'x (nondim)'); ylabel(ax_main, 'y (nondim)');
+    title(ax_main, 'Task 3: Trajectory (vertical + burn + coast)');
+    legend(ax_main, 'Location','best'); grid(ax_main, 'on');
+
+    % --- Inset: zoom on the vertical-climb + pitch-over knee ---
+    % The vertical climb (x = 0, 0 <= y <= y1) spans y1 = 1e-4, i.e. 1/400 of the
+    % full ascent, so it is invisible at full scale; an inset magnifies it.
+    y_zoom = 5 * y1;                                    % tight zoom on the climb
+    kk_in  = find(Z2(:,2) <= y_zoom, 1, 'last');
+    if isempty(kk_in) || kk_in < 2, kk_in = min(40, size(Z2,1)); end
+    x_zmax = max(Z2(1:kk_in,1)) * 1.10 + 1e-6;
+
+    % dashed rectangle on the main axes marking the magnified region
+    rectangle(ax_main, 'Position', [-0.02*x_zmax, 0, 1.04*x_zmax, y_zoom], ...
+              'EdgeColor', [0.4 0.4 0.4], 'LineStyle', '--', 'LineWidth', 0.8);
+
+    ax_in = axes('Position', [0.15 0.55 0.27 0.32]);    % inset (norm. figure units)
+    plot(ax_in, zeros(size(T_vert)), Z_vert(:,1), 'r-', 'LineWidth', 2); hold(ax_in, 'on');
+    plot(ax_in, Z2(:,1), Z2(:,2), 'b-', 'LineWidth', 1.5);
+    plot(ax_in, 0, y1, 'ko', 'MarkerSize', 4, 'MarkerFaceColor', 'k');  % climb->burn handover
+    xlim(ax_in, [-0.02*x_zmax, x_zmax]); ylim(ax_in, [0, y_zoom]);
+    grid(ax_in, 'on'); box(ax_in, 'on'); set(ax_in, 'FontSize', 8);
+    title(ax_in, 'vertical-climb zoom', 'FontSize', 8);
 
     % Angles during burn
     phi_burn = zeros(length(T2),1);

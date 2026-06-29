@@ -6,30 +6,29 @@
 
 This report addresses the design of an attitude control system for a launch
 vehicle (LV) during the atmospheric phase of flight, at the instant of maximum
-dynamic pressure ($t = 72$~s, max-$\bar q$). At this condition the LV is the
-hardest to control: the aerodynamic moment destabilises the airframe while the
-wind disturbance is largest. The design is carried out entirely with
-\emph{classical} frequency-domain tools, using the Nichols chart as the primary
-stability indicator, following the short-period pitch-plane model of
+dynamic pressure ($t = 72$~s, max-$\bar q$). This is the hardest point to
+control: the aerodynamic moment destabilises the airframe and the wind
+disturbance is largest. I design the controller with classical
+frequency-domain tools, using the Nichols chart as the main stability
+indicator, following the short-period pitch-plane model of
 Greensite~\cite{greensite1970}.
 
 \subsection{Design methodology: frozen coefficients at max-$\bar q$}
 
 Launch-vehicle attitude control in atmospheric flight is classically handled by
-the \emph{time-slice} (frozen-coefficient) method: the slowly varying mass,
+the \textbf{time-slice} (frozen-coefficient) method: the slowly varying mass,
 inertia and aerodynamic coefficients are frozen at a representative instant, a
 linear time-invariant short-period model is built and analysed at that operating
-point, and the controller is afterwards validated against time-varying
-simulations~\cite[Sec.~2]{greensite_cr826}. The principal sizing disturbance is
+point, and the controller is then validated against time-varying
+simulations~\cite[Sec.~2]{greensite_cr826}. The main sizing disturbance is
 the wind profile, which drives both the trajectory dispersion and the structural
-bending loads---hence the gust analysis of Tasks~1 and~2. The instant
-$t = 72$~s is selected because it is the load- and stability-critical slice:
-the aerodynamic destabilising moment and the wind-induced angle of attack are
-both near their maxima. The caveat of the method is that point-wise Nichols
-margins certify only the frozen model and do not by themselves guarantee
-stability of the underlying time-varying system; this is what motivates the
-parametric robustness study of Task~3 and, ultimately, gain scheduling along
-the trajectory.
+bending loads---hence the gust analysis of Tasks~1 and~2. I pick $t = 72$~s
+because it is the load- and stability-critical slice: the aerodynamic
+destabilising moment and the wind-induced angle of attack are both near their
+maxima. The catch is that point-wise Nichols margins certify only the frozen
+model and do not by themselves guarantee stability of the underlying
+time-varying system; this is what motivates the parametric robustness study of
+Task~3 and, eventually, gain scheduling along the trajectory.
 
 \subsection{Plant model}
 
@@ -65,9 +64,9 @@ by $I_{yy}$ reproduces row~4 of Eq.~\eqref{eq:plant},
 \ddot\theta = A_6\,\theta + \frac{A_6}{V}\,\dot z + K_1\,\delta - A_6\,\alpha_w ,
 \label{eq:pitch_channel}
 \end{equation}
-and identifies the two structural coefficients: the \emph{aerodynamic moment}
+and identifies the two structural coefficients: the \textbf{aerodynamic moment}
 $A_6 = N_\alpha l_\alpha / I_{yy} > 0$ (denoted $\mu_\alpha$) and the
-\emph{control effectiveness} $K_1 = T_c l_c / I_{yy}$ ($\mu_c$). With $A_6 > 0$
+\textbf{control effectiveness} $K_1 = T_c l_c / I_{yy}$ ($\mu_c$). With $A_6 > 0$
 the airframe transfer function $\theta/\delta = K_1/(s^2 - A_6)$ carries an
 open-loop pole at $s = +\sqrt{A_6} = +1.84$~rad/s in the right half-plane: the
 \textbf{statically unstable} airframe of a vehicle whose centre of pressure lies
@@ -105,10 +104,10 @@ second-order form is
 e^{-\tau s} \approx \frac{12 - 6\,\tau s + (\tau s)^2}{12 + 6\,\tau s + (\tau s)^2},
 \label{eq:pade}
 \end{equation}
-an \emph{all-pass} rational function ($|P(j\omega)| = 1$ for all $\omega$) that
+an \textbf{all-pass} rational function ($|P(j\omega)| = 1$ for all $\omega$) that
 reproduces the phase lag of the delay while leaving the loop gain unchanged.
-Order three is retained, matching the implementation, so that the approximation
-stays faithful up to the bending frequency, where $\omega_{BM}\tau \approx 0.38$
+I keep order three, matching the implementation, so that the approximation
+stays accurate up to the bending frequency, where $\omega_{BM}\tau \approx 0.38$
 is no longer negligible~\cite{franklin2015}. Parameters at $t=72$~s are read from the
 reference data set \texttt{GreensiteLPV\_DATA.mat} (cross-checked against
 Table~1 of the assignment); the salient values are reported in
@@ -146,12 +145,12 @@ K_{P,\theta}\,(\theta_{ref}-\theta_m) - K_{D,\theta}\,\dot\theta_m
 with $K_{P,z},K_{D,z}$ small and negative, of order $10^{-3}$, as recommended in
 the assignment guidelines. Closing the loop also on $(z_m,\dot z_m)$ trades
 between two classical objectives in wind: containing the lateral
-drift (\emph{drift minimum}) and containing the angle of attack
+drift (drift minimum) and containing the angle of attack
 $\alpha = \theta + \dot z/V + \alpha_w$, hence the structural load
-$\bar q\,\alpha$ (\emph{load minimum}) --- the binding concern precisely at the
+$\bar q\,\alpha$ (load minimum)~\cite[Lecture~17]{dclvnotes} --- the binding concern at the
 max-$\bar q$ condition studied here. The weak negative gains keep the drift
 bounded without fighting the natural load-relieving weathercock of the
-airframe; both $z$ and $\bar q\,\alpha$ are therefore monitored in the gust
+airframe; I therefore monitor both $z$ and $\bar q\,\alpha$ in the gust
 simulations. The actual deflection follows from the actuator and
 the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\,\delta_{cmd}$.
 
@@ -159,16 +158,16 @@ the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\
 
 Because the open-loop airframe carries a single right-half-plane pole
 ($P_R = 1$, the $+1.84$~rad/s aerodynamic pole), the loop is
-\emph{conditionally stable}. By the Nyquist criterion $N = P_R - Z_R$,
+\textbf{conditionally stable}. By the Nyquist criterion $N = P_R - Z_R$,
 closed-loop stability ($Z_R = 0$) demands exactly one counter-clockwise
 encirclement of the critical point, so stability is lost if the loop gain is
-\emph{reduced} below a threshold, not only if it is
+reduced below a threshold, not only if it is
 increased~\cite[Eq.~(9.4.12), Figs.~9.17--9.18]{barrows2020}. An aerodynamically
 unstable vehicle driven through a second-order (or higher) actuator therefore
-has \emph{two} gain margins---a low-frequency \emph{aerodynamic} margin (reduce
-gain $\to$ unstable) and a high-frequency \emph{rigid-body} margin (increase
+has two gain margins---a low-frequency aerodynamic margin (reduce
+gain $\to$ unstable) and a high-frequency rigid-body margin (increase
 gain $\to$ unstable)---which on the Nichols chart show up as two $0$~dB crossings
-of the $-180^\circ$ line. The \texttt{margin} routine is therefore read in
+of the $-180^\circ$ line. I therefore read the \texttt{margin} routine in
 magnitude, and the assignment targets $|GM|\approx 6$~dB and
 $|PM|\approx 30^\circ$ refer to this finite stable gain band. This is standard
 practice for the attitude control of aerodynamically unstable

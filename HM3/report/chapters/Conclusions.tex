@@ -4,16 +4,16 @@
 
 \section{Conclusions}\label{sec:conclusions}
 
-A classical attitude control system for an aerodynamically unstable launch
-vehicle at the max-$\bar q$ condition was designed and validated entirely in the
-frequency domain.
+I designed and validated a classical attitude control system for an
+aerodynamically unstable launch vehicle at the max-$\bar q$ condition, working
+entirely in the frequency domain.
 
 \begin{itemize}
 \item \textbf{Task 1.} A proportional--derivative attitude law with weak negative
 drift feedback stabilises the rigid airframe (open-loop pole at
 $+1.84$~rad/s) and meets the design targets $|GM|\approx 6$~dB,
-$|PM|\approx 30^\circ$. The conditional-stability nature of the loop was
-identified and accounted for in the interpretation of the margins.
+$|PM|\approx 30^\circ$. The loop is conditionally stable, and I kept that in
+mind when reading the margins.
 \item \textbf{Task 2.} Introducing the TVC actuator, the transport delay and the
 lightly damped bending mode destabilises the loop through a $+39$~dB resonance.
 A four-way filter trade showed that the Eq.-4 lead-lag alone never stabilises
@@ -21,10 +21,10 @@ the loop within the suggested parameter ranges ($0/75$ combinations), and that
 a notch triplet sacrifices too much phase at low frequency for a
 conditionally stable loop; a deep gain-stabilising notch centred on
 $\omega_{BM}$ restores stability while preserving the rigid margins, with
-negligible change to the nominal gust response. Its reliance on exact
-bending-frequency knowledge was quantified ($\pm 5\%$ detuning is fatal) and a
-robust notch$+$lead-lag variant, tolerating nearly $\pm 10\%$ at the price of
-thinner nominal margins, was identified.
+negligible change to the nominal gust response. I quantified how much it leans
+on knowing the bending frequency exactly ($\pm 5\%$ detuning is fatal) and found
+a robust notch$+$lead-lag variant that tolerates nearly $\pm 10\%$ at the price
+of thinner nominal margins.
 \item \textbf{Task 3.} The fixed Task~2 controller is robust to $\pm 30\%$
 independent variations of $\mu_\alpha$ and $\mu_c$: all four vertices of the
 uncertainty box remain stable. Uncertainty on $\mu_\alpha$ erodes the rigid
@@ -35,25 +35,25 @@ argument for gain scheduling in a flight design.
 \end{itemize}
 
 \paragraph{Limitations and extensions.} Four modelling choices bound the scope
-of the present design. (i) The pure proportional--derivative law leaves a
+of this design. (i) The pure proportional--derivative law leaves a
 steady-state attitude error to a constant gimbal misalignment, which a
 proportional--integral--derivative extension would null. (ii) The stiff
-second-order TVC model neglects the nozzle back-reaction (the
-\emph{dog-wags-tail} feedback) and the hydraulic load-resonance of the actuator;
+second-order TVC model neglects the nozzle back-reaction (the dog-wags-tail
+feedback) and the hydraulic load-resonance of the actuator;
 retaining the gimbal angle as a state, together with the tail-wags-dog zero of
 Eq.~\eqref{eq:twd}~\cite[Sec.~6.1]{barrows2020}, is the natural next fidelity
-step. (iii) Sensor placement relative to the bending-mode nodes is a
-stabilisation lever co-equal with the filter --- an aft gyro station flips the
+step. (iii) Sensor placement relative to the bending-mode nodes matters as much
+as the filter --- an aft gyro station flips the
 sign of the modal slope and can phase-stabilise a mode that would otherwise need
 a notch~\cite[Sec.~3.3.2.2]{greensite_cr826} --- whereas here the INS station is
 fixed and only the filter is traded. (iv) Propellant sloshing is omitted; it
 would add low-frequency, lightly damped modes coupling into the rigid loop and
 the drift channel.
 
-The design illustrates the textbook trade-offs of launch-vehicle attitude
+The design shows the textbook trade-off of launch-vehicle attitude
 control~\cite{greensite1970,wie2008,barrows2020}: enough gain to stabilise the
-unstable airframe, but not so much as to excite the structural modes, with the
-Nichols chart providing a single, unified view of both constraints. A Simulink
+unstable airframe, but not so much that it excites the structural modes, and the
+Nichols chart lets me see both constraints on one plot. A Simulink
 block-diagram mirror of the closed loop reproduces the script results and is
 documented in the accompanying \texttt{models/SIMULINK\_GUIDE.md}.
 

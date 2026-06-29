@@ -1,0 +1,118 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Step-by-step derivation of the staging corner condition}\label{sec:appendix_staging}
+
+This appendix derives the optimality condition for the free staging time $t_s$ of Task~4 (Eq.~\eqref{eq:staging_corner}) one step at a time, in the costates the shooting BVP actually integrates (normalized by $\lambda_{m,0}=1$). Every step carries an explicit sign check.
+
+\paragraph{Step 1 --- the objective is the total burn time.}
+The delivered payload~\eqref{eq:pay_budget}, $m_u = 1-(1+\eta)Q t_f$, depends only on the total burn time $t_f$. Maximizing $m_u$ is therefore identical to minimizing $t_f$, and the interior optimum in $t_s$ is the stationary point $\mathrm{d}t_f/\mathrm{d}t_s = 0$~\eqref{eq:staging_opt}. The rest of the appendix rewrites this stationarity as a condition on the costates at the jettison.
+
+\paragraph{Step 2 --- costates on the two arcs.}
+On each powered arc, with the bilinear-tangent steering inserted, the Hamiltonian is~\eqref{eq:ham_opt}
+\begin{equation}
+  \mathcal{H} = \lambda_y v_y + \frac{T}{m}\|\boldsymbol{\lambda}_v\| - \lambda_{v_y} - \lambda_m Q,
+  \qquad \lambda_x \equiv 0 .
+\end{equation}
+The adjoint equations give $\lambda_{v_x}$ and $\lambda_y$ constant, $\lambda_{v_y}$ affine in time, and $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\| > 0$~\eqref{eq:lm}. The last point is used repeatedly: $\lambda_m$ is strictly increasing, so $\lambda_m(t_s) < \lambda_m(t_f)$.
+
+\paragraph{Step 3 --- the junction as an interior-point condition.}
+Staging makes the problem a three-point boundary-value problem: arc~1 on $[0,t_s]$, arc~2 on $[t_s,t_f]$, joined at the free interior time $t_s$. With $\mathbf{z} = (x,y,v_x,v_y,m)$ the two arcs are linked by
+\begin{equation}
+  N \;\equiv\; \mathbf{z}(t_s^+) - \mathbf{z}(t_s^-) - \Delta(t_s) = 0,
+  \qquad \Delta(t_s) = \bigl(0,\,0,\,0,\,0,\,-\eta Q\,t_s\bigr)^{\!\top}:
+  \label{eq:app_link}
+\end{equation}
+position and velocity carry over unchanged, and the mass drops by the spent first-stage structure $\eta Q t_s$. Across an interior junction Bryson's conditions~\cite[Sec.~3.5]{bryson1975} fix the costate and the Hamiltonian in terms of the constant multiplier $\boldsymbol{\pi}$ of $N$,
+\begin{equation}
+  \boldsymbol{\lambda}^{\!\top}(t_s^-) = \boldsymbol{\lambda}^{\!\top}(t_s^+) + \boldsymbol{\pi}^{\!\top} N_{\mathbf{z}},
+  \qquad
+  \mathcal{H}(t_s^-) = \mathcal{H}(t_s^+) - \boldsymbol{\pi}^{\!\top} N_t ,
+  \label{eq:app_35}
+\end{equation}
+which are Bryson's Eqs.~(3.5.4) and~(3.5.5).
+
+The junction~\eqref{eq:app_link} couples the two arcs only through $N$, which therefore carries one state block per side:
+\begin{equation}
+  N_{\mathbf{z}^-} \equiv \frac{\partial N}{\partial \mathbf{z}(t_s^-)} = -I_5,
+  \qquad
+  N_{\mathbf{z}^+} \equiv \frac{\partial N}{\partial \mathbf{z}(t_s^+)} = +I_5 ,
+\end{equation}
+exact identities with no off-diagonal or state-dependent entries, because the jettisoned mass $\Delta(t_s)$ is a function of $t_s$ alone ($\partial\Delta/\partial\mathbf{z} = 0$).
+
+Conditions~\eqref{eq:app_35} are written for a one-sided junction, where the state is continuous and there is a single block $N_x$; here the state jumps, so the linkage ties the two distinct values $\mathbf{z}(t_s^-)$ and $\mathbf{z}(t_s^+)$ and the variational argument behind \eqref{eq:app_35} is worth carrying out. Adjoin the linkage to the cost with multiplier $\boldsymbol{\pi}$ and append the dynamics $\dot{\mathbf{z}} = \mathbf{f}$ on each arc through the costate:
+\begin{equation}
+\begin{aligned}
+  \bar J = {}& \phi(\mathbf{z}(t_f)) + \boldsymbol{\pi}^{\!\top} N \\
+  &+ \int_0^{t_s}\!\boldsymbol{\lambda}^{\!\top}(\mathbf{f}-\dot{\mathbf{z}})\,\mathrm{d}t
+  + \int_{t_s}^{t_f}\!\boldsymbol{\lambda}^{\!\top}(\mathbf{f}-\dot{\mathbf{z}})\,\mathrm{d}t .
+\end{aligned}
+\end{equation}
+Integrating the $-\boldsymbol{\lambda}^{\!\top}\dot{\mathbf{z}}$ term by parts leaves boundary terms at $t_s$: arc~1 gives $-\boldsymbol{\lambda}^{\!\top}(t_s^-)\,\delta\mathbf{z}(t_s^-)$ at its upper end, arc~2 gives $+\boldsymbol{\lambda}^{\!\top}(t_s^+)\,\delta\mathbf{z}(t_s^+)$ at its lower end --- opposite signs because $t_s$ is the right edge of one arc and the left edge of the other. Since $\mathbf{z}(t_s^-)$ and $\mathbf{z}(t_s^+)$ are independent (the state jumps), the coefficient of each variation must vanish separately:
+\begin{equation}
+\begin{aligned}
+  \text{coeff. of }\delta\mathbf{z}(t_s^-):&\quad
+  -\boldsymbol{\lambda}^{\!\top}(t_s^-) + \boldsymbol{\pi}^{\!\top} N_{\mathbf{z}^-} = 0, \\
+  \text{coeff. of }\delta\mathbf{z}(t_s^+):&\quad
+  +\boldsymbol{\lambda}^{\!\top}(t_s^+) + \boldsymbol{\pi}^{\!\top} N_{\mathbf{z}^+} = 0,
+\end{aligned}
+\end{equation}
+and substituting $N_{\mathbf{z}^\mp} = \mp I_5$ each collapses to $\boldsymbol{\lambda}(t_s^-) = \boldsymbol{\lambda}(t_s^+) = -\boldsymbol{\pi}$. Both sides equal the same constant, so the net jump is the sum of the two blocks,
+\begin{equation}
+  \boldsymbol{\lambda}(t_s^-) - \boldsymbol{\lambda}(t_s^+)
+  = \boldsymbol{\pi}^{\!\top}\bigl(N_{\mathbf{z}^-} + N_{\mathbf{z}^+}\bigr)
+  = \boldsymbol{\pi}^{\!\top}\bigl(-I_5 + I_5\bigr) = \mathbf{0} .
+\end{equation}
+\textbf{Every costate is continuous}, and the continuity is exactly the cancellation of the two blocks --- which is why both are needed. The remaining coefficient, that of $\delta t_s$, gives the Hamiltonian jump of Step~5. In particular $\lambda_m(t_s^-) = \lambda_m(t_s^+) \equiv \lambda_m(t_s)$, the bilinear-tangent steering is unbroken, and only the mass steps, from $m^- = 1 - Q t_s$ to $m^+ = 1 - (1+\eta)Q t_s$.
+
+\textbf{Why state-independence matters.} Had the stage shed a fraction of the vehicle instead, $m^+ = (1-k)m^-$, then $\partial m^+/\partial m^- = 1-k$, the mass block of $N_{\mathbf{z}}$ would no longer be $\pm 1$, and the $\boldsymbol{\pi}^{\!\top} N_{\mathbf{z}}$ term would survive: the mass costate would jump, $\lambda_m(t_s^-) = (1-k)\,\lambda_m(t_s^+)$. It is the absolute, $m^-$-independent jettison that lets $\lambda_m$ pass through untouched.
+
+\paragraph{Step 4 --- the Hamiltonian jump.}
+Because $v_x,\,v_y$, the velocity costates and $\lambda_m$ are all continuous, the only discontinuous term in $\mathcal{H}$ is the thrust acceleration $(T/m)\|\boldsymbol{\lambda}_v\|$, which sees the mass step:
+\begin{equation}
+  \mathcal{H}(t_s^+) - \mathcal{H}(t_s^-) = T\,\|\boldsymbol{\lambda}_v(t_s)\|\left(\frac{1}{m^+} - \frac{1}{m^-}\right).
+  \label{eq:app_jump}
+\end{equation}
+\textbf{Sign:} $m^+ < m^- \Rightarrow 1/m^+ > 1/m^-$, so the right-hand side is positive --- the lighter post-staging vehicle has the larger thrust acceleration, and $\mathcal{H}$ steps up.
+
+\paragraph{Step 5 --- the junction-side jump (Eq.~3.5.5).}
+The same jump is fixed by the right-hand condition in \eqref{eq:app_35}. The only explicit $t_s$ in the junction is the jettisoned mass, so $N_t = \partial N/\partial t_s = (0,0,0,0,\eta Q)^{\!\top}$, and with $\boldsymbol{\pi} = -\boldsymbol{\lambda}(t_s)$ from Step~3 its mass component is $\pi_m = -\lambda_m(t_s)$. Substituting into (3.5.5), $\mathcal{H}(t_s^-) = \mathcal{H}(t_s^+) - \pi_m\,\eta Q$, gives the jump directly:
+\begin{equation}
+  \mathcal{H}(t_s^+) - \mathcal{H}(t_s^-) = -\,\eta Q\,\lambda_m(t_s).
+  \label{eq:app_we_raw}
+\end{equation}
+
+It remains to pin down which $\lambda_m$ this is. The staging objective is to maximize the payload~\eqref{eq:pay_budget}, equivalently to minimize the total burn time $t_f$; the final mass $m(t_f)$ is left unconstrained (the payload is read off afterwards) and the cost $\phi$ does not contain it. The terminal transversality condition $\boldsymbol{\lambda}(t_f) = \partial\phi/\partial\mathbf{z}(t_f)$ then makes the mass costate vanish at burnout,
+\begin{equation}
+  \lambda_m(t_f) = \frac{\partial\phi}{\partial m}\bigg|_{t_f} = 0 ,
+  \label{eq:app_lmtf}
+\end{equation}
+which is the natural scale of the minimum-time problem. Since $\lambda_m(t_f) = 0$, we may replace $-\lambda_m(t_s)$ by $\lambda_m(t_f) - \lambda_m(t_s)$ --- adding a term that is exactly zero --- so that \eqref{eq:app_we_raw} reads
+\begin{equation}
+  \mathcal{H}(t_s^+) - \mathcal{H}(t_s^-) = \eta Q\,\bigl[\lambda_m(t_f) - \lambda_m(t_s)\bigr].
+  \label{eq:app_we}
+\end{equation}
+
+The rewrite is not cosmetic: it makes the condition independent of how the costates are scaled. The shooting BVP integrates $\lambda_m$ from $\lambda_{m,0} = 1$ at $t = 0$, not from $\lambda_m(t_f) = 0$; because $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\|$ depends on the other costates and not on $\lambda_m$ itself, the two scalings differ only by a constant offset of the whole $\lambda_m(t)$ curve. That offset cancels in the difference $\lambda_m(t_f) - \lambda_m(t_s)$ but survives in $\lambda_m(t_s)$ alone, so \eqref{eq:app_we} can be evaluated with whatever $\lambda_m$ the BVP carries, whereas \eqref{eq:app_we_raw} could not. \textbf{Sign:} $\lambda_m$ increasing $\Rightarrow \lambda_m(t_f) > \lambda_m(t_s)$, so the right-hand side is positive --- consistent with the positive jump of Step~4. This is the Weierstrass--Erdmann corner condition in action~\cite[Sec.~3.13, Prob.~1]{bryson1975}: with no explicit-time junction term both $\boldsymbol{\lambda}$ and $\mathcal{H}$ would be continuous, and it is precisely the explicit $t_s$ of the jettisoned mass that lets $\mathcal{H}$ jump while $\boldsymbol{\lambda}$ stays continuous.
+
+\paragraph{Step 6 --- equate and simplify.}
+Setting \eqref{eq:app_jump} equal to \eqref{eq:app_we} and using $T = cQ$,
+\begin{equation}
+\begin{aligned}
+  T\,\|\boldsymbol{\lambda}_v\|\left(\frac{1}{m^+} - \frac{1}{m^-}\right)
+  &= \eta Q\,[\lambda_m(t_f) - \lambda_m(t_s)] \\
+  \Longrightarrow\qquad
+  \eta\,[\lambda_m(t_f) - \lambda_m(t_s)]
+  &= c\,\|\boldsymbol{\lambda}_v(t_s)\|\left(\frac{1}{m^+} - \frac{1}{m^-}\right),
+\end{aligned}
+\end{equation}
+which is the corner condition~\eqref{eq:staging_corner}. Both sides are positive, so the equation is well posed.
+
+\paragraph{Step 7 --- solve and verify.}
+Appending $t_s$ as a fifth shooting unknown and this relation as a fifth residual, a single \texttt{fsolve} (\texttt{validate\_staging\_corner.m}) returns $t_s^\ast = 0.336$, $t_f = 0.424$, $m_u = 0.068$ --- identical to the parameter sweep of Table~\ref{tab:task4}, with the residual norm at the $10^{-10}$ level. The terminal-reference term $\lambda_m(t_f)$ is essential: replacing $\lambda_m(t_f) - \lambda_m(t_s)$ by $\lambda_m(t_s)$ alone (the inner minimum-fuel costate, normalized at $\lambda_{m,0}=1$) misplaces the optimum to a spurious $t_s \approx 0.225$.
+
+\paragraph{Physical reading.}
+The condition is a marginal balance. The right-hand side is the propulsive benefit of staging: the jump $1/m^+ - 1/m^-$ in thrust acceleration enabled by shedding the structure, priced by the velocity costate $\|\boldsymbol{\lambda}_v\|$ (how valuable an increment of $\Delta v$ is at that instant). The left-hand side is the structural penalty: a later staging carries $\eta Q$ more inert mass per unit time, priced by the terminal-referenced mass costate. Staging too early throws away structure that still earns its keep; staging too late drags dead mass; the optimum equalizes the two, which is exactly $\mathrm{d}t_f/\mathrm{d}t_s = 0$.
+
+\end{document}

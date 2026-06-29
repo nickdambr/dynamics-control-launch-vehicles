@@ -4,13 +4,38 @@
 
 \section{Task 1 --- Rigid Launch Vehicle}\label{sec:task1}
 
+Figure~\ref{fig:hm3_pipeline} sketches the design pipeline of \texttt{main\_task1.m}, which Tasks~2 and~3 reuse with richer plant and actuator models.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm,
+  box/.style={rectangle, draw=black, rounded corners, align=center,
+              text width=0.78\textwidth, inner sep=5pt, font=\small},
+  cbox/.style={box, fill=black!5},
+  arr/.style={-{Latex[length=2.2mm]}, thick}]
+  \node[box] (p) {\textbf{Model (given).} \texttt{load\_hw3\_params} (Table~\ref{tab:params}, $t=72$~s) $\to$ \texttt{build\_plant\_rigid}: rigid state-space $G$ with the unstable airframe pole at $s=+\sqrt{A_6}=+1.84$~rad/s};
+  \node[cbox, below=of p] (d) {\texttt{design\_controller}: tune the PD gains $K_{P,\theta},K_{D,\theta}$ (drift $K_{P,z},K_{D,z}$ fixed) to the targets $|GM|\approx 6$~dB, $|PM|\approx 30^\circ$};
+  \node[cbox, below=of d] (l) {\texttt{assemble\_loop}: open-loop $L(s)$ broken at the TVC deflection $\delta$, and closed loop $T$ \,(Listing~\ref{lst:hm3_loop})};
+  \node[cbox, below=of l] (n) {\texttt{nichols(L)} / \texttt{margin}: read $|GM|$ and $|PM|$ on the Nichols chart};
+  \node[cbox, below=of n] (g) {\texttt{simulate\_gust\_response}: wind gust $\to$ $\theta,\,z,\,\dot z,\,\delta$ and the aerodynamic load $\bar q\,\alpha$};
+  \draw[arr] (p) -- (d);
+  \draw[arr] (d) -- node[right,font=\scriptsize]{$K_{P},K_{D}$} (l);
+  \draw[arr] (l) -- (n);
+  \draw[arr] (n) -- node[right,font=\scriptsize]{margins ok} (g);
+  \draw[arr,dashed] (n.west) to[out=180,in=180,looseness=1.8] node[left,font=\scriptsize]{retune} (d.west);
+\end{tikzpicture}
+\caption{Task~1 design pipeline (\texttt{main\_task1.m}). Tasks~2 and~3 reuse it with the full flexible plant and the TVC$+$delay$+$notch chain \texttt{Wact}. Listing numbers refer to Appendix~\ref{sec:appendix_code}.}
+\label{fig:hm3_pipeline}
+\end{figure}
+
 \subsection{Rigid model and loop}
 
 Neglecting the bending mode, the plant reduces to the four states
-$[\,z,\dot z,\theta,\dot\theta\,]$ and the actuator is taken as ideal:
+$[\,z,\dot z,\theta,\dot\theta\,]$ (\texttt{build\_plant\_rigid.m}, Listing~\ref{lst:hm3_plant}) and the actuator is taken as ideal:
 $W_{TVC}(s)=1$ and no transport delay. The open-loop transfer broken at the TVC
 deflection, in the $1+L$ convention, is obtained by closing the static
-PD law of Eq.~\eqref{eq:control} around the plant:
+PD law of Eq.~\eqref{eq:control} around the plant (\texttt{assemble\_loop}, Listing~\ref{lst:hm3_loop}):
 \begin{equation}
 L(s) = K_{P,\theta}\,G_{\delta\to\theta}(s)
      + K_{D,\theta}\,G_{\delta\to\dot\theta}(s)
@@ -21,8 +46,8 @@ where $G_{\delta\to\bullet}$ are the plant channels from $\delta$ to each
 measurement. The dominant term is the pitch loop
 $L_\theta(s) = (K_{P,\theta}+K_{D,\theta}s)\,K_1/(s^2-A_6)$, whose closed-loop
 characteristic polynomial $s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta}-A_6)$
-is stable only for $K_{P,\theta} > A_6/K_1 = 0.74$ and $K_{D,\theta} > 0$: the
-proportional gain must overcome the aerodynamic instability.
+is stable only for $K_{P,\theta} > A_6/K_1 = 0.74$ and $K_{D,\theta} > 0$, so the
+proportional gain has to overcome the aerodynamic instability.
 
 \subsection{Tuning}
 
@@ -35,12 +60,12 @@ K_{P,z}=K_{D,z}=-10^{-3},
 \end{equation}
 with margins $|GM| = 6.0$~dB at $0.34$~rad/s and $|PM| = 30^\circ$ at
 $0.21$~rad/s.
-In the pole-placement language of the course notes the retained gains place
+In the pole-placement language of the course notes~\cite[Lecture~15]{dclvnotes} the retained gains place
 the dominant pitch pair at $\omega_c = \sqrt{K_1 K_{P,\theta}-A_6} = 2.4$~rad/s
---- inside the typical $1$--$4$~rad/s control band --- with an equivalent
-damping $\zeta = K_1 K_{D,\theta}/(2\omega_c) = 1.34$, deliberately above the
-$0.7$--$0.8$ pole-placement range because here the damping is driven by the
-phase-margin target rather than by a step-response specification.
+--- inside the usual $1$--$4$~rad/s control band --- with an equivalent
+damping $\zeta = K_1 K_{D,\theta}/(2\omega_c) = 1.34$. That sits above the
+$0.7$--$0.8$ pole-placement range because here the damping is set by the
+phase-margin target, not by a step-response specification.
 
 These relations invert the closed-loop characteristic polynomial: matching
 $s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta} - A_6)$ to $s^2 + 2\zeta\omega_c s + \omega_c^2$
@@ -56,14 +81,14 @@ closed-form estimate of the low-frequency aerodynamic gain margin,
 $GM_a \approx 20\log_{10}(K_1 K_{P,\theta}/A_6) = 20\log_{10}(4.565\times1.98/3.382)
 \approx 8.5$~dB~\cite[Eq.~(9.2.39)]{barrows2020}; this single-channel figure sits
 a couple of dB above the $|GM| = 6.0$~dB returned by \texttt{margin} on the full
-four-state loop, the difference being the weak drift channel and the
-conditionally-stable low-frequency reading. The gains themselves were obtained
-by the \texttt{fminsearch} wrapper minimising the equal-weight margin miss
+four-state loop, the difference coming from the weak drift channel and the
+conditionally-stable low-frequency reading. The gains themselves came
+from the \texttt{fminsearch} wrapper minimising the equal-weight margin miss
 $(|GM| - 6)^2 + (|PM| - 30)^2$ from the initial guess $[2.0,\,1.4]$, so the
 reported $(1.98,\,1.40)$ is the local minimiser of that objective.
-The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve threading
+The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve passing
 between the two critical points $(-180^\circ,0\,\text{dB})$ and
-$(-540^\circ,0\,\text{dB})$ --- the geometric signature of conditional stability,
+$(-540^\circ,0\,\text{dB})$ --- which is what conditional stability looks like,
 the two crossings being the $360^\circ$ wraps of the single-encirclement Nyquist
 condition $N = P_R = 1$ of Section~\ref{sec:intro} --- and clearing the $6$~dB
 closed-loop contour; the markers locate the phase and gain crossovers where the
@@ -87,8 +112,8 @@ wind angle of attack $\alpha_w = v_w/V$ with a peak of $0.39^\circ$. The four
 key time histories requested by the assignment are shown in
 Figure~\ref{fig:t1gust}: the pitch attitude peaks at $0.139^\circ$, the TVC
 deflection at $0.38^\circ$, and the lateral drift builds up smoothly to
-$2.5$~m, as expected from the weak drift feedback. The response is well damped
-and the actuator effort is modest.
+$2.5$~m, which is what the weak drift feedback gives. The response is well damped
+and the actuator effort stays small.
 
 \begin{figure}[H]
 \centering
@@ -103,25 +128,25 @@ angle of attack $\alpha = \theta + \dot z/V + \alpha_w$ and the structural-load
 indicator $\bar q\,\alpha$ are also monitored (Figure~\ref{fig:t1alpha}). The
 attitude loop pitches the vehicle slightly into the wind
 ($\theta \to -0.14^\circ$ at the gust peak), so the peak total incidence,
-$0.31^\circ$, stays \emph{below} the wind contribution alone --- a mild
+$0.31^\circ$, ends up below the wind contribution alone --- a mild
 load-relieving action. With $\bar q = 81$~kPa the peak load indicator is
 $\bar q\,\alpha = 25$~kPa\,deg, the incidence remaining an order of magnitude
 below the few-degree load limit typical of a slender launcher, so at this gust
 level the drift-minimum--oriented gain choice does not conflict with the
 load-minimum requirement.
 
-This drift-versus-load tension is the classical dichotomy of launch-vehicle wind
+This drift-versus-load tension is the standard trade in launch-vehicle wind
 control~\cite[Sec.~3.1]{greensite_cr826}. The characteristic equation of the
 rigid airframe in wind is a cubic with two oscillatory rigid-body roots plus one
-real \emph{drift} (flight-path) root; the final-value theorem applied to a step
-gust yields a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
+real drift (flight-path) root; the final-value theorem applied to a step
+gust gives a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
 gains --- which is why the lateral drift of Figure~\ref{fig:t1gust} accumulates
-smoothly rather than being nulled. Two limiting philosophies bracket the design:
-the \emph{drift-minimum} condition (drift-channel coefficient $B_0 = 0$) holds
-the trajectory dispersion down, while the \emph{load-minimum} condition
+smoothly rather than being nulled. Two limiting cases bracket the design. The
+\textbf{drift-minimum} condition (drift-channel coefficient $B_0 = 0$) holds
+the trajectory dispersion down. The \textbf{load-minimum} condition
 ($K_{P,\theta} = 0$, so the steady incidence $\alpha_{ss} = 0$) minimises
-$\bar q\,\alpha$ at the cost of a slow unstable drift mode. The weak negative
-drift gains adopted here are a small step toward the drift-minimum end of this
+$\bar q\,\alpha$, but pays for it with a slow unstable drift mode. The weak negative
+drift gains I used here are a small step toward the drift-minimum end of this
 trade.
 
 \begin{figure}[H]

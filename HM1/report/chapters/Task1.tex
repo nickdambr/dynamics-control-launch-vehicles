@@ -10,7 +10,7 @@ The simplest mission profile consists of a single continuous powered arc startin
 
 \subsection{Boundary Value Problem Formulation}
 
-The four shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) determine the costate initial conditions and the free flight time. The shooting residual is
+The four shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) determine the costate initial conditions and the free flight time. The shooting residual, coded in the function \texttt{shooting1} of \texttt{main\_task1.m} (Listing~\ref{lst:shooting}), is
 \begin{equation}
     \mathbf{r}_1(\boldsymbol{\zeta}) =
     \begin{bmatrix}
@@ -57,7 +57,7 @@ The misalignment loss $W_d$ collects the fraction of thrust not aligned with the
 
 \subsection{Results}\label{sec:task1_results}
 
-Figure~\ref{fig:task1a} shows the final mass as a function of $Q$ for the three target altitudes. Each curve exhibits a clear interior maximum $Q^*$: at low $Q$, the long burn time accumulates large gravity losses; at high $Q$, the vehicle climbs steeply and thrust-misalignment loss dominates.
+Figure~\ref{fig:task1a} shows the final mass as a function of $Q$ for the three target altitudes, obtained by solving the BVP at each $Q$ with the continuation sweep of \texttt{main\_task1.m} (Listing~\ref{lst:continuation}). Each curve has a clear interior maximum $Q^*$: at low $Q$ the long burn time builds up large gravity losses, while at high $Q$ the vehicle climbs steeply and the thrust-misalignment loss takes over.
 
 \begin{figure}[H]
     \centering
@@ -66,15 +66,15 @@ Figure~\ref{fig:task1a} shows the final mass as a function of $Q$ for the three 
     \label{fig:task1a}
 \end{figure}
 
-The interior maxima are quantified in Table~\ref{tab:qstar}: the optimal rate $Q^\ast$ decreases from $2.52$ to $2.19$ as the target altitude rises from $y_f = 0.04$ to $0.06$, and the delivered payload turns \emph{negative} at $y_f = 0.06$---a single stage cannot reach that orbit with positive payload, which is precisely what motivates the staging of Task~4. The nominal $Q = 2$ of the assignment lies within a few percent of $Q^\ast$.
+The interior maxima are listed in Table~\ref{tab:qstar}: the optimal rate $Q^\ast$ decreases from $2.52$ to $2.19$ as the target altitude rises from $y_f = 0.04$ to $0.06$, and the delivered payload becomes negative at $y_f = 0.06$. A single stage cannot reach that orbit with positive payload, which is what motivates the staging in Task~4. The nominal $Q = 2$ of the assignment sits a bit below $Q^\ast$, but the $m_f(Q)$ curve is flat near its peak, so the final mass at $Q = 2$ is still within a few percent of the optimum.
 
 \begin{table}[H]
 \centering
-\caption{Payload-optimal mass-flow rate $Q^\ast$ (maximizing the final mass) for the three target altitudes, read from the $Q$-sweep of Figure~\ref{fig:task1a}. The delivered single-stage payload is $m_\mathrm{pay} = m_f(1+\eta) - \eta$.}
+\caption{Payload-optimal mass-flow rate $Q^\ast$ (maximizing the final mass) for the three target altitudes, read from the $Q$-sweep of Figure~\ref{fig:task1a}. The delivered single-stage payload is $m_u = m_f(1+\eta) - \eta$.}
 \label{tab:qstar}
 \begin{tabular}{cccc}
 \toprule
-$y_f$ & $Q^\ast$ & $m_f^\ast$ & $m_\mathrm{pay}^\ast$ \\
+$y_f$ & $Q^\ast$ & $m_f^\ast$ & $m_u^\ast$ \\
 \midrule
 $0.04$ & $2.52$ & $0.1180$ & $+0.0298$ \\
 $0.05$ & $2.33$ & $0.1012$ & $+0.0114$ \\
@@ -96,14 +96,14 @@ Figures~\ref{fig:task1c_traj} and~\ref{fig:task1c_angles} show the optimal traje
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.48\textwidth}
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task1_task_1c_trajectory}
         \caption{Optimal trajectory in the $(x,y)$ plane.}
         \label{fig:task1c_traj}
     \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.48\textwidth}
+    \\[2ex]
+    \begin{subfigure}[b]{0.68\textwidth}
         \centering
         \includegraphics[width=\textwidth]{task1_task_1c_thrust_and_velocity_angles}
         \caption{Thrust angle $\varphi$ and velocity angle $\psi$ vs.\ time.}

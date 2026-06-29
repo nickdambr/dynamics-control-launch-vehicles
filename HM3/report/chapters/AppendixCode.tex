@@ -1,0 +1,27 @@
+\documentclass[../main.tex]{subfiles}
+
+\begin{document}
+
+\section{Implementation: Key Code Excerpts}\label{sec:appendix_code}
+
+The full MATLAB sources live in the \texttt{HM3/} folder of the repository: \texttt{main\_task1.m}--\texttt{main\_task3.m} drive the three tasks, and the helper functions (\texttt{load\_hw3\_params}, \texttt{build\_plant\_rigid}, \texttt{build\_plant\_full}, \texttt{build\_tvc}, \texttt{build\_notch\_filter}, \texttt{design\_controller}, \texttt{assemble\_loop}, \texttt{simulate\_gust\_response}) are shared across them. This appendix collects the three routines that set up the control problem: the rigid plant, the loop closure the Nichols analysis is drawn from, and the bending notch.
+
+Listing~\ref{lst:hm3_plant} builds the rigid pitch-plane state-space model at the max-$\bar q$ condition by dropping the bending states from the assignment dynamics; the unstable airframe pole sits at $+\sqrt{A_6}$.
+
+\lstinputlisting[style=matlab,
+  caption={Rigid pitch-plane LV plant (\texttt{build\_plant\_rigid.m}).},
+  label=lst:hm3_plant]{../build_plant_rigid.m}
+
+Listing~\ref{lst:hm3_loop} closes the PD attitude and drift loop around the plant, optionally inserting the TVC, delay and notch chain through \texttt{Wact}, and returns the SISO open-loop transfer broken at the TVC deflection. This open-loop transfer is what the Nichols charts in Tasks~1--3 are built from.
+
+\lstinputlisting[style=matlab, firstnumber=36, firstline=36, lastline=54,
+  caption={Loop closure and open-loop transfer for the Nichols analysis (\texttt{assemble\_loop.m}).},
+  label=lst:hm3_loop]{../assemble_loop.m}
+
+Listing~\ref{lst:hm3_notch} is the second-order lead-lag / notch section used in Task~2 to stabilize the lightly damped first bending mode.
+
+\lstinputlisting[style=matlab,
+  caption={Lead-lag / notch filter for bending stabilization (\texttt{build\_notch\_filter.m}).},
+  label=lst:hm3_notch]{../build_notch_filter.m}
+
+\end{document}
