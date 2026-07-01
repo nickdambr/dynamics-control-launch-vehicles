@@ -61,6 +61,17 @@ In non-dimensional variables (denoted by tildes), the dynamics \eqref{eq:hm2_xdo
 \end{align}
 where $V_c = V_{ref}/c \approx 0.0778$ is the only residual dimensionless parameter---the non-dimensional mass-flow coefficient ($\dot{\tilde{m}} = -V_c\,\|\tilde{\mathbf{T}}\|$), i.e.\ the ratio of the characteristic flight speed to the effective exhaust velocity. It is not the Tsiolkovsky number itself: the rocket-equation ratio $\Delta v/c = \ln(m_0/m_f)$ only appears once $V_c\|\tilde{\mathbf{T}}\|$ is integrated over a burn~\cite[Sec.~3.8.3]{benedikter2022}. All decision variables now span $O(1)$ magnitudes, with positions in $[-1/3,\,1]$, velocities in $[-1.17,\,1.75]$, mass in $[10^{-3},\,1]$, and thrust components in $[-3.57,\,3.57]$; the Jacobians of the LTV linearisation (Section~\ref{sec:task2}) become uniformly $O(1)$, which improves the conditioning of \texttt{fmincon}'s SQP iterations and of the SCvx outer loop. Boundary conditions, glide-slope angle, and the time horizon $t_f$ are all rescaled by their natural units; results are returned to SI before printing and plotting.
 
+\paragraph{Log-mass change of variables (variant d).} The non-dimensional dynamics above are still bilinear ($\tilde{T}/\tilde{m}$) and carry a mass row that is singular at $\|\tilde{\mathbf{T}}\|=0$. The GFOLD change of variables used in variant~(d) of Section~\ref{sec:gfold} removes both. Defining the log-mass state $z = \ln\tilde{m}$, the acceleration control $\mathbf{u} = \tilde{\mathbf{T}}/\tilde{m}$, and a slack $\sigma \geq \|\mathbf{u}\|$, the chain rule gives $\dot z = \dot{\tilde{m}}/\tilde{m} = -V_c\,\|\tilde{\mathbf{T}}\|/\tilde{m} = -V_c\,\|\mathbf{u}\| = -V_c\,\sigma$ at the optimum, so the dynamics
+\begin{equation}
+    \dot{\tilde{x}} = \tilde{v}_x,\quad
+    \dot{\tilde{y}} = \tilde{v}_y,\quad
+    \dot{\tilde{v}}_x = u_x,\quad
+    \dot{\tilde{v}}_y = u_y - 1,\quad
+    \dot{z} = -V_c\,\sigma
+    \label{eq:impl_gfold_lti}
+\end{equation}
+are exactly \emph{linear and time-invariant}. The state vector becomes $[\tilde{x},\tilde{y},\tilde{v}_x,\tilde{v}_y,z]$ and the per-node control $[u_x,u_y,\sigma]$; the initial mass maps to $z_0 = \ln\tilde{m}_0 = 0$, the box $\tilde{m}\in[10^{-3},1]$ to $z\in[\ln 10^{-3},\,0]$, and the objective $\max\tilde{m}_f$ to $\max z_N$. The thrust bound $\|\tilde{\mathbf{T}}\|\leq\tilde{T}_{\max}$ becomes $\|\mathbf{u}\|\leq\tilde{T}_{\max}\,e^{-z}$, the single non-convex constraint that variant~(d) linearises about $z_{\mathrm{ref}}$; everything else is a linear equality, a linear inequality, or the Lorentz cone $\|\mathbf{u}\|\leq\sigma$.
+
 \subsection{Decision Vector Layout}
 
 With $N = 50$ collocation nodes, the decision vector \eqref{eq:dec_vec} has $7N = 350$ components ordered as

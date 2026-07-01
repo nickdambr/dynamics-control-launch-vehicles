@@ -4,11 +4,12 @@
 
 \section{Task 2: Zero-Order Hold Discretization}\label{sec:task2}
 
-The optional Task~2 of the assignment asks for an alternative transcription of the powered-descent problem based on a \textbf{Zero-Order Hold} (ZOH) discretisation, validated by forward-integrating the optimised control schedule with a high-fidelity integrator. I present three implementations here and compare them against the trapezoidal-collocation baseline of Task~1:
+The optional Task~2 of the assignment asks for an alternative transcription of the powered-descent problem based on a \textbf{Zero-Order Hold} (ZOH) discretisation, validated by forward-integrating the optimised control schedule with a high-fidelity integrator. I present four implementations here and compare them against the trapezoidal-collocation baseline of Task~1:
 \begin{description}
     \item[(a) Nonlinear ZOH with RK4 propagation] -- a multiple-shooting NLP that holds $\mathbf{u}$ piecewise constant and propagates the nonlinear dynamics between grid nodes via a fixed-step RK4 integrator;
     \item[(b) LTV-linearised ZOH with SCvx outer loop, solved by \texttt{fmincon}/SQP] -- the literal Appendix~A construction: linearise about a reference, compute the discrete-time matrices via the auxiliary ODE, solve the resulting LTV optimisation, and iterate;
     \item[(c) LTV-linearised ZOH with SCvx outer loop, solved by \texttt{YALMIP}+\texttt{ECOS}] -- same outer loop as variant~(b), but the inner sub-problem is modelled in \texttt{YALMIP} as a Second-Order Cone Program (SOCP) and solved by the conic solver \texttt{ECOS}, exposing the convex structure that variant~(b) hides inside a general-purpose NLP.
+    \item[(d) GFOLD log-mass change of variables with SCvx] -- the change of variables $z=\ln m$, $\mathbf{u}=\mathbf{T}/m$ and slack $\sigma$ turns the dynamics \emph{exactly} linear time-invariant, so the Appendix~A ZOH collapses to a single matrix exponential; the only residual non-convexity is the scalar upper thrust bound, linearised and iterated in the same SCvx loop (SOCP via \texttt{YALMIP}+\texttt{ECOS}).
 \end{description}
 
 \subsection{ZOH Transcription for LTV Systems (Appendix~A)}\label{sec:zoh_appendix}
@@ -33,25 +34,35 @@ where the discrete-time matrices follow from the state-transition matrix $\bolds
     \bar{\mathbf{B}}_k = \int_{t_k}^{t_{k+1}}\!\boldsymbol{\Phi}(t_{k+1},s)\,\mathbf{B}(s)\,\mathrm{d}s,\quad
     \bar{\mathbf{c}}_k = \int_{t_k}^{t_{k+1}}\!\boldsymbol{\Phi}(t_{k+1},s)\,\mathbf{c}(s)\,\mathrm{d}s.
 \end{equation}
-These are evaluated numerically by integrating an augmented system over each interval $[t_k,\,t_{k+1}]$. Defining $\hat{\mathbf{B}}(t) = \int_{t_k}^{t}\!\boldsymbol{\Phi}(t,s)\mathbf{B}(s)\,\mathrm{d}s$ and $\hat{\mathbf{c}}(t) = \int_{t_k}^{t}\!\boldsymbol{\Phi}(t,s)\mathbf{c}(s)\,\mathrm{d}s$, one obtains the linear ODEs
+These are evaluated numerically by integrating an augmented system over each interval $[t_k,\,t_{k+1}]$, in the $\boldsymbol{\beta},\boldsymbol{\gamma}$ form of the appendix, which references the integrals to the interval start $t_k$. The semigroup identity $\boldsymbol{\Phi}(t_{k+1},s) = \boldsymbol{\Phi}(t_{k+1},t_k)\,\boldsymbol{\Phi}(t_k,s)$ factors the fixed endpoint out of the integrals in \eqref{eq:zoh_lti},
+\begin{equation}
+    \bar{\mathbf{B}}_k = \boldsymbol{\Phi}(t_{k+1},t_k)\,\boldsymbol{\beta}(t_{k+1}),\qquad
+    \bar{\mathbf{c}}_k = \boldsymbol{\Phi}(t_{k+1},t_k)\,\boldsymbol{\gamma}(t_{k+1}),
+\end{equation}
+where the integrals (referenced to $t_k$) use the backward transition $\boldsymbol{\Psi}(s) := \boldsymbol{\Phi}(t_k,s) = \boldsymbol{\Phi}(s,t_k)^{-1}$:
+\begin{equation}
+    \boldsymbol{\beta}(t) = \int_{t_k}^{t}\!\boldsymbol{\Psi}(s)\,\mathbf{B}(s)\,\mathrm{d}s,\qquad
+    \boldsymbol{\gamma}(t) = \int_{t_k}^{t}\!\boldsymbol{\Psi}(s)\,\mathbf{c}(s)\,\mathrm{d}s.
+\end{equation}
+Differentiating, the transition pair $(\boldsymbol{\Phi},\boldsymbol{\Psi})$ and the two integrals satisfy the linear ODEs
 \begin{equation}
     \dot{\boldsymbol{\Phi}} = \mathbf{A}\,\boldsymbol{\Phi},\qquad
-    \dot{\hat{\mathbf{B}}} = \mathbf{A}\,\hat{\mathbf{B}} + \mathbf{B},\qquad
-    \dot{\hat{\mathbf{c}}} = \mathbf{A}\,\hat{\mathbf{c}} + \mathbf{c},
+    \dot{\boldsymbol{\Psi}} = -\boldsymbol{\Psi}\,\mathbf{A},\qquad
+    \dot{\boldsymbol{\beta}} = \boldsymbol{\Psi}\,\mathbf{B},\qquad
+    \dot{\boldsymbol{\gamma}} = \boldsymbol{\Psi}\,\mathbf{c},
     \label{eq:aux_ode}
 \end{equation}
-with $\boldsymbol{\Phi}(t_k,t_k) = \mathbf{I}$ and $\hat{\mathbf{B}}(t_k) = \mathbf{0}$, $\hat{\mathbf{c}}(t_k) = \mathbf{0}$. The ODE for $\hat{\mathbf{B}}$ comes from differentiating its defining integral with the Leibniz rule; the integrand depends on the upper limit $t$ both explicitly and through $\boldsymbol{\Phi}(t,s)$:
+with $\boldsymbol{\Phi}(t_k) = \boldsymbol{\Psi}(t_k) = \mathbf{I}$ and $\boldsymbol{\beta}(t_k) = \boldsymbol{\gamma}(t_k) = \mathbf{0}$. The equation for the inverse transition follows from $\tfrac{\mathrm{d}}{\mathrm{d}t}\boldsymbol{\Phi}^{-1} = -\boldsymbol{\Phi}^{-1}\dot{\boldsymbol{\Phi}}\,\boldsymbol{\Phi}^{-1} = -\boldsymbol{\Psi}\mathbf{A}$, while $\boldsymbol{\beta},\boldsymbol{\gamma}$ are simple quadratures whose integrands depend on $s$ only, so $\dot{\boldsymbol{\beta}} = \boldsymbol{\Psi}\mathbf{B}$ and $\dot{\boldsymbol{\gamma}} = \boldsymbol{\Psi}\mathbf{c}$ carry no feedback from $\boldsymbol{\beta},\boldsymbol{\gamma}$ themselves. Integrating \eqref{eq:aux_ode} forward over one interval and reading the terminal values gives
 \begin{equation}
-    \dot{\hat{\mathbf{B}}}(t) = \boldsymbol{\Phi}(t,t)\,\mathbf{B}(t)
-    + \int_{t_k}^{t}\!\frac{\partial\boldsymbol{\Phi}(t,s)}{\partial t}\,\mathbf{B}(s)\,\mathrm{d}s
-    = \mathbf{B}(t) + \mathbf{A}(t)\,\hat{\mathbf{B}}(t),
-    \label{eq:leibniz}
+    \bar{\mathbf{A}}_k = \boldsymbol{\Phi}(t_{k+1}),\qquad
+    \bar{\mathbf{B}}_k = \boldsymbol{\Phi}(t_{k+1})\,\boldsymbol{\beta}(t_{k+1}),\qquad
+    \bar{\mathbf{c}}_k = \boldsymbol{\Phi}(t_{k+1})\,\boldsymbol{\gamma}(t_{k+1}).
 \end{equation}
-using $\boldsymbol{\Phi}(t,t) = \mathbf{I}$ and $\partial_t\boldsymbol{\Phi} = \mathbf{A}\boldsymbol{\Phi}$; the same argument yields the $\hat{\mathbf{c}}$ equation. At the end of each interval $\bar{\mathbf{A}}_k = \boldsymbol{\Phi}(t_{k+1},t_k)$, $\bar{\mathbf{B}}_k = \hat{\mathbf{B}}(t_{k+1})$, $\bar{\mathbf{c}}_k = \hat{\mathbf{c}}(t_{k+1})$. The semigroup identity $\boldsymbol{\Phi}(t_{k+1},s) = \boldsymbol{\Phi}(t_{k+1},t_k)\,\boldsymbol{\Phi}(t_k,s)$ makes this single forward sweep mathematically equivalent to the $\boldsymbol{\beta},\boldsymbol{\gamma}$ form of the appendix and avoids any need to invert $\boldsymbol{\Phi}$~\cite{malyuta2022}. A piecewise-linear (first-order hold) input is handled by the same machinery with one additional auxiliary integral.
+Referencing everything to $t_k$ keeps the bookkeeping aligned with the appendix, at the cost of carrying the inverse transition $\boldsymbol{\Psi}$ in the augmented state and a final product to recover $\bar{\mathbf{B}}_k,\bar{\mathbf{c}}_k$. A piecewise-linear (first-order hold) input is handled by the same machinery with one additional auxiliary integral.
 
 \subsection{Application to the Nonlinear Powered-Descent Problem}\label{sec:zoh_nonlinear}
 
-The dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} are nonlinear in $(\mathbf{x},\mathbf{u})$ because of the $T_x/m$, $T_y/m$, and $\|\mathbf{T}\|/c$ terms, so Appendix~A does not apply directly. I pursue two strategies:
+The dynamics \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} are nonlinear in $(\mathbf{x},\mathbf{u})$ because of the $T_x/m$, $T_y/m$, and $\|\mathbf{T}\|/c$ terms, so Appendix~A does not apply directly. I pursue three strategies: keep the nonlinearity and integrate it (variant~a); linearise the full dynamics about a reference and iterate (variants~b/c); or change variables so that the dynamics become \emph{exactly} linear and Appendix~A applies directly after all (variant~d).
 
 \subsubsection*{Variant (a): nonlinear ZOH with exact RK4 propagation}
 
@@ -89,7 +100,7 @@ The linearisation is only locally accurate, so I wrap a \textbf{Successive Conve
         \item if $\eta_l \leq \eta < \eta_h = 0.7$ the step is accepted and $\rho$ is held;
         \item if $\eta \geq \eta_h$ the linear model is excellent: the step is accepted and $\rho$ is doubled (capped at the base value).
     \end{itemize}
-    This is the canonical SCvx trust-region update~\cite{mao2016,malyuta2022} and converges to the local optimum without the unphysical mass creation seen with a fixed unsafeguarded box.
+    This is the canonical SCvx trust-region update~\cite[Lecture~12]{dclvnotes} and converges to the local optimum without the unphysical mass creation seen with a fixed unsafeguarded box.
 \end{itemize}
 
 The trust region is the cure for \textbf{artificial unboundedness}. A second failure mode, \textbf{artificial infeasibility}, arises when the linearised constraint set becomes empty even though the nonlinear problem is feasible. The canonical cure augments the linearised dynamics with unconstrained \textbf{virtual controls} $\boldsymbol{\nu}_k$ and relaxes the linearised path inequalities $\mathbf{g}$ with non-negative buffers $\mathbf{w}$,
@@ -124,6 +135,36 @@ The mass row of $\mathbf{B}$ is singular at $\|\mathbf{T}\| = 0$, so I regularis
 
 Variant~(b) feeds the LTV sub-problem to \texttt{fmincon} as a generic NLP, which discards the convex structure of the inner step and pays the cost of a quasi-Newton SQP iteration. Variant~(c) keeps the same outer SCvx loop (warm-start from the trapezoidal solution, identical adaptive trust-region update, identical convergence tolerance) but re-models the inner sub-problem as a Second-Order Cone Program. With LTV dynamics ($\bar{\mathbf{A}}_k,\bar{\mathbf{B}}_k,\bar{\mathbf{c}}_k$) as linear equalities, glide-slope and box bounds as linear inequalities, and the thrust-magnitude bound as the second-order cone constraint $\|\mathbf{u}_k\|_2 \leq T_{\max}$, the inner step is a pure SOCP. The problem is assembled in \texttt{YALMIP} via \texttt{sdpvar} and solved by \texttt{ECOS}, which works on the conic structure directly. The two outer loops produce nearly indistinguishable trajectories (see Section~\ref{sec:zoh_results}), but the YALMIP/ECOS path is cleaner numerically: the inner subproblem keeps the cone constraint as a primitive instead of approximating it through SQP linearisations, so the per-step fidelity of the linearisation improves. The total wall time of the conic variant is about $29$~s for the full $15$-iteration outer loop, roughly three times faster than the \texttt{fmincon}-based variant~(b) measured in the same session (Table~\ref{tab:hm2_replay}). This is an end-to-end wall-time ratio on this problem and session, not a normalised per-iteration comparison: the conic solver treats each inner step as a native SOCP, whereas \texttt{fmincon} pays for a quasi-Newton SQP iteration with a finite-difference Jacobian (the dominant cost), so supplying analytic gradients to the \texttt{fmincon} path would partly close the gap.
 
+\subsubsection*{Variant (d): GFOLD log-mass change of variables}\label{sec:gfold}
+
+Variants~(b) and~(c) linearise all five dynamics about a reference, which is what forces both the regularised singular mass row and the adaptive trust region. Variant~(d) removes the root cause by changing variables, implementing exactly the log-mass remedy anticipated above. Following the Guidance for Fuel-Optimal Large Diverts (GFOLD) construction of A\c{c}ikme\c{s}e and Blackmore~\cite{acikmese2007,benedikter2022}, I introduce
+\begin{equation}
+    z = \ln m,\qquad \mathbf{u} = \frac{\mathbf{T}}{m},\qquad \sigma \geq \|\mathbf{u}\|_2,
+    \label{eq:gfold_cov}
+\end{equation}
+where $\mathbf{u}$ is the thrust \emph{acceleration} (the new control) and $\sigma$ is the lossless-convexification slack. Substituting into \eqref{eq:hm2_xdot}--\eqref{eq:hm2_mdot} (non-dim, $g\!\to\!1$) the dynamics become \textbf{linear time-invariant}:
+\begin{equation}
+    \dot{x} = v_x,\quad \dot{y} = v_y,\quad \dot{v}_x = u_x,\quad \dot{v}_y = u_y - 1,\quad \dot{z} = -V_c\,\sigma,
+    \label{eq:gfold_lti}
+\end{equation}
+since $T_x/m = u_x$, $T_y/m = u_y$ and $\|\mathbf{T}\|/m = \|\mathbf{u}\| = \sigma$ at the optimum. The bilinear $\mathbf{T}/m$ coupling and the singular mass row are gone: $\mathbf{A},\mathbf{B},\mathbf{c}$ in \eqref{eq:ltv_sys} are now \emph{constant}, so the Appendix~A ZOH \eqref{eq:zoh_lti} applies directly in its simplest, time-invariant form. The discrete matrices follow from a single augmented matrix exponential,
+\begin{equation}
+    \begin{bmatrix}\bar{\mathbf{A}} & \bar{\mathbf{B}} & \bar{\mathbf{c}}\\ \mathbf{0} & \mathbf{I}\end{bmatrix}
+    = \exp\!\left(\begin{bmatrix}\mathbf{A} & \mathbf{B} & \mathbf{c}\\ \mathbf{0} & \mathbf{0}\end{bmatrix}\Delta t\right),
+    \label{eq:gfold_vanloan}
+\end{equation}
+computed \emph{once} for the whole grid (van Loan's method)---no per-interval auxiliary ODE \eqref{eq:aux_ode}.
+
+The only nonlinearity that survives the change of variables is the upper thrust bound. With $\|\mathbf{T}\| = m\|\mathbf{u}\| = e^{z}\|\mathbf{u}\|$, the constraint $\|\mathbf{u}_k\| \leq T_{\max}\,e^{-z_k}$ bounds $\sigma$ below a \emph{convex} function of $z$, so its feasible set is non-convex. I linearise it about the reference $z_{\mathrm{ref}}$,
+\begin{equation}
+    \|\mathbf{u}_k\|_2 \leq \sigma_k, \qquad
+    \sigma_k \leq T_{\max}\,e^{-z_{\mathrm{ref},k}}\bigl(1 - (z_k - z_{\mathrm{ref},k})\bigr),
+    \label{eq:gfold_thrust}
+\end{equation}
+a Lorentz cone plus a linear bound. Because $e^{-z}$ is convex its first-order Taylor under-estimates it, so \eqref{eq:gfold_thrust} is a \emph{conservative} (inner) approximation of the true bound: every accepted iterate is feasible for the original problem, and the SCvx iteration only relaxes the conservatism as $z_{\mathrm{ref}}$ tracks the solution. With $T_{\min}=0$ the lower bound is trivially $\sigma_k\geq 0$; the slack $\sigma$ is retained so that a $T_{\min}>0$ extension drops straight into the lossless-convexification form of Section~\ref{sec:lossless}. The objective is $\max z_N$ (equivalent to $\max m_f$, since $e^z$ is monotone).
+
+The same adaptive trust-region/ratio-test outer loop as variants~(b)/(c) wraps this SOCP, with two differences. First, because the dynamics are \emph{exact}, only the scalar bound \eqref{eq:gfold_thrust} is linearised, so the loop is self-starting: I seed it from the analytic maximum-thrust mass-depletion profile $z_{\mathrm{ref}}^{(0)}(t) = \ln\!\left(m_0 - V_c T_{\max} t\right)$ with linearly interpolated position and velocity---no trapezoidal warm start. Second, the first sub-problem is solved free of the trust region (the exact dynamics make it well posed), which the candidate is then verified against by the same nonlinear \texttt{ode45} ratio test; the replay holds the \emph{acceleration} $\mathbf{u}$ constant over each interval (the ZOH convention native to GFOLD, $\mathbf{T} = m(t)\mathbf{u}$ floating with the mass) rather than the thrust vector. The loop converges in \textbf{three} outer iterations, against the $15$-iteration cap that variants~(b)/(c) reach.
+
 \subsection{Convex-Program Structure of the Inner Step}\label{sec:socp_class}
 
 The inner sub-problem of variants~(b) and~(c) is a Second-Order Cone Program (SOCP), the convex class
@@ -133,7 +174,7 @@ The inner sub-problem of variants~(b) and~(c) is a Second-Order Cone Program (SO
     \|\mathbf{F}_i\mathbf{x} + \mathbf{g}_i\|_2 \leq \mathbf{h}_i^T\mathbf{x} + r_i,
     \label{eq:socp}
 \end{equation}
-which sits at the top of the convex hierarchy LP $\subset$ QP $\subset$ QCQP $\subset$ SOCP~\cite[Sec.~3.2, Eqs.~(3.21)--(3.24)]{benedikter2022}. Every constraint of the LTV step fits this template: the discrete dynamics $\mathbf{x}_{k+1} = \bar{\mathbf{A}}_k\mathbf{x}_k + \bar{\mathbf{B}}_k\mathbf{u}_k + \bar{\mathbf{c}}_k$ and the boundary conditions are linear equalities; the glide-slope half-spaces and box bounds are linear inequalities; and the only genuinely conic constraint is the thrust-magnitude bound $\|\mathbf{u}_k\|_2 \leq T_{\max}$, a single Lorentz cone per node. Being convex, the SOCP has a unique global optimum reachable in polynomial time by an interior-point method, which is what \texttt{ECOS} does in variant~(c). Variant~(b) reaches the same global optimum of the same convex sub-problem, but it hands it to a general-purpose SQP that buries the cone inside successive quadratic approximations instead of working on it directly. In that sense variant~(c) is the more natural way to write the inner step.
+which sits at the top of the convex hierarchy LP $\subset$ QP $\subset$ QCQP $\subset$ SOCP~\cite[Sec.~4.4.2]{boyd2004}. Every constraint of the LTV step fits this template: the discrete dynamics $\mathbf{x}_{k+1} = \bar{\mathbf{A}}_k\mathbf{x}_k + \bar{\mathbf{B}}_k\mathbf{u}_k + \bar{\mathbf{c}}_k$ and the boundary conditions are linear equalities; the glide-slope half-spaces and box bounds are linear inequalities; and the only genuinely conic constraint is the thrust-magnitude bound $\|\mathbf{u}_k\|_2 \leq T_{\max}$, a single Lorentz cone per node. Being convex, the SOCP has a unique global optimum reachable in polynomial time by an interior-point method, which is what \texttt{ECOS} does in variant~(c). Variant~(b) reaches the same global optimum of the same convex sub-problem, but it hands it to a general-purpose SQP that buries the cone inside successive quadratic approximations instead of working on it directly. In that sense variant~(c) is the more natural way to write the inner step.
 
 \subsection{Lossless Convexification of the Thrust Constraint}\label{sec:lossless}
 
@@ -154,7 +195,7 @@ is the norm, in non-dim units, of the position and velocity components; the mass
 
 \subsection{Results}\label{sec:zoh_results}
 
-The four transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All four respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal thrust is piecewise linear, whereas the three ZOH variants are naturally piecewise constant (rendered as staircases). All four exhibit the max--coast--max structure, with $\|\mathbf{T}\|$ saturated at $T_{\max}$ on the two burn arcs and at zero in between.
+The five transcriptions converge to qualitatively identical trajectories (Fig.~\ref{fig:hm2_t2_traj}). All respect the glide-slope corridor and softly land at the origin, with only sub-metric differences in the divert phase. Figure~\ref{fig:hm2_t2_thrust} shows the thrust profiles: the trapezoidal thrust is piecewise linear, whereas the four ZOH variants are naturally piecewise constant (rendered as staircases). All exhibit the max--coast--max structure, with $\|\mathbf{T}\|$ saturated at $T_{\max}$ on the two burn arcs and at zero in between.
 
 \begin{figure}[H]
     \centering
@@ -170,7 +211,7 @@ The four transcriptions converge to qualitatively identical trajectories (Fig.~\
         \caption{Thrust magnitude: PWL (trapezoidal) vs PWC (ZOH).}
         \label{fig:hm2_t2_thrust}
     \end{subfigure}
-    \caption{Comparison of the four transcriptions at $t_f = 38$~s.}
+    \caption{Comparison of the five transcriptions at $t_f = 38$~s.}
     \label{fig:hm2_t2_compare}
 \end{figure}
 
@@ -197,7 +238,7 @@ The transcription-fidelity plot (Fig.~\ref{fig:hm2_t2_fidelity}) is the main dia
 \begin{table}[H]
 \centering
 \small
-\caption{Four-way comparison at $t_f = 38$~s, $N = 50$ nodes.}
+\caption{Five-way comparison at $t_f = 38$~s, $N = 50$ nodes.}
 \label{tab:hm2_compare4}
 \begin{tabular}{lcccc}
 \toprule
@@ -205,20 +246,21 @@ Transcription                     & $m_f$ [kg] & Fuel [kg] & Order            & 
 \midrule
 Trapezoidal                       & $1403.20$  & $596.80$  & $O(\Delta t^2)$  & $1.55\cdot 10^{-3}$ \\
 Nonlinear ZOH (RK4)               & $1403.37$  & $596.63$  & $O(\Delta t^4)$  & $1.40\cdot 10^{-8}$ \\
-LTV ZOH + SCvx (\texttt{fmincon}) & $1399.54$  & $600.46$  & \texttt{ode45}-based & $4.08\cdot 10^{-4}$ \\
+LTV ZOH + SCvx (\texttt{fmincon}) & $1399.75$  & $600.25$  & \texttt{ode45}-based & $4.01\cdot 10^{-4}$ \\
 LTV ZOH + SCvx (\texttt{YALMIP}) & $1400.84$  & $599.16$  & \texttt{ode45}-based & $4.09\cdot 10^{-5}$ \\
+GFOLD log-mass (\texttt{YALMIP})  & $1402.77$  & $597.23$  & exact LTI ZOH    & $7.30\cdot 10^{-12}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The trapezoidal transcription has a global $O(\Delta t^2)$ error and sits at $\sim 10^{-3}$ in non-dim state norm (a few metres of position, fractions of a m/s of velocity). The nonlinear-ZOH+RK4 transcription is $O(\Delta t^4)$ and drops to the \texttt{ode45} tolerance floor ($\sim 10^{-8}$). Both LTV+SCvx variants lie in between: they propagate the linearised system with \texttt{ode45} on each interval, so the per-step accuracy is high, but the converged solution is constrained by the (small) residual linearisation error within the final trust radius. The conic variant~(c) is one order of magnitude cleaner than the \texttt{fmincon} variant~(b) ($4\cdot 10^{-5}$ vs $4\cdot 10^{-4}$): exposing the second-order cone constraint to the inner solver instead of approximating it by SQP linearisations measurably improves the per-step fidelity.
+The trapezoidal transcription has a global $O(\Delta t^2)$ error and sits at $\sim 10^{-3}$ in non-dim state norm (a few metres of position, fractions of a m/s of velocity). The nonlinear-ZOH+RK4 transcription is $O(\Delta t^4)$ and drops to the \texttt{ode45} tolerance floor ($\sim 10^{-8}$). Both LTV+SCvx variants lie in between: they propagate the linearised system with \texttt{ode45} on each interval, so the per-step accuracy is high, but the converged solution is constrained by the (small) residual linearisation error within the final trust radius. The conic variant~(c) is one order of magnitude cleaner than the \texttt{fmincon} variant~(b) ($4\cdot 10^{-5}$ vs $4\cdot 10^{-4}$): exposing the second-order cone constraint to the inner solver instead of approximating it by SQP linearisations measurably improves the per-step fidelity. The GFOLD variant~(d) is in a class of its own at $7\cdot 10^{-12}$, the \texttt{ode45} tolerance floor: because the change of variables makes the dynamics \emph{exactly} linear, the discretisation carries no model error at all, and the only residual is the linearised thrust bound, which vanishes once the lossless cone is active.
 
-The trapezoidal and nonlinear-ZOH transcriptions agree to within $0.2$~kg on $m_f$, indicating both have located the same local optimum. The two SCvx solutions sit $2$--$4$~kg below this (slightly more fuel burnt) and agree with each other to within $1.3$~kg. Two contributing effects are at play:
+The trapezoidal and nonlinear-ZOH transcriptions agree to within $0.2$~kg on $m_f$, indicating both have located the same local optimum; the GFOLD variant~(d), at $1402.77$~kg, sits within $0.6$~kg of them, confirming that the change of variables recovers the same optimum the high-fidelity transcriptions find. The two LTV+SCvx solutions sit $2$--$4$~kg below this (slightly more fuel burnt) and agree with each other to within $1.3$~kg. Two contributing effects are at play:
 \begin{itemize}
     \item Trapezoidal collocation enforces the dynamics only to second order in $\Delta t$, so its converged ``optimum'' is allowed a small dynamical residual ($\sim 10^{-3}$ above) that translates into a marginally optimistic final mass.
     \item Both SCvx outer loops stop at the $15$-iteration cap with $\|\Delta\mathbf{x}\| \approx 10^{-2}$, above the convergence tolerance of $10^{-3}$. Every accepted step, however, has passed the ratio test against an \texttt{ode45} replay of the nonlinear dynamics, so the returned iterate is realisable; the residual gap just means the loop settles in a slightly different but nearby local optimum.
 \end{itemize}
-Both effects are below the engineering accuracy of the model (no aerodynamics, no attitude). Within numerical noise the four transcriptions describe the same physical solution.
+Both effects are below the engineering accuracy of the model (no aerodynamics, no attitude). Within numerical noise the five transcriptions describe the same physical solution.
 
 The same \texttt{ode45} replay also gives the most operationally useful figure of merit: the touchdown dispersion obtained by flying each optimised control schedule through the true continuous-time dynamics. Table~\ref{tab:hm2_replay} reports the resulting position and velocity error norms at $t_f$ (target: the origin at rest), the drift of the replayed final mass with respect to the transcription's own $m_f$, and the wall time of each solve.
 
@@ -235,32 +277,36 @@ Trapezoidal (PWL)                 & $4.3$              & $0.11$             & $-
 Nonlinear ZOH (RK4)               & $6.1\cdot 10^{-6}$ & $2.4\cdot 10^{-6}$ & $1.6\cdot 10^{-5}$ & $100$ \\
 LTV ZOH + SCvx (\texttt{fmincon}) & $0.18$             & $0.069$            & $0.45$             & $82$ \\
 LTV ZOH + SCvx (\texttt{YALMIP})  & $0.019$            & $0.0069$           & $0.045$            & $29$ \\
+GFOLD log-mass (\texttt{YALMIP})  & $2.1\cdot 10^{-8}$ & $4.6\cdot 10^{-10}$ & $-2.9\cdot 10^{-7}$ & $5$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Flying the trapezoidal PWL controls open-loop lands the vehicle $4.3$~m from the pad at $0.11$~m/s, which is fine for an offline reference trajectory and matches the dispersion expected from its $\sim 10^{-3}$ transcription error. The ZOH--RK4 schedule replays to micrometre accuracy (its defects are the RK4 flow map), while the two SCvx variants land within centimetres to decimetres. All wall times are measured in the same batch session on the same laptop; the conic inner solver makes the SCvx loop about three times faster than every \texttt{fmincon}-based solve.
+Flying the trapezoidal PWL controls open-loop lands the vehicle $4.3$~m from the pad at $0.11$~m/s, which is fine for an offline reference trajectory and matches the dispersion expected from its $\sim 10^{-3}$ transcription error. The ZOH--RK4 schedule replays to micrometre accuracy (its defects are the RK4 flow map), while the two LTV+SCvx variants land within centimetres to decimetres. The GFOLD variant~(d) replays to the integrator floor ($2\cdot 10^{-8}$~m, $5\cdot 10^{-10}$~m/s): holding the acceleration $\mathbf{u}$ constant makes the velocity and position channels exact and the mass drift vanishes once the lossless cone is active. All wall times are measured in the same batch session on the same laptop; the conic inner solver makes the SCvx loop about three times faster than every \texttt{fmincon}-based solve, and the GFOLD loop is the fastest of all---it converges in only three outer iterations because the exact dynamics leave a single scalar constraint to linearise (against the $15$-iteration cap of variants~b/c).
 
-The SCvx convergence traces are reported in Fig.~\ref{fig:hm2_t2_scvx}. For each variant the top panel overlays the iterate change $\|\mathbf{x}^{(j+1)} - \mathbf{x}^{(j)}\|_2$, the trust-region scale $\rho$, and the final mass $m_f^{(j)}$; the bottom panel shows the trust-region ratio $\eta$ against its acceptance band $[\eta_l, \eta_h] = [0.25, 0.7]$ (rejected steps are flagged in orange). Warm-started from the Task~1 trapezoidal solution, both algorithms initially overshoot the linearisation's region of validity and reject the first four candidate steps, shrinking $\rho$; from then on accepted and rejected steps alternate as the ratio test probes the trust radius, and $\|\Delta \mathbf{x}\|$ settles at the $10^{-2}$ level by the iteration cap. The final mass $m_f$ stabilises within a few kilograms of the trapezoidal and nonlinear-ZOH values.
+The SCvx convergence traces are reported in Figs.~\ref{fig:hm2_t2_scvx_b}--\ref{fig:hm2_t2_scvx_d}. For each variant the top panel overlays the iterate change $\|\mathbf{x}^{(j+1)} - \mathbf{x}^{(j)}\|_2$, the trust-region scale $\rho$, and the final mass $m_f^{(j)}$; the bottom panel shows the trust-region ratio $\eta$ against its acceptance band $[\eta_l, \eta_h] = [0.25, 0.7]$ (rejected steps are flagged in orange). Warm-started from the Task~1 trapezoidal solution, the two LTV variants~(b)/(c) initially overshoot the linearisation's region of validity and reject the first four candidate steps, shrinking $\rho$; from then on accepted and rejected steps alternate as the ratio test probes the trust radius, and $\|\Delta \mathbf{x}\|$ settles at the $10^{-2}$ level by the iteration cap. The GFOLD variant~(d) tells a different story: self-started from the analytic maximum-thrust mass profile and with exact dynamics, every step is accepted with $\eta \approx 1$ (the ratio test is near-perfect because there is no model error to mispredict), and $\|\Delta\mathbf{x}\|$ collapses below the $10^{-3}$ tolerance at the third iteration. The final mass $m_f$ stabilises within a few kilograms of the trapezoidal and nonlinear-ZOH values.
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}{0.85\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{task2_scvx_convergence_fmincon_sqp}
-        \caption{Variant (b): SCvx with \texttt{fmincon}/SQP inner solver.}
-        \label{fig:hm2_t2_scvx_b}
-    \end{subfigure}\\[1.5ex]
-    \begin{subfigure}{0.85\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{task2_scvx_convergence_yalmip_ecos}
-        \caption{Variant (c): SCvx with \texttt{YALMIP}+\texttt{ECOS} inner solver.}
-        \label{fig:hm2_t2_scvx_c}
-    \end{subfigure}
-    \caption{SCvx convergence traces for the two LTV+SCvx variants. Top panels: $\|\mathbf{x}^{(j+1)}-\mathbf{x}^{(j)}\|_2$ (left axis, log), trust scale $\rho$, and final mass $m_f$ (right axis) per outer iteration. Bottom panels: trust-region ratio $\eta$ against acceptance band $[\eta_l,\eta_h]=[0.25,\,0.7]$, with rejected steps highlighted in orange.}
-    \label{fig:hm2_t2_scvx}
+    \includegraphics[width=0.85\textwidth]{task2_scvx_convergence_fmincon_sqp}
+    \caption{SCvx convergence, variant~(b) (\texttt{fmincon}/SQP inner solver). Top panel: iterate change $\|\mathbf{x}^{(j+1)}-\mathbf{x}^{(j)}\|_2$ (left axis, log), trust scale $\rho$, and final mass $m_f$ (right axis) per outer iteration. Bottom panel: trust-region ratio $\eta$ against the acceptance band $[\eta_l,\eta_h]=[0.25,\,0.7]$, with rejected steps highlighted in orange.}
+    \label{fig:hm2_t2_scvx_b}
 \end{figure}
 
-The final-mass values returned by the four transcriptions agree to within a few kilograms, which confirms that the trapezoidal approximation is accurate enough for engineering purposes despite its lower-order convergence. The ZOH--RK4 variant is the simplest implementation when all I need is a high-fidelity transcription; the two LTV+SCvx variants expose the convex-sub-problem structure that underpins production guidance algorithms (GFOLD, lossless convexification, and so on). The conic variant~(c) writes the inner step as an SOCP and matches variant~(b) in trajectory and final mass while giving a cleaner per-step fidelity.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{task2_scvx_convergence_yalmip_ecos}
+    \caption{SCvx convergence, variant~(c) (\texttt{YALMIP}+\texttt{ECOS} inner solver). Panels as in Fig.~\ref{fig:hm2_t2_scvx_b}.}
+    \label{fig:hm2_t2_scvx_c}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{task2_scvx_convergence_gfold_log_mass}
+    \caption{SCvx convergence, variant~(d) (GFOLD log-mass): self-started from the analytic max-thrust mass profile, every step accepted with $\eta\approx1$, converged in three iterations. Panels as in Fig.~\ref{fig:hm2_t2_scvx_b}.}
+    \label{fig:hm2_t2_scvx_d}
+\end{figure}
+
+The final-mass values returned by the five transcriptions agree to within a few kilograms, which confirms that the trapezoidal approximation is accurate enough for engineering purposes despite its lower-order convergence. The ZOH--RK4 variant is the simplest implementation when all I need is a high-fidelity transcription; the LTV+SCvx variants~(b)/(c) expose the convex-sub-problem structure that underpins production guidance algorithms, and variant~(d) realises that structure in its canonical form: the GFOLD log-mass change of variables turns the dynamics exactly linear, so the Appendix~A ZOH becomes a single matrix exponential, the lossless cone makes the thrust bound convex, and the loop converges in three iterations to the best transcription fidelity of the lot. It is the natural bridge from this homework to real-time on-board powered-descent guidance.
 
 \end{document}
