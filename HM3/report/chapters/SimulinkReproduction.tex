@@ -1,0 +1,135 @@
+\documentclass[../main_full_simulink.tex]{subfiles}
+
+\begin{document}
+
+\section{Simulink Reproduction of the Closed Loop}\label{sec:simulink}
+
+The frequency-domain design of Tasks~1--3 is carried out entirely on transfer
+functions and state-space objects in MATLAB. As an independent cross-check I
+rebuilt the same closed loop as a Simulink block diagram,
+\texttt{models/hm3\_closed\_loop.slx}, and verified that the two agree in the
+time domain to solver tolerance. The MATLAB scripts remain the single source of
+truth: every gain, filter and plant matrix is computed by
+\texttt{main\_task1/2/3.m} and exported to the base workspace by
+\texttt{init\_simulink\_hm3.m}; the model only \emph{references} those variables,
+so nothing is retyped by hand and re-running the initialisation retunes the
+model automatically.
+
+\subsection{Model architecture}
+
+The loop has four players: a \textbf{PD controller} (a single Gain block acting
+on the measurement vector), an \textbf{actuator path} (the bending notch in
+series with the second-order TVC servo and its Pad\'e delay --- or nothing, in
+the rigid Task~1 case), a \textbf{plant} (one State-Space block, $4$-state rigid
+or $6$-state flexible), and a \textbf{wind disturbance} $\alpha_w(t)$ supplied by
+a \texttt{From Workspace} block. Tasks~1 and~2--3 differ \emph{only} in the
+actuator path and the plant matrices, so both live inside a single
+\textbf{Variant Subsystem} with two choices; the workspace variable
+\texttt{task}~$\in\{1,2,3\}$ (pushed by \texttt{init\_simulink\_hm3}) selects the
+active one at simulation time, while the controller, wind and logging are shared
+and built once (Figure~\ref{fig:slx_root}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{hm3_closed_loop_root.png}
+\caption{Root of the Simulink mirror: the PD controller (\texttt{Controller\_PD}),
+the variant plant and actuator block (\texttt{Plant\_and\_Actuator}), the wind
+input (\texttt{wind\_ts}) and the signal logging. The measurement bus feeds the
+controller, whose output \texttt{u\_pd} drives the plant; the demultiplexed
+states close the loop and are logged.}
+\label{fig:slx_root}
+\end{figure}
+
+The measurement vector fed back to the controller is
+$\mathbf{y}_\mathrm{meas} = [\theta_m,\ \dot\theta_m,\ z_m,\ \dot z_m]$, i.e.\ the
+INS outputs, which in the flexible plant are contaminated by the bending
+coordinate $\eta$ through the leakage gains $\phi_{1,ins},\sigma_{1,ins}$ of
+Table~\ref{tab:params}. The plot vector $[\theta,\ z,\ \dot z]$ collects the true
+states and is kept out of the loop, so the pitch history is displayed without the
+bending contribution. The two interchangeable choices held in the variant
+subsystem \texttt{Plant\_and\_Actuator} are shown in
+Figure~\ref{fig:slx_choices}.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.9\textwidth}\centering
+  \includegraphics[width=\linewidth]{hm3_closed_loop_rigid.png}
+  \caption{\texttt{Rigid\_Ideal} (Task~1): rigid plant, ideal actuator ($\delta = u_{pd}$).}
+  \label{fig:slx_rigid}
+\end{subfigure}
+
+\vspace{0.9em}
+\begin{subfigure}{0.9\textwidth}\centering
+  \includegraphics[width=\linewidth]{hm3_closed_loop_full.png}
+  \caption{\texttt{Full\_TVC\_Notch} (Tasks~2--3): notch, TVC servo with Pad\'e delay, flexible plant.}
+  \label{fig:slx_full}
+\end{subfigure}
+\caption{The two plant and actuator choices held in the variant subsystem; the
+workspace variable \texttt{task} activates one at simulation time.}
+\label{fig:slx_choices}
+\end{figure}
+
+\subsection{Validation against the scripts}
+
+Each run drives the block diagram and the script loop with the \emph{same} wind
+history: \texttt{run\_simulink\_closed\_loop.m} assembles the analytic
+closed-loop transfer $T(s)$ with \texttt{assemble\_loop} and integrates it with
+\texttt{simulate\_gust\_response}, then simulates \texttt{hm3\_closed\_loop.slx}
+over the same horizon and overlays the two responses
+(Figure~\ref{fig:slx_val}). The block diagram is integrated with \texttt{ode45}
+while the script response is a transfer-function simulation, so the only expected
+difference is the numerical integration error.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{task1_simulink_vs_script.png}
+
+\vspace{0.6em}
+\includegraphics[width=0.9\textwidth]{task2_simulink_vs_script.png}
+\caption{Simulink (dashed) versus script (solid) closed-loop response to the
+sizing $1$-cosine gust: pitch $\theta$, lateral drift $z$ and TVC deflection
+$\delta$. Top: Task~1 (rigid plant, ideal actuator); bottom: Task~2 (flexible
+plant, TVC servo, Pad\'e delay and bending notch). The traces are
+indistinguishable at plot scale.}
+\label{fig:slx_val}
+\end{figure}
+
+The peak absolute discrepancies over the whole transient,
+Table~\ref{tab:slx_agreement}, stay at the $10^{-6}$--$10^{-7}$~rad level in pitch
+and TVC angle and below a millimetre in drift --- i.e.\ at solver tolerance ---
+for the sizing gust, the stronger sustained-wind profile, and the worst-case
+Task~3 corner (V3, where the frozen controller still keeps the perturbed plant
+stable). The block diagram therefore reproduces the classical design point by
+point, and the same \texttt{task} switch that selects the plant in the model
+mirrors the progression of the three tasks in the report.
+
+\begin{table}[H]
+\centering
+\caption{Peak absolute Simulink-vs-script discrepancy over the transient.}
+\label{tab:slx_agreement}
+\begin{tabular}{lccc}
+\toprule
+Case & $\max|\Delta\theta|$ [rad] & $\max|\Delta z|$ [m] & $\max|\Delta\delta|$ [rad] \\
+\midrule
+Task~1 --- gust        & $3.2\times10^{-6}$ & $8.8\times10^{-4}$ & $5.4\times10^{-6}$ \\
+Task~2 --- gust        & $1.7\times10^{-7}$ & $1.0\times10^{-5}$ & $6.2\times10^{-7}$ \\
+Task~2 --- strong wind & $8.7\times10^{-7}$ & $7.7\times10^{-5}$ & $1.8\times10^{-5}$ \\
+Task~3 --- corner V3   & $3.7\times10^{-7}$ & $2.3\times10^{-5}$ & $9.4\times10^{-7}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Validation driver}
+
+Listing~\ref{lst:hm3_simrun} is the core of the validation driver: it populates
+the workspace, builds the analytic baseline with the \emph{same} controller and
+plant the model embeds, simulates the block diagram and extracts the logged
+signals for the overlay. The plotting boilerplate and the full block-by-block
+construction of \texttt{hm3\_closed\_loop.slx} are omitted here and documented in
+\texttt{models/SIMULINK\_GUIDE.md}.
+
+\lstinputlisting[style=matlab, firstnumber=31, firstline=31, lastline=57,
+  caption={Core of the Simulink validation driver (\texttt{run\_simulink\_closed\_loop.m}).},
+  label=lst:hm3_simrun]{../run_simulink_closed_loop.m}
+
+\end{document}

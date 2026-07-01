@@ -47,60 +47,171 @@ measurement. The dominant term is the pitch loop
 $L_\theta(s) = (K_{P,\theta}+K_{D,\theta}s)\,K_1/(s^2-A_6)$, whose closed-loop
 characteristic polynomial $s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta}-A_6)$
 is stable only for $K_{P,\theta} > A_6/K_1 = 0.74$ and $K_{D,\theta} > 0$, so the
-proportional gain has to overcome the aerodynamic instability.
+proportional gain has to overcome the aerodynamic instability. The rigid loop is
+sketched in Figure~\ref{fig:loop_rigid}.
+
+\begin{figure}[H]
+\centering
+\definecolor{accent}{HTML}{15324F}
+\definecolor{accent2}{HTML}{B4451F}
+\definecolor{paper}{HTML}{F7F9FB}
+\definecolor{lift}{HTML}{2E8B7A}
+\begin{tikzpicture}[font=\footnotesize, >={Stealth[length=2.2mm]},
+  blk/.style={draw=accent, line width=0.8pt, rounded corners=2pt, fill=paper,
+              align=center, minimum width=20mm, minimum height=12mm, inner sep=3pt},
+  plant/.style={blk, draw=accent2, fill=accent2!8},
+  sm/.style={draw=accent, line width=0.8pt, circle, inner sep=0pt, minimum size=5.5mm},
+  fl/.style={-{Stealth[length=2.2mm]}, accent, line width=0.8pt}]
+  \node[sm] (s) at (0,0) {};
+  \node[accent, font=\scriptsize] at (-0.34,0.20) {$+$};
+  \node[accent, font=\scriptsize] at (0.22,-0.34) {$-$};
+  \node[blk]   (pd) at (2.6,0) {PD\\\scriptsize $K_{P,\theta}+K_{D,\theta}s$};
+  \node[plant] (g)  at (6.6,0) {Rigid LV\\[2pt]\scriptsize $\dfrac{\mu_c}{s^2-\mu_\alpha}$};
+  \draw[fl] (-1.6,0) -- node[above,font=\scriptsize]{$\theta_{ref}$} (s);
+  \draw[fl] (s) -- (pd);
+  \draw[fl] (pd) -- node[above,font=\scriptsize]{$\delta$ (ideal TVC)} (g);
+  \draw[fl] (g) -- ++(2.0,0) coordinate(out) node[right,font=\scriptsize]{$\theta$};
+  \node[lift, font=\scriptsize] (aw) at (6.6,1.7) {$\alpha_w$};
+  \draw[fl, lift] (aw) -- (g.north);
+  \coordinate (fb) at (8.0,0);
+  \draw[fl] (fb) -- (8.0,-1.7) -- (0,-1.7) -- (s.south);
+  \node[accent, font=\scriptsize, below] at (4.0,-1.7)
+     {state feedback $[\,\theta,\ \dot\theta,\ z,\ \dot z\,]$};
+\end{tikzpicture}
+\caption{Task~1 rigid loop: the PD law drives the airframe through an ideal
+actuator ($W_{TVC}=1$, no delay or notch). The pitch channel shown here,
+$\mu_c/(s^2-\mu_\alpha)$, carries the unstable pole at $+\sqrt{\mu_\alpha}$; the
+full loop with the actuator chain is Figure~\ref{fig:loop_full}.}
+\label{fig:loop_rigid}
+\end{figure}
+
+The gain and phase margins quoted below are read on the \emph{loop transfer}
+$L(s)$, obtained by \textbf{opening this loop at the TVC deflection}~$\delta$
+(Figure~\ref{fig:loopbreak}): $\delta$ is the single actuator signal, so cutting
+the wire there, injecting a test signal $\delta_{in}$ into the plant and reading
+the returning $\delta_{out}$ at the actuator output gives a scalar
+$L(s)=\delta_{out}/\delta_{in}$. This is why the Nichols charts are labelled
+``\,from $\delta$ to $\delta$\,'': input and output sit at the same break point.
+Closed-loop poles are the roots of $1+L=0$.
+
+\begin{figure}[H]
+\centering
+\definecolor{accent}{HTML}{15324F}
+\definecolor{accent2}{HTML}{B4451F}
+\definecolor{paper}{HTML}{F7F9FB}
+\begin{tikzpicture}[font=\footnotesize, >={Stealth[length=2.2mm]},
+  blk/.style={draw=accent, line width=0.8pt, rounded corners=2pt, fill=paper,
+              align=center, minimum width=16mm, minimum height=10mm, inner sep=3pt},
+  plant/.style={blk, draw=accent2, fill=accent2!8},
+  sm/.style={draw=accent, line width=0.8pt, circle, inner sep=0pt, minimum size=5.5mm},
+  fl/.style={-{Stealth[length=2.2mm]}, accent, line width=0.8pt}]
+  \node[sm] (s) at (0,0) {};
+  \node[accent,font=\scriptsize] at (-0.32,0.20) {$+$};
+  \node[accent,font=\scriptsize] at (0.22,-0.34) {$-$};
+  \node[blk]   (k) at (1.9,0) {$K(s)$\\\scriptsize PD};
+  \node[blk]   (w) at (4.3,0) {$W_{act}(s)$};
+  \node[plant] (g) at (8.4,0) {$G(s)$\\\scriptsize plant};
+  \draw[fl] (-1.5,0) -- node[above,font=\scriptsize]{$\theta_{ref}=0$} (s);
+  \draw[fl] (s) -- (k);
+  \draw[fl] (k) -- (w);
+  \draw[accent,line width=0.8pt] (w.east) -- (5.75,0);
+  \fill[accent] (5.75,0) circle (1.3pt);
+  \node[accent,font=\scriptsize,above] at (5.75,0.09) {$\delta_{out}$};
+  \draw[accent2,line width=1.1pt] (6.00,0.24) -- (6.18,-0.24);
+  \draw[accent2,line width=1.1pt] (6.16,0.24) -- (6.34,-0.24);
+  \node[accent2,font=\scriptsize] at (6.17,0.55) {cut at $\delta$};
+  \node[accent,font=\scriptsize,above] at (6.78,0.09) {$\delta_{in}$};
+  \draw[fl] (6.58,0) -- (g.west);
+  \draw[fl] (g.east) -- ++(1.5,0) coordinate(o) node[right,font=\scriptsize]{$y$};
+  \coordinate (fb) at (9.4,0);
+  \draw[fl] (fb) -- (9.4,-1.55) -- (0,-1.55) -- (s.south);
+  \node[accent,font=\scriptsize,below] at (4.2,-1.55)
+     {measurements $\mathbf{y}=[\theta_m,\dot\theta_m,z_m,\dot z_m]$};
+  \node[accent2,font=\scriptsize,align=center] at (6.17,-0.80) {$L(s)=\dfrac{\delta_{out}}{\delta_{in}}$};
+\end{tikzpicture}
+\caption{Where the loop is opened. The loop transfer $L(s)$ used for the Nichols
+charts and the gain/phase margins is formed by cutting the loop at the actuator
+output $\delta$ (the plant input): a test $\delta_{in}$ is injected into the
+plant and the returning $\delta_{out}$ is read back around the loop, so
+$L(s)=\delta_{out}/\delta_{in}$ is a single scalar transfer ``from $\delta$ to
+$\delta$''. Here $W_{act}=1$ (ideal actuator, Task~1); for Tasks~2--3
+$W_{act}=H_x(s)\,W_{TVC}(s)\,e^{-\tau s}$ (notch, TVC servo and delay).}
+\label{fig:loopbreak}
+\end{figure}
 
 \subsection{Tuning}
 
-The pitch gains were tuned (by a small \texttt{fminsearch} wrapper around the
-margin computation) to meet the assignment targets, while the lateral gains were
-fixed at $K_{P,z}=K_{D,z}=-10^{-3}$. The resulting design is
+The pitch gains follow the classical launcher design of the course
+notes~\cite[Lecture~16]{dclvnotes}. Starting from the canonical closed form on
+the decoupled rotational dynamics $\ddot\theta = A_6\theta + K_1\delta$,
 \begin{equation}
-K_{P,\theta} = 1.98,\quad K_{D,\theta} = 1.40,\quad
+K_{P,\theta}^{(0)} = \frac{2A_6}{K_1}, \qquad
+K_{D,\theta}^{(0)} = \frac{\sqrt{A_6}}{K_1},
+\label{eq:canon}
+\end{equation}
+which place the pitch pair at $\omega_c=\sqrt{A_6}$, $\zeta=0.5$ and give a
+$6$~dB gain margin and $30^\circ$ phase margin \emph{on that decoupled loop}.
+On the full four-state loop the lateral-drift feedback erodes the aerodynamic
+gain margin (the $6$~dB drops to about $4$~dB), so a two-parameter
+\texttt{fminsearch} retunes $(K_{P,\theta},K_{D,\theta})$ on the \emph{full}
+loop until the frequency-classified aerodynamic gain margin and rigid-body phase
+margin meet the assignment targets. The lateral gains stay fixed at
+$K_{P,z}=K_{D,z}=-10^{-3}$ (load relief, not a stability margin). The result is
+\begin{equation}
+K_{P,\theta} = 1.78,\quad K_{D,\theta} = 0.44,\quad
 K_{P,z}=K_{D,z}=-10^{-3},
 \end{equation}
-with margins $|GM| = 6.0$~dB at $0.34$~rad/s and $|PM| = 30^\circ$ at
-$0.21$~rad/s.
-In the pole-placement language of the course notes~\cite[Lecture~15]{dclvnotes} the retained gains place
-the dominant pitch pair at $\omega_c = \sqrt{K_1 K_{P,\theta}-A_6} = 2.4$~rad/s
---- inside the usual $1$--$4$~rad/s control band --- with an equivalent
-damping $\zeta = K_1 K_{D,\theta}/(2\omega_c) = 1.34$. That sits above the
-$0.7$--$0.8$ pole-placement range because here the damping is set by the
-phase-margin target, not by a step-response specification.
-
-These relations invert the closed-loop characteristic polynomial: matching
-$s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta} - A_6)$ to $s^2 + 2\zeta\omega_c s + \omega_c^2$
-gives the proportional--derivative design equations
+with, read on the full loop, an aerodynamic gain margin $|GM_a| = 6.0$~dB at
+$0.59$~rad/s, a rigid-body phase margin $PM = 30^\circ$ at $2.45$~rad/s, and a
+delay margin of $213$~ms.
+In the pole-placement language of the course notes~\cite[Lecture~15]{dclvnotes}
+these gains place the pitch pair at $\omega_c = \sqrt{K_1 K_{P,\theta}-A_6} =
+2.18$~rad/s --- inside the usual $1$--$4$~rad/s control band --- with damping
+$\zeta = K_1 K_{D,\theta}/(2\omega_c) = 0.46$, in the standard $0.4$--$0.7$
+range. These relations invert the closed-loop characteristic polynomial, matching
+$s^2 + K_1 K_{D,\theta}\,s + (K_1 K_{P,\theta} - A_6)$ to $s^2 + 2\zeta\omega_c s + \omega_c^2$:
 \begin{equation}
 K_{P,\theta} = \frac{\omega_c^2 + A_6}{K_1}, \qquad
-K_{D,\theta} = \frac{2\zeta\omega_c}{K_1},
+K_{D,\theta} = \frac{2\zeta\omega_c}{K_1}.
 \label{eq:poleplace}
 \end{equation}
-the form tabulated by Barrows and Orr for TVC attitude
-control~\cite[Eqs.~(9.2.37)--(9.2.38)]{barrows2020}. The same reference gives a
-closed-form estimate of the low-frequency aerodynamic gain margin,
-$GM_a \approx 20\log_{10}(K_1 K_{P,\theta}/A_6) = 20\log_{10}(4.565\times1.98/3.382)
-\approx 8.5$~dB~\cite[Eq.~(9.2.39)]{barrows2020}; this single-channel figure sits
-a couple of dB above the $|GM| = 6.0$~dB returned by \texttt{margin} on the full
-four-state loop, the difference coming from the weak drift channel and the
-conditionally-stable low-frequency reading. The gains themselves came
-from the \texttt{fminsearch} wrapper minimising the equal-weight margin miss
-$(|GM| - 6)^2 + (|PM| - 30)^2$ from the initial guess $[2.0,\,1.4]$, so the
-reported $(1.98,\,1.40)$ is the local minimiser of that objective.
-The Nichols chart of Figure~\ref{fig:t1nichols} shows the curve passing
-between the two critical points $(-180^\circ,0\,\text{dB})$ and
-$(-540^\circ,0\,\text{dB})$ --- which is what conditional stability looks like,
-the two crossings being the $360^\circ$ wraps of the single-encirclement Nyquist
-condition $N = P_R = 1$ of Section~\ref{sec:intro} --- and clearing the $6$~dB
-closed-loop contour; the markers locate the phase and gain crossovers where the
-margins are read.
+
+\paragraph{Reading the margins.} The margins are read on the \emph{full} open
+loop and classified by frequency band, not taken from \texttt{margin}'s default
+crossover~\cite{barrowsorr}. Because the lateral-drift position feedback carries
+a free integrator ($z/\delta\to\infty$ at DC), the Nichols curve comes from the
+top (Figure~\ref{fig:t1nichols}): the aerodynamic gain margin is the
+low-frequency gain-reduction margin, read where the curve crosses the critical
+point ($+180^\circ$) at $|GM_a|=6$~dB, and the rigid-body phase margin is read at
+the $2.45$~rad/s gain crossover. With the ideal Task-1 actuator these are the
+only rigid-body margins; the high-frequency rigid-body gain margin (a
+gain-increase margin set by the actuator lag) and the bending Flex margins appear
+once the TVC servo, transport delay and notch are added in Task~2. Crossings
+below $\sim0.5$~rad/s are lateral-drift artifacts, not rigid-body margins.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\textwidth]{task1_nichols.png}
-\caption{Task 1 --- Nichols chart of the rigid open-loop transfer. The loop is
-conditionally stable; the design meets $|GM|\approx 6$~dB and
-$|PM|\approx 30^\circ$ (markers at the crossover frequencies).}
+\caption{Task 1 --- full-loop Nichols in the launch-vehicle convention (critical
+point at $+180^\circ$). The loop comes from the top (lateral-drift integrator);
+the design meets $|GM_a|\approx 6$~dB (aerodynamic, at $+180^\circ$) and
+$PM\approx 30^\circ$ (rigid-body, at the $2.45$~rad/s crossover).}
 \label{fig:t1nichols}
+\end{figure}
+
+In the $s$-plane the same design reads as a pole placement
+(Figure~\ref{fig:t1pz}): the PD gains pull the unstable $+1.84$~rad/s aerodynamic
+pole into the left half-plane, leaving a well-damped fast pitch pair
+($-0.95\pm1.90i$, $\zeta\approx0.45$) and a slow, lightly damped drift pair
+($-0.06\pm0.23i$) close to the imaginary axis --- the stability margin the
+Nichols chart quantifies.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.68\textwidth]{task1_polemap.png}
+\caption{Task 1 --- open-loop plant poles (crosses, one in the right half-plane)
+against the closed-loop poles (circles): the rigid PD stabilises the airframe.}
+\label{fig:t1pz}
 \end{figure}
 
 \subsection{Wind-gust response}
@@ -110,10 +221,12 @@ amplitude ($V_g = 6.4$~m/s) is taken from the reference dry-wind dispersion
 (\texttt{drywind.mat}, severe regime) at the current altitude, converted to a
 wind angle of attack $\alpha_w = v_w/V$ with a peak of $0.39^\circ$. The four
 key time histories requested by the assignment are shown in
-Figure~\ref{fig:t1gust}: the pitch attitude peaks at $0.139^\circ$, the TVC
-deflection at $0.38^\circ$, and the lateral drift builds up smoothly to
-$2.5$~m, which is what the weak drift feedback gives. The response is well damped
-and the actuator effort stays small.
+Figure~\ref{fig:t1gust}: the pitch attitude peaks at $0.26^\circ$, the TVC
+deflection at $0.53^\circ$, and the lateral drift peaks at $2.3$~m before the
+slow, lightly damped drift mode ($\zeta \approx 0.23$, $\omega_n \approx 0.24$~rad/s)
+returns it to trim. All four states decay back to zero within about $80$~s ---
+confirming the loop is asymptotically stable --- and the actuator effort stays
+small.
 
 \begin{figure}[H]
 \centering
@@ -127,10 +240,10 @@ Since max-$\bar q$ is the load-critical point of the trajectory, the total
 angle of attack $\alpha = \theta + \dot z/V + \alpha_w$ and the structural-load
 indicator $\bar q\,\alpha$ are also monitored (Figure~\ref{fig:t1alpha}). The
 attitude loop pitches the vehicle slightly into the wind
-($\theta \to -0.14^\circ$ at the gust peak), so the peak total incidence,
-$0.31^\circ$, ends up below the wind contribution alone --- a mild
+($\theta \to -0.26^\circ$ at the gust peak), so the peak total incidence,
+$0.26^\circ$, stays below the $0.39^\circ$ wind contribution alone --- a mild
 load-relieving action. With $\bar q = 81$~kPa the peak load indicator is
-$\bar q\,\alpha = 25$~kPa\,deg, the incidence remaining an order of magnitude
+$\bar q\,\alpha = 21$~kPa\,deg, the incidence remaining an order of magnitude
 below the few-degree load limit typical of a slender launcher, so at this gust
 level the drift-minimum--oriented gain choice does not conflict with the
 load-minimum requirement.
@@ -138,10 +251,13 @@ load-minimum requirement.
 This drift-versus-load tension is the standard trade in launch-vehicle wind
 control~\cite[Sec.~3.1]{greensite_cr826}. The characteristic equation of the
 rigid airframe in wind is a cubic with two oscillatory rigid-body roots plus one
-real drift (flight-path) root; the final-value theorem applied to a step
-gust gives a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
-gains --- which is why the lateral drift of Figure~\ref{fig:t1gust} accumulates
-smoothly rather than being nulled. Two limiting cases bracket the design. The
+real drift (flight-path) root; the final-value theorem applied to a \emph{sustained}
+step gust gives a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
+gains: with only weak drift feedback the vehicle does not null a persistent
+crosswind. The 1-cosine gust of Figure~\ref{fig:t1gust} is instead a transient
+pulse, so once it has passed the stable loop returns the drift to zero --- but only
+through that slow, lightly damped mode, which is why the settling takes
+$\sim\!80$~s. Two limiting cases bracket the design. The
 \textbf{drift-minimum} condition (drift-channel coefficient $B_0 = 0$) holds
 the trajectory dispersion down. The \textbf{load-minimum} condition
 ($K_{P,\theta} = 0$, so the steady incidence $\alpha_{ss} = 0$) minimises

@@ -1,16 +1,11 @@
 %% HM3 - Task 1: Rigid LV attitude control at max-qbar
-%  Pitch-plane short-period model of the Greensite fictitious launch
-%  vehicle at t = 72 s (max dynamic pressure). The bending mode is
-%  neglected (rigid-body assumption) and an ideal TVC actuator is used.
+%  Greensite pitch-plane model at t = 72 s (max-qbar), bending neglected,
+%  ideal TVC. PD attitude controller + weak negative lateral-drift feedback,
+%  tuned in frequency to |GM| ~ 6 dB / |PM| ~ 30 deg, checked on Nichols and
+%  validated against a wind-gust time response.
 %
-%  A proportional-derivative attitude controller (with a weak negative
-%  drift feedback on the lateral channel) is tuned in the frequency domain
-%  to the assignment targets |GM| ~ 6 dB and |PM| ~ 30 deg, verified on the
-%  Nichols chart, and validated through the time response to a wind gust.
-%
-%  Reference: Homework 3 - Attitude Control of a Launch Vehicle in
-%  Atmospheric Flight (Zavoli, v1.2, May 2026), Task 1.
-%  Toolboxes: Control System Toolbox (the auto-tuner uses base-MATLAB fminsearch).
+%  Ref: Homework 3 (Zavoli, v1.2, May 2026), Task 1.
+%  Toolboxes: Control System Toolbox (tuner uses base-MATLAB fminsearch).
 
 clear; close all; clc;
 
@@ -24,27 +19,29 @@ G = build_plant_rigid(p);
 
 %% Controller design (PD pitch + weak negative drift feedback)
 fprintf('\n=== Controller tuning (rigid, ideal actuator) ===\n');
-[K, m] = design_controller(G, []);    % [] => ideal actuator Wact = 1
+[K, m] = design_controller(G, []);    % [] => ideal actuator
 
-% Cross-check against the pole-placement view of the course notes: the
-% pitch-only closed loop s^2 + K1*Kd*s + (K1*Kp - A6) has
+% Pole-placement cross-check: the decoupled pitch CL is s^2 + K1*Kd*s + (K1*Kp - A6).
 wc_eq = sqrt(p.K1*K.Kp_th - p.A6);
 ze_eq = p.K1*K.Kd_th/(2*wc_eq);
-fprintf(['  Equivalent pitch CL pair: wc = %.2f rad/s (course-typical 1-4), ' ...
-         'zeta = %.2f (margin-driven,\n  above the 0.71-0.81 pole-placement range)\n'], wc_eq, ze_eq);
+fprintf(['  Equivalent pitch CL pair: wc = %.2f rad/s (course band 1-4), ' ...
+         'zeta = %.2f\n'], wc_eq, ze_eq);
 
-[L, T] = assemble_loop(G, K);
+L = m.L;   % full open loop (drift + ideal actuator), margins classified on it
+T = m.T;   % full 4-state closed loop for the gust sim
 
-%% Frequency-domain margins
-fprintf('\n--- Stability margins (Nichols / margin) ---\n');
-fprintf('  Gain margin : %5.2f dB  (|GM| = %.2f dB) at w = %.3f rad/s\n', ...
-        m.GM_dB, abs(m.GM_dB), m.wc_gain);
-fprintf('  Phase margin: %5.1f deg (|PM| = %.1f deg) at w = %.3f rad/s\n', ...
-        m.PM_deg, abs(m.PM_deg), m.wc_phase);
-fprintf('  Closed-loop stable: %d\n', m.stable);
+%% Rigid-body stability margins (full loop, classified by band; D'Antuono Fig 3.2)
+fprintf('\n--- Rigid-body margins (full loop, classified by frequency band) ---\n');
+fprintf('  Aero gain margin  : |GM| = %.2f dB @ %.2f rad/s (low-freq gain-reduction)\n', ...
+        abs(m.aeroGM_dB), m.aeroGM_w);
+fprintf('  Rigid phase margin: PM   = %.1f deg @ %.2f rad/s (rigid-body crossover)\n', ...
+        m.rigidPM_deg, m.rigidPM_w);
+fprintf('  Delay margin      : DM   = %.0f ms  (typical LV requirement >= 100 ms)\n', 1e3*m.DM_s);
+fprintf('  Rigid GM / Flex margins: none (ideal actuator, no bending -> Task 2)\n');
+fprintf('  Full 4-state closed loop stable (isstable): %d\n', m.stable);
 
 %% Wind-gust time response (theta, z, zdot, delta)
-w = load_wind_profile(p);
+w = load_wind_profile(p, Tend=80);   % 80 s horizon: dominant CL mode is tau ~ 18 s (wn=0.24, zeta=0.23), so ~5*tau to see attitude settle back to 0
 r = simulate_gust_response(T, w);
 fprintf('\n--- Gust response (%s gust, Vg = %.2f m/s -> peak alpha_w = %.2f deg) ---\n', ...
         w.severity, w.Vg, w.Vg/p.V*180/pi);
@@ -53,21 +50,19 @@ fprintf('  peak |z|     = %.2f m\n',   r.peak_z);
 fprintf('  peak |delta| = %.3f deg\n', r.peak_delta*180/pi);
 fprintf('  peak |alpha| = %.3f deg  -> peak qbar*alpha = %.1f kPa deg (qbar = %.1f kPa)\n', ...
         r.peak_alpha*180/pi, p.qbar/1000*r.peak_alpha*180/pi, p.qbar/1000);
+% Lateral drift is the load-relief channel (drift-minimum), not a Nichols margin:
+fprintf('  lateral drift (load-relief): peak |z| = %.1f m (<500 m), peak |zdot| = %.2f m/s (<15 m/s)\n', ...
+        r.peak_z, max(abs(r.zdot)));
 
 %% ---------------------------------------------------------------- Figures
-% Nichols chart of the open-loop transfer
-f1 = figure('Name','nichols','Color','w','Position',[100 100 620 560]);
-nichols(L); hold on; grid on;
-ngrid;
-% Mark the points where the margins are read (phase/gain crossovers)
-[magG, phG] = bode(L, m.wc_gain);    % GM: phase-crossover frequency
-[magP, phP] = bode(L, m.wc_phase);   % PM: gain-crossover frequency
-plot(phG(:), 20*log10(magG(:)), 'rs', 'MarkerSize',8, 'LineWidth',1.4);
-plot(phP(:), 20*log10(magP(:)), 'rd', 'MarkerSize',8, 'LineWidth',1.4);
-text(phG(:)+8, 20*log10(magG(:)), sprintf('|GM| @ %.2f rad/s', m.wc_gain), 'FontSize',8);
-text(phP(:)+8, 20*log10(magP(:))-2, sprintf('|PM| @ %.2f rad/s', m.wc_phase), 'FontSize',8);
-title(sprintf('Task 1 - Rigid loop Nichols  (|GM|=%.1f dB, |PM|=%.0f^\\circ)', ...
-      abs(m.GM_dB), abs(m.PM_deg)));
+% Full-loop Nichols in the D'Antuono Fig. 3.2 convention: the loop comes from the
+% top (lateral-drift integrator), the rigid critical point sits at +180 deg, and
+% the classified Aero GM / Rigid PM are marked at their crossover frequencies.
+f1 = figure('Name','nichols','Color','w','Position',[100 100 680 580]);
+plot_nichols_lv(L, m, 'wrange', [1e-2 1e2]);
+xlim([-360 360]);
+title(sprintf('Task 1 - Full-loop Nichols  (Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ)', ...
+      abs(m.aeroGM_dB), m.rigidPM_deg));
 
 % Gust response: theta, z, zdot, delta
 f2 = figure('Name','gust_response','Color','w','Position',[100 100 760 620]);
@@ -86,9 +81,8 @@ xlabel('t [s]'); ylabel('$\dot z$ [m/s]','Interpreter','latex'); title('Lateral 
 nexttile; plot(r.t, r.delta*180/pi,'LineWidth',1.4); grid on;
 xlabel('t [s]'); ylabel('\delta [deg]'); title('TVC deflection');
 
-% Angle-of-attack budget and aerodynamic load indicator (course Lec. 16-17:
-% alpha = theta + zdot/V + alpha_w drives the structural load qbar*alpha,
-% the sizing quantity at max-qbar)
+% Angle-of-attack budget and aero load: alpha = theta + zdot/V + alpha_w
+% drives qbar*alpha, the sizing quantity at max-qbar
 f3 = figure('Name','alpha_load','Color','w','Position',[100 100 820 340]);
 tl2 = tiledlayout(f3,1,2,'TileSpacing','compact','Padding','compact');
 title(tl2,'Task 1 - Angle-of-attack budget and aerodynamic load');
