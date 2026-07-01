@@ -6,20 +6,22 @@
 
 Task~2 reintroduces the full dynamics of Eq.~\eqref{eq:plant}: the lightly damped
 first bending mode, the second-order TVC actuator of Eq.~\eqref{eq:tvc} with its
-$20$~ms delay, and the INS measurement model of Eq.~\eqref{eq:ins}. I built the
-design up incrementally, as the assignment guidelines suggest, keeping the Task~1
-PD gains fixed throughout. The guideline note says retuning is usually
-unnecessary, and that holds here.
+$20$~ms delay, and the INS measurement model of Eq.~\eqref{eq:ins}. I build the
+design up incrementally, choosing the bending filter first and then --- unlike a
+naive reuse of the Task-1 gains --- \textbf{re-tuning the PD on the full loop}:
+the Task-1 PD was placed on the \emph{ideal}-actuator loop, and once the real TVC
+servo, transport delay and notch are in the path their phase lag collapses the
+rigid phase margin, so the gains must be re-tuned to recover it (D'Antuono: the
+TVC actuator dynamics must be taken into account when placing the
+PD~\cite{barrowsorr}).
 
 \subsection{Step B --- uncompensated full model}
 
 Adding the TVC, delay and bending mode to the Task~1 controller leaves the
 low-frequency margins almost untouched, but the bending resonance shows up in
-the loop at $|L(\omega_{BM})| = +39$~dB. With a damping of only
-$\zeta_{BM} = 0.005$ this peak encircles the critical point and the closed loop
-goes \textbf{unstable} (a closed-loop pole at $\mathrm{Re}(s)=+5.6$). The red
-curve in Figure~\ref{fig:t2nichols} shows the bending loop crossing into the
-unstable region.
+the loop at $|L(\omega_{BM})| = +29$~dB. With a damping of only
+$\zeta_{BM} = 0.005$ this peak crosses the critical point and the closed loop
+goes \textbf{unstable} (a closed-loop pole at $\mathrm{Re}(s)=+1.6$).
 
 \subsection{Step C --- bending filter trade study}
 
@@ -27,127 +29,210 @@ The guideline filter of Eq.~4 admits two readings: as printed (negative
 numerator damping, a non-minimum-phase \textbf{lead-lag} that phase-stabilises the
 resonance by rotating it on the Nichols chart) or in its minimum-phase variant
 (a band-reject \textbf{notch} that gain-stabilises the resonance by driving it
-below $0$~dB)~\cite[Lecture~18]{dclvnotes}. Instead of picking one up front, I compare four candidates
-with the same fixed PD gains (all built by \texttt{build\_notch\_filter.m}, Listing~\ref{lst:hm3_notch}); Table~\ref{tab:filters} collects the resulting
-margins (rigid-body and minimum gain margin, phase margin, delay margin on top
-of the $20$~ms already modelled, and the residual loop gain at the bending
-frequency).
+below $0$~dB)~\cite[Lecture~18]{dclvnotes}. Instead of picking one up front, I
+compare four candidates at the fixed Task-1 gains (all built by
+\texttt{build\_notch\_filter.m}, Listing~\ref{lst:hm3_notch});
+Table~\ref{tab:filters} collects the resulting margins, classified by frequency
+band (aerodynamic gain margin, rigid-body phase and gain margin, delay margin on
+top of the $20$~ms already modelled, and the residual loop gain at the bending
+frequency). The trade fixes the filter \emph{architecture}; the PD is re-tuned
+afterwards.
 
 \begin{itemize}
-\item \textbf{C-LL --- Eq.~4 lead-lag alone.} The filter is swept over the
-ranges suggested in the assignment ($\zeta_{x,N} \in [0.1,0.3]$,
-$\zeta_{x,D} \in [0.4,0.6]$, $\omega_x = \omega_{BM} \pm 4$~rad/s,
-$75$ combinations): none stabilises the loop. The least-unstable
-combination ($\omega_x = 18.9$, $\zeta_{x,N}=0.10$, $\zeta_{x,D}=0.60$) still
-leaves a closed-loop pole at $\mathrm{Re}(s) = +0.16$ --- the green curve in
-Figure~\ref{fig:t2nichols} shows its bending lobe still pinned to the critical
-region. Phase rotation alone cannot rescue a $+39$~dB resonance here.
-\item \textbf{C-N --- deep minimum-phase notch.} Gain stabilisation needs more
-than $39$~dB of attenuation at $\omega_{BM}$, which forces the numerator
-damping far below the suggested range: $\zeta_{x,N}=0.002$, $\zeta_{x,D}=0.7$
-give a $-51$~dB null and drive $|L(\omega_{BM})|$ to $-12$~dB. The depth follows
-the closed-form attenuation of a second-order notch,
-$K_\mathrm{notch} = 20\log_{10}(\zeta_{x,N}/\zeta_{x,D})$, so that
-$20\log_{10}(0.002/0.7) \approx -51$~dB at
-$\omega_{BM}$~\cite[Eq.~(3.18)]{trotta2021}; pulling a $+39$~dB peak below
-$0$~dB requires $\zeta_{x,N}/\zeta_{x,D} \le 10^{-39/20} \approx 0.011$, i.e.\
-$\zeta_{x,N} \lesssim 0.008$ with $\zeta_{x,D} = 0.7$, which is why the
-sizing has to leave the assignment's suggested $\zeta_{x,N}\in[0.1,0.3]$ range. I keep the null
-narrow because the bending frequency sits only a decade above the
-rigid crossover ($\omega_{BM}/\omega_c \approx 8$): a wide band-reject section
-would leak phase lag into the conditionally stable low-frequency region.
+\item \textbf{C-LL --- Eq.~4 lead-lag alone.} Swept over the ranges suggested in
+the assignment ($\zeta_{x,N} \in [0.1,0.3]$, $\zeta_{x,D} \in [0.4,0.6]$,
+$\omega_x = \omega_{BM} \pm 4$~rad/s, $75$ combinations), $45/75$ now stabilise
+the loop --- the milder $+29$~dB resonance (a consequence of the smaller Task-1
+derivative gain) is within reach of pure phase rotation. But the best
+combination ($\omega_x = 18.9$, $\zeta_{x,N}=0.30$, $\zeta_{x,D}=0.60$) is only
+barely stable ($\mathrm{Re}(s) = -0.06$) with a thin rigid phase margin
+($11^\circ$): phase stabilisation of the first mode leaves almost no room.
+\item \textbf{C-N --- deep minimum-phase notch.} A deep min-phase notch
+($\zeta_{x,N}=0.002$, $\zeta_{x,D}=0.7$) gain-stabilises the resonance, driving
+$|L(\omega_{BM})|$ to $-22$~dB. The depth follows the closed-form attenuation of a
+second-order notch, $K_\mathrm{notch}=20\log_{10}(\zeta_{x,N}/\zeta_{x,D})
+=20\log_{10}(0.002/0.7)\approx-51$~dB~\cite[Lecture~18]{dclvnotes}, which is why
+the sizing has to leave the assignment's suggested $\zeta_{x,N}\in[0.1,0.3]$
+range. I keep the null narrow because the bending frequency sits only a decade
+above the rigid crossover: a wide band-reject section would leak phase lag into
+the conditionally-stable low-frequency region. This is the retained architecture.
 \item \textbf{C-T --- notch triplet.} The notch-triplet recipe against
 bending-frequency uncertainty places three cascaded notches at
-$\{0.9,\,1.0,\,1.1\}\,\omega_{BM}$~\cite[Eq.~(3.19), Fig.~3.11]{trotta2021}.
-Sized to the same depth, however, the three wide ($\zeta_{x,D}=0.7$) sections
-pile up about $30^\circ$ of phase lag at the rigid crossover and the
-conditionally stable loop goes unstable at nominal ($|PM|$ collapses to
-$11.6^\circ$). This matches the course view: the triplet
-belongs to the higher, well-separated modes, while the first mode --- too
-close to the control band --- has to be handled either with an exact notch or by
-phase stabilisation.
+$\{0.9,\,1.0,\,1.1\}\,\omega_{BM}$~\cite[Lecture~18]{dclvnotes}. Sized to the
+same depth, the three wide ($\zeta_{x,D}=0.7$) sections pile up about $30^\circ$
+of phase lag at the rigid crossover and the loop goes \textbf{unstable} at
+nominal: the first mode is too close to the control band to blanket-notch
+(triplets belong to the higher, well-separated modes).
 \item \textbf{C-NLL --- notch $+$ lead-lag.} Reading the guideline literally
 (``the Notch filter and possibly other filters''), the deep notch is cascaded
-with the Eq.~4 lead-lag, the partner swept over the same ranges: $31/75$
-combinations now stabilise the loop. The best one ($\omega_x = 22.9$,
+with the Eq.~4 lead-lag, the partner swept over the same ranges: $67/75$
+combinations stabilise the loop. The best one ($\omega_x = 22.9$,
 $\zeta_{x,N}=0.10$, $\zeta_{x,D}=0.40$, selected for maximum delay margin) is
-stable but with clearly thinner nominal margins ($|PM| = 9.2^\circ$,
-$\min|GM| = 0.7$~dB). Its payoff shows up in the robustness analysis below.
+stable but with clearly thinner nominal margins ($PM = 8.0^\circ$). Its payoff
+is the bending-frequency robustness shown below.
 \end{itemize}
 
 \begin{table}[H]
 \centering
-\caption{Task 2 --- bending-filter trade with fixed Task-1 PD gains.}
+\caption{Task 2 --- bending-filter trade at the fixed Task-1 gains (before the
+full-loop re-tune). Margins classified by frequency band.}
 \label{tab:filters}
 \footnotesize
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccc}
 \toprule
-Candidate & rigid $|GM|$ [dB] & min $|GM|$ [dB] & $|PM|$ [$^\circ$] & DM [ms] & $|L(\omega_{BM})|$ [dB] & stable \\
+Candidate & Aero $|GM|$ [dB] & Rigid $PM$ [$^\circ$] & Rigid $|GM|$ [dB] & $|L(\omega_{BM})|$ [dB] & DM [ms] & stable \\
 \midrule
-B (no filter)      & 6.34 & 6.34 & 30.8 & ---  & $+38.8$ & no \\
-C-LL (lead-lag)    & 6.58 & 0.61 & 9.0  & ---  & $+23.2$ & no \\
-C-N (deep notch)   & 6.58 & 1.81 & 26.5 & 58.8 & $-12.1$ & \textbf{yes} \\
-C-T (triplet)      & 7.07 & 1.48 & 11.6 & ---  & $-46.0$ & no \\
-C-NLL (notch+LL)   & 6.72 & 0.73 & 9.2  & 21.9 & $-18.3$ & yes \\
+B (no filter)      & 6.25 & 26.1  & ---   & $+29.0$ & ---  & no \\
+C-LL (lead-lag)    & 5.96 & 11.4  & 8.02  & $+23.0$ & 15   & yes \\
+C-N (deep notch)   & 6.08 & 14.6  & 10.43 & $-21.9$ & 98   & \textbf{yes} \\
+C-T (triplet)      & ---  & $-7.3$ & ---  & $-55.8$ & ---  & no \\
+C-NLL (notch+LL)   & 5.72 & 8.0   & 7.41  & $-28.1$ & 54   & yes \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-I keep the \textbf{deep notch}: it gain-stabilises the resonance while
-preserving the rigid-body margins ($|GM| = 6.6$~dB, $|PM| = 26.5^\circ$ ---
-a few degrees below the $30^\circ$ of the ideal-actuator loop of Task~1, the
-difference being the phase lag of the second-order TVC and the $20$~ms
-transport delay), leaves a $58.8$~ms delay margin, and needs no retuning of
-the PD gains, in line with the guideline note. The bending mode itself stays
-at its lightly damped but stable open-loop location. One caveat: the minimum
-gain margin of the stabilised loop, set by the bending shoulder, is
-$1.8$~dB --- fine for this exercise but well below the
-$\ge 12$~dB of gain margin (and $45^\circ$ of phase margin) usually required
-of gain-stabilised bending modes, as opposed to the $6$~dB$/30^\circ$
-rigid-body figure~\cite[p.~279]{barrows2020}. The tougher bending requirement
-comes from the larger modelling uncertainty and latency sensitivity at high
-frequency. Getting the deeper margin would cost a stiffer notch or a retuned
-loop gain.
+\subsection{Retained design and PD re-tuning}
+
+I keep the \textbf{deep notch}: it gain-stabilises the resonance
+($|L(\omega_{BM})| = -22$~dB) and preserves the low-frequency aerodynamic gain
+margin. But with the Task-1 gains --- placed on the \emph{ideal}-actuator loop
+--- the combined phase lag of the second-order TVC, the $20$~ms transport delay
+and the notch has eaten most of the rigid phase margin: it collapses from
+$30^\circ$ to $\mathbf{14.6^\circ}$, with the delay margin down at the
+$\sim100$~ms guideline (Table~\ref{tab:filters}, C-N). The design must therefore
+be \textbf{re-tuned on the full loop}: raising the derivative gain restores the
+phase lost to the lag. Solving for the $6$~dB / $30^\circ$ target on the full
+open loop gives
+\begin{equation}
+K_{P,\theta} = 1.73,\qquad K_{D,\theta} = 0.69
+\end{equation}
+(the derivative gain up from the Task-1 $0.44$), which recovers a rigid phase
+margin of $30^\circ$ at $3.2$~rad/s and a delay margin of $165$~ms, with the
+bending still gain-stabilised at $|L(\omega_{BM})| = -18$~dB --- an $18$~dB
+bending gain margin, above the $\ge 12$~dB usually required of gain-stabilised
+modes~\cite{greensite_cr826}. Figure~\ref{fig:t2retune} shows the recovery on the
+Nichols chart, and Figure~\ref{fig:t2nichols} the retained full-loop margins.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{task2_nichols.png}
-\caption{Task 2 --- bending-filter trade on the Nichols chart (phase wrapped):
-without compensation the $+39$~dB resonance destabilises the loop (red); the
-best Eq.-4 lead-lag alone rotates the bending lobe but cannot clear the
-critical region (green); the deep notch gain-stabilises it and restores the
-rigid margins (blue).}
+\includegraphics[width=0.66\textwidth]{task2_retune.png}
+\caption{Task 2 --- PD re-tuning on the full loop. With the Task-1 gains (ideal
+actuator) the actuator $+$ delay $+$ notch lag drives the loop close to the
+$+180^\circ$ critical point (rigid $PM = 15^\circ$, blue); re-tuning on the full
+loop pulls the curve away and restores $PM = 30^\circ$ (orange).}
+\label{fig:t2retune}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.64\textwidth]{task2_nichols.png}
+\caption{Task 2 --- retained full-loop Nichols (deep notch, re-tuned PD) in the
+launch-vehicle convention (critical point $+180^\circ$): aerodynamic gain margin
+($|GM_a|=6$~dB), rigid phase margin ($30^\circ$) and the high-frequency rigid
+gain margin (set by the actuator lag) are marked. The bending mode is
+gain-stabilised, so its lobe stays well below $0$~dB near $\omega_{BM}$ rather
+than threading the critical point.}
 \label{fig:t2nichols}
+\end{figure}
+
+The filter trade itself is shown on Figure~\ref{fig:t2trade}: without
+compensation the $+29$~dB resonance destabilises the loop (red); the best Eq.-4
+lead-lag alone (green) now barely stabilises the milder peak but with a thin
+margin; the deep notch drives the bending lobe far below $0$~dB (blue).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.64\textwidth]{task2_nichols_trade.png}
+\caption{Task 2 --- bending-filter trade on the Nichols chart (launch-vehicle
+convention, critical point $+180^\circ$; a common phase shift aligns the three
+loops at the rigid crossover): without a filter the $+29$~dB bending lobe (red)
+wraps over the critical point and the loop is unstable; the best Eq.-4 lead-lag
+alone (green) rotates the lobe but only marginally; the deep notch (blue) pushes
+the bending lobe far below $0$~dB (the small loop near $-18$~dB), gain-stabilising
+it.}
+\label{fig:t2trade}
+\end{figure}
+
+The $s$-plane view of Figure~\ref{fig:t2pz} makes the mechanism explicit: without
+the notch the closed-loop bending poles are pushed into the right half-plane by
+the $+29$~dB resonance and the loop is unstable, whereas the deep notch drops the
+loop gain at $\omega_{BM}$ and returns them to their lightly damped, stable
+open-loop location just left of the imaginary axis. The notch gain-stabilises the
+mode; it does not add damping to it.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{task2_notch_poles.png}
+\caption{Task 2 --- closed-loop bending poles without the notch (crosses, in the
+right half-plane) and with the notch (circles, returned to the stable
+neighbourhood of $\omega_{BM}$).}
+\label{fig:t2pz}
+\end{figure}
+
+The root locus of the full loop (Figure~\ref{fig:t2rl}), from the built-in
+\texttt{rlocus}, tells the same story as a gain sweep. Figure~\ref{fig:t2rl}(a)
+zooms on the low-frequency rigid and lateral-drift dynamics; near $\omega_{BM}$
+the bending branch skirts the imaginary axis while the notch keeps the
+closed-loop poles ($k=1$) just inside the left half-plane (Figure~\ref{fig:t2pz});
+and its far branches race toward the right-half-plane zeros of the Pad\'e delay
+approximation, resolved in the full-scale view of Figure~\ref{fig:t2rl}(b).
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.66\textwidth}
+\centering
+\includegraphics[width=\textwidth]{task2_rootlocus.png}
+\caption{Zoom near the origin.}
+\label{fig:t2rl_zoom}
+\end{subfigure}
+
+\vspace{0.6em}
+
+\begin{subfigure}{0.66\textwidth}
+\centering
+\includegraphics[width=\textwidth]{task2_rootlocus_full.png}
+\caption{Full view, including the Pad\'e-delay RHP zeros.}
+\label{fig:t2rl_full}
+\end{subfigure}
+\caption{Task 2 --- root locus of the full loop (flexible plant, TVC servo,
+Pad\'e delay and notch; $\times$: open-loop poles, $\circ$: open-loop zeros). The
+design is stable, with all closed-loop poles in the left half-plane.
+(a)~Low-frequency detail near the origin: the rigid-body and lateral-drift
+dynamics, the unstable aerodynamic pole at $+1.8$~s$^{-1}$ and the real zeros at
+$-2.5$ and $-15$~s$^{-1}$; the bending poles ($\omega_{BM}\approx 18.9$~rad/s),
+the notch and the far delay zeros fall outside this window.
+(b)~The same locus zoomed out: the far branches terminate on the transport-delay
+RHP zeros at $+232$ and $+184\pm175i$~s$^{-1}$ (mirror LHP poles at $-232$ and
+$-184\pm175i$).}
+\label{fig:t2rl}
 \end{figure}
 
 \subsection{Sensitivity to the bending-frequency knowledge}
 
 The deep notch pays for its performance with a $-51$~dB null only $0.08$~rad/s
-wide, i.e.\ it assumes $\omega_{BM}$ is known exactly --- true in
-this exercise, where the LPV dataset provides it, but never true in practice,
-which is why the course notes prescribe the $\pm 10\%$ triplet.
-Table~\ref{tab:wbm} makes the trade explicit: each filter is held fixed while
-the true plant bending frequency is perturbed. The notch tolerates barely
-$-5\%$; the notch$+$lead-lag combination, by phase-stabilising whatever leaks
-past the detuned notch, recovers nearly the full $\pm 10\%$ band at the cost
-of the thin nominal margins seen above. In a flight design, where
-$\omega_{BM}$ drifts with propellant depletion, the robust variant (or a
-retuned phase-stabilised loop) would be mandatory; for this max-$\bar q$
-snapshot I keep the exact notch.
+wide, i.e.\ it assumes $\omega_{BM}$ is known exactly --- true in this exercise,
+where the LPV dataset provides it, but never true in practice.
+Table~\ref{tab:wbm} makes the trade explicit: each filter is held fixed (with the
+re-tuned PD) while the true plant bending frequency is perturbed. The deep notch
+tolerates $-10\%$ but goes unstable at $+5\%$ --- the asymmetric edge of its
+narrow null; the notch$+$lead-lag combination, by phase-stabilising whatever
+leaks past the detuned notch, holds the full $\pm 10\%$ band at the cost of the
+thin nominal margins seen above. In a flight design, where $\omega_{BM}$ drifts
+with propellant depletion, the robust variant (or a phase-stabilised loop) would
+be mandatory; for this max-$\bar q$ snapshot I keep the exact notch.
 
 \begin{table}[H]
 \centering
-\caption{Task 2 --- closed-loop stability with the filters fixed and the true
-bending frequency perturbed by up to $\pm 10\%$.}
+\caption{Task 2 --- closed-loop stability with the filters fixed (re-tuned PD)
+and the true bending frequency perturbed by up to $\pm 10\%$.}
 \label{tab:wbm}
 \begin{tabular}{lccccc}
 \toprule
 Candidate & $0.90\,\omega_{BM}$ & $0.95\,\omega_{BM}$ & $\omega_{BM}$ & $1.05\,\omega_{BM}$ & $1.10\,\omega_{BM}$ \\
 \midrule
-C-N --- deep notch        & no  & yes & yes & no  & no \\
-C-T --- notch triplet     & no  & no  & no  & no  & no \\
-C-NLL --- notch+lead-lag  & no  & yes & yes & yes & yes \\
+C-N --- deep notch        & yes & yes & yes & no  & no \\
+C-NLL --- notch+lead-lag  & yes & yes & yes & yes & yes \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -156,8 +241,8 @@ C-NLL --- notch+lead-lag  & no  & yes & yes & yes & yes \\
 
 The gust response of the stabilised full model is shown in
 Figure~\ref{fig:t2gust}; all four assignment time histories remain well damped,
-with peaks $\theta = 0.132^\circ$, $z = 2.37$~m, $\delta = 0.39^\circ$ and a
-load indicator $\bar q\,\alpha = 24.9$~kPa\,deg, just below the rigid
+with peaks $\theta = 0.23^\circ$, $z = 2.27$~m, $\delta = 0.51^\circ$ and a
+load indicator $\bar q\,\alpha = 20.5$~kPa\,deg, essentially the rigid
 case. Because the notch is localised at the bending frequency and the TVC
 bandwidth ($70$~rad/s) is well above the control crossover, the full-model
 response is almost indistinguishable from the rigid one
@@ -180,17 +265,22 @@ attitude, lateral drift and TVC deflection are nearly coincident.}
 \label{fig:t2cmp}
 \end{figure}
 
-\subsection{A note on the tail-wags-dog zero}
+\subsection{A note on the tail-wags-dog effect}
 
 A second flexible effect bounds what any filter can achieve. The gimballed
 nozzle has its own inertia, so its angular acceleration reacts back on the
-airframe: at the \textbf{tail-wags-dog} (TWD) frequency
+airframe. Following the course treatment~\cite[Lecture~20]{dclvnotes}, the
+oscillating nozzle exerts on the vehicle a lateral reaction force and a moment
 \begin{equation}
-\omega_{TWD}^2 = -\frac{F_R X_G}{I_{EG} + X_G m_E l_E},
+R = -\,m_E \ell_E\,\ddot\delta, \qquad
+M_{TWD} = \left(I_E + m_E \ell_E^{2}\right)\ddot\delta,
 \label{eq:twd}
 \end{equation}
-nozzle deflection produces zero net vehicle response, a transmission zero that
-caps the achievable closed-loop bandwidth~\cite[Eq.~(6.1.11)]{barrows2020}. The
+proportional to the gimbal acceleration $\ddot\delta$ ($m_E$ nozzle mass,
+$\ell_E$ pivot-to-nozzle-CG distance, $I_E$ nozzle inertia). This
+\textbf{tail-wags-dog} (TWD) coupling feeds the second derivative of the control
+back into the plant; it adds phase lag and an effective transmission zero that
+caps the achievable closed-loop bandwidth. The
 $-\phi_{1,TVC}T_c$ entry in the bending-forcing column of Eq.~\eqref{eq:plant} is
 the flexible-mode analogue of this nozzle-reaction term. My model
 treats the actuator as a stiff second-order block (Eq.~\eqref{eq:tvc}) and so

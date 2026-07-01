@@ -37,7 +37,7 @@ cCorn = [0.00 0.00 0.00;       % Nominal
 %% Shared design point (nominal, max-qbar): the report's controller
 p0     = load_hw3_params();
 Grigid = build_plant_rigid(p0);
-K      = design_controller(Grigid, [], 'verbose', false);   % Task 1/2 PD
+K      = design_controller(Grigid, [], 'verbose', false);   % Task 1 PD (ideal actuator)
 zN = 0.002; zD = 0.7; sgn = +1;                              % deep min-phase notch
 
 %% (1) Root loci of the loops actually used -- built-in Control System Toolbox
@@ -51,13 +51,18 @@ zN = 0.002; zD = 0.7; sgn = +1;                              % deep min-phase no
 Wtvc   = build_tvc(p0,3);
 Gfull  = build_plant_full(p0,'ins');
 notch  = build_notch_filter(p0.wBM, zN, zD, sgn);
-[Lrig,~] = assemble_loop(Grigid, K, []);               % Task 1 loop (ideal actuator)
-[Lful,~] = assemble_loop(Gfull,  K, Wtvc*notch);       % Task 2/3 loop (TVC+delay+notch)
+% Task-2/3 retained design: PD re-tuned on the full loop (actuator + delay + notch)
+K2 = design_controller(Gfull, Wtvc*notch, 'w_flex',0.6*p0.wBM, 'w_flex_hi',1.5*p0.wBM, ...
+                       'w_bending',p0.wBM, 'verbose',false);
+[Lrig,~] = assemble_loop(Grigid, K,  []);              % Task 1 loop (ideal actuator, Task-1 PD)
+[Lful,~] = assemble_loop(Gfull,  K2, Wtvc*notch);      % Task 2/3 loop (re-tuned PD)
 
 rl_fig(Lrig, 'Root locus of the rigid Task-1 loop', ...
        'intro_rootlocus', fig_dir, [-10 2.5], [-4 4]);   % wide/tall enough to show the arc pair (|Im|~3.6) break in at s~-7.6 and one branch return to the -4.03 zero
 rl_fig(Lful, 'Root locus of the full Task-2 loop (zoom near the origin)', ...
-       'task2_rootlocus', fig_dir, [-30 15], [-40 40]);
+       'task2_rootlocus', fig_dir, [-20 5], [-5 5]);   % tight low-frequency zoom: rigid-body + lateral-drift capture and the -15 real zero (bending +/-19, notch and the far Pade zeros are shown in the full view below)
+rl_fig(Lful, 'Root locus of the full Task-2 loop (full view, including the Pade-delay RHP zeros)', ...
+       'task2_rootlocus_full', fig_dir, [-250 250], [-200 200]);   % full view: the branches race to the far Pade RHP zeros at +232 and +184+/-175i (mirror LHP poles at -232, -184+/-175i)
 
 %% (2) Task 1 - closed-loop pole placement (rigid PD, ideal actuator)
 [~,T1] = assemble_loop(Grigid, K, []);
@@ -74,8 +79,8 @@ legend([hOL hCL], {'open-loop plant poles','closed-loop poles'}, ...
         'Location','northwest','FontSize',10);
 
 %% (3) Task 2 - bending poles, with vs without the notch
-[~,Tno] = assemble_loop(Gfull, K, Wtvc);          % Gfull, notch defined in (1)
-[~,Tnf] = assemble_loop(Gfull, K, Wtvc*notch);
+[~,Tno] = assemble_loop(Gfull, K2, Wtvc);         % re-tuned PD; notch defined in (1)
+[~,Tnf] = assemble_loop(Gfull, K2, Wtvc*notch);
 pno = pole(Tno);  pnf = pole(Tnf);
 
 f3 = figure('Name','task2_notch_poles','Color','w','Position',[100 100 720 600]);
@@ -104,7 +109,7 @@ for i = 1:nC
     p  = load_hw3_params('mu_alpha_scale',cases{i,2},'mu_c_scale',cases{i,3});
     Gf = build_plant_full(p,'ins');
     Wf = build_tvc(p,3) * build_notch_filter(p0.wBM, zN, zD, sgn);   % notch frozen @ nominal
-    [~,T] = assemble_loop(Gf, K, Wf);
+    [~,T] = assemble_loop(Gf, K2, Wf);                              % re-tuned Task-2 PD
     pp = pole(T);
     hLeg(i) = plot(ax, real(pp),imag(pp),'x','Color',cCorn(i,:),'MarkerSize',10,'LineWidth',1.7);
 end
