@@ -100,8 +100,7 @@ Earth-rotation-augmented relative velocity.
 | File | Role |
 |------|------|
 | [`main.m`](main.m) | End-to-end driver: constants, IC, ODE integration, post-processing, figures |
-| [`main2.m`](main2.m) | Non-dimensional variant (work-in-progress) — see note below |
-| [`main2_backup.m`](main2_backup.m) | Snapshot of `main2.m` kept for reference; not imported by anything |
+| [`main2.m`](main2.m) | Non-dimensional variant, cross-validated against `main.m` by the test suite — see note below |
 | [`schema.md`](schema.md), [`schema.mmd`](schema.mmd) | Mermaid flow-chart of the algorithm |
 | [`figures/`](figures/) | PNGs regenerated on every run of `main.m` |
 | `documentazione.txt` | Italian working notes for `main2.m` (kept as private context, not the entry-point doc) |

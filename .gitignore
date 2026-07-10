@@ -3,6 +3,7 @@ DCLV_MATERIALE_CORSO_26042026/
 # Assignment PDFs sometimes get copied into individual HM folders — exclude
 # those too so the same copyrighted material doesn't slip in by another path.
 **/LVdynamics_*.pdf
+**/LV_Dynamics_*.pdf
 **/Homework*.pdf
 **/Classwork*.pdf
 
@@ -24,6 +25,7 @@ slprj/
 # --- IDE / editor ---
 .vscode/
 .idea/
+*.code-workspace
 *.swp
 *.swo
 
@@ -35,10 +37,6 @@ desktop.ini
 # --- Build / temporary artifacts ---
 *.bak
 *.tmp
-
-# --- Agent-only files (Claude Code) ---
-CLAUDE.md
-.claude/
 
 # --- LaTeX build artifacts ---
 # keep main.pdf (the deliverable) and source files

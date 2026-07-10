@@ -28,8 +28,9 @@ Cost: **minimize fuel** ≡ maximize `m(tf)`.
 
 - **Transcription:** trapezoidal direct collocation on `N = 50` evenly spaced
   nodes. Decision vector stacks `[x, y, vx, vy, m, Tx, Ty]` per node.
-- **Solver:** `fmincon` with the SQP algorithm. No external optimization
-  toolbox required (CasADi / YALMIP not used at this stage — see roadmap).
+- **Solver:** `fmincon` with the SQP algorithm for Task 1 and the Task-2
+  variants (a)/(b); the conic Task-2 variants (c)/(d) use YALMIP + ECOS and
+  are skipped gracefully if those packages are absent.
 - **Initial guess:** linear interpolation between the boundary states for the
   state variables; constant hover thrust `(0, m₀·g)` for the controls.
 - **Glide-slope constraint** rewritten as the linear pair
@@ -90,8 +91,9 @@ ode45-replay node error dropping by ×4 per mesh halving — the expected
 `O(Δt²)` of the trapezoidal rule — while `m_f` fluctuates by less than
 ±0.8 kg. Replaying the optimized controls open-loop through ode45 lands
 the trapezoidal solution 4.3 m from the pad at 0.11 m/s; the ZOH (RK4)
-variant replays to micrometre accuracy and the SCvx variants land within
-centimetres to decimetres (see the report for the full tables).
+variant replays to micrometre accuracy, the LTV SCvx variants land within
+centimetres to decimetres, and the GFOLD log-mass variant reaches the
+integrator floor (see the report for the full tables).
 
 | Trajectory (3 sensitivity runs + glide-slope corridor) | Thrust magnitude |
 |:-:|:-:|
@@ -112,7 +114,13 @@ centimetres to decimetres (see the report for the full tables).
 - [x] **Task 2 — SCvx with conic inner solver (YALMIP + ECOS).** Same outer
       loop; inner sub-problem cast as an SOCP and solved by ECOS. Per-step
       fidelity is an order of magnitude tighter than the fmincon path.
-- [ ] **Lossless convexification → single SOCP (variant d).** Log-mass change
+- [x] **Task 2 — GFOLD log-mass ZOH (exact LTI) with SCvx.** Change of
+      variables `z = ln m`, `u = T/m` (Açıkmese & Blackmore): the dynamics
+      become exactly LTI and are discretised by a single matrix exponential.
+      Self-starting (no trapezoidal warm start), converges in 3 SCvx
+      iterations (~5 s wall time) and replays to the integrator floor
+      (`7.3e-12` non-dim node error).
+- [ ] **Lossless convexification → single SOCP.** Log-mass change
       of variables + slack `Γ`: the whole OCP becomes one convex SOCP — no
       SCvx loop, no warm start, sub-second ECOS solve with a global-optimality
       certificate. Also covers `T_min > 0` (quadratic lower bound) and the

@@ -8,8 +8,7 @@ updated: 2026-04-26
 
 ## Context
 The repo will be published on GitHub as a portfolio piece for GNC engineering
-roles. `CLAUDE.md` is for AI/maintainer context, not for human visitors. We
-need a `README.md` at the root targeted at:
+roles. We need a `README.md` at the root targeted at:
 1. **Recruiters / hiring managers** scrolling fast — clear value prop in 30 s.
 2. **GNC engineers / professors** evaluating depth — one click to runnable code
    and to a representative figure per homework.

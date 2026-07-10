@@ -40,6 +40,3 @@ Before publishing on GitHub the repo needs basic hygiene. Current state:
 - Kept `main2.m`, `main2_backup.m`, `documentazione.txt` in HM0 for now —
   user will revisit the secondary `main2.m` variant later; documentation
   format will be normalized when T004 (per-HM READMEs) lands.
-- New convention captured in CLAUDE.md (rule 0): the agent never runs
-  `git add` / `commit` / `push` autonomously — hands the user copy-paste
-  commands instead.

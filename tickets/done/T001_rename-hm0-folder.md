@@ -8,15 +8,15 @@ updated: 2026-04-26
 
 ## Context
 The HM0 folder is named `DV_HM0/`, while HM1 follows the cleaner `HM<N>/`
-scheme. The agreed convention (see [CLAUDE.md](../../CLAUDE.md)) is
-`HM<N>_<short_topic>/`. Renaming aligns the repo with the convention and makes
-the homework index in CLAUDE.md and the future public README easier to scan.
+scheme. The agreed convention is `HM<N>_<short_topic>/`. Renaming aligns the
+repo with the convention and makes the homework index in the future public
+README easier to scan.
 
 ## Acceptance criteria
 - [x] Folder renamed to `HM0_falcon9_ascent/`
 - [x] All relative paths inside the folder's `.m` files still work (figures
       are saved alongside the script — should be fine, but verify)
-- [x] `CLAUDE.md` homework table updated (remove the legacy-name caveat)
+- [x] Homework index updated (remove the legacy-name caveat)
 - [x] Any reference to `DV_HM0` elsewhere in the repo updated (grep first)
 - [x] HM0 still runs end-to-end after the rename
 
