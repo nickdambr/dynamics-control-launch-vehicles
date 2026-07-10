@@ -81,14 +81,9 @@ DCLV/
 ├── HM1/                      Indirect optimization (4 tasks) + report
 ├── HM2_powered_descent/      Direct collocation + ZOH/SCvx variants + report
 ├── HM3/                      Attitude control at max-q + Monte Carlo + LPV + report
-├── Report_template/          LaTeX skeleton shared by the reports
-├── tickets/                  Lightweight backlog (open / in-progress / done)
 ├── LICENSE                   MIT
 └── README.md
 ```
-
-The `tickets/` folder tracks ongoing work as plain-markdown items —
-[`tickets/README.md`](tickets/README.md) describes the workflow.
 
 ## Status
 
@@ -98,8 +93,7 @@ The `tickets/` folder tracks ongoing work as plain-markdown items —
        incl. SCvx and GFOLD log-mass) + report
 - ✅ HM3 — Tasks 1–3 (Nichols design, bending notch, parametric robustness)
        + Monte Carlo, LPV full-ascent extension, Simulink reproduction + report
-- 🔭 Open extension ([T006](tickets/open/T006_hm2-lossless-socp.md)):
-       lossless-convexification single-SOCP variant of HM2.
+- 🔭 Planned extension: lossless-convexification single-SOCP variant of HM2.
 
 ## Author
 
