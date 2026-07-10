@@ -176,22 +176,39 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function dz = ode_vertical(~, z, T, Q)
-% Vertical climb ODE: z = [y; vy; m], phi = pi/2
+% Vertical-climb RHS, phi = pi/2.
+%   INPUT
+%     z    - state [y; vy; m]
+%     T, Q - thrust, mass flow rate
+%   OUTPUT
+%     dz - derivative (3x1)
     vy = z(2); m = z(3);
     dz = [vy; T/m - 1; -Q];
 end
 
 function [value, isterminal, direction] = event_altitude(~, z, y_target)
+% Event: stop the climb when y reaches y_target (rising).
+%   INPUT
+%     z        - state [y; vy; m]
+%     y_target - altitude to stop at
+%   OUTPUT
+%     value, isterminal, direction - ode45 event triple
     value = z(1) - y_target;
     isterminal = 1;
     direction = 1;
 end
 
 function res = shooting2(z0, p, opts_ode)
-% Shooting residual for the burn arc after the vertical climb, in the improved
-% formulation (lam_m0 = 1 normalization; H = 0 imposed algebraically at the
-% START of the burn, where the state (0, y1, 0, vy1, m1) is known).
-%   z0 = [lam_vx0; lam_vy0; lam_y; t_burn]
+% Shooting residual for the burn arc after the vertical climb.
+%   INPUT
+%     z0       - unknowns [lam_vx0; lam_vy0; lam_y; t_burn]
+%     p        - struct: c, Q, T, yf, x0, y0, vx0, vy0, m0
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - 4 residuals [y(tf)-yf; vx(tf)-1; vy(tf); H0]
+% Improved formulation: lam_m0=1; H=0 imposed at the start of the burn, where
+% the state (0, y1, 0, vy1, m1) is known.
+% No arguments block by design: runs inside the fsolve loop.
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);

@@ -1,51 +1,30 @@
 function S = init_simulink_lpv(o)
-%INIT_SIMULINK_LPV  Base-workspace setup for the full-ascent LPV model.
+% Base-workspace + struct setup for the full-ascent LPV model. Pushes named
+% variables for hm3_full_ascent.slx and returns the same data as a struct of
+% grids + griddedInterpolant handles for the ode45 baseline (ODE_LPV_ASCENT).
+% LPV counterpart of HM3's frozen INIT_SIMULINK_HM3: BUILD_PLANT_RIGID matrices
+% become time histories so wind generator and dynamics share one clock.
+% Coefficients come from General/hw3-v3/GreensiteLPV_DATA.mat. Each plant term
+% gets one effective coefficient (single lookup x signal, all inspectable):
+%   c1 = a1      (*zdot)     c5 = A6/V  (*zdot)
+%   c2 = a1*V+a4 (*theta)    c6 = A6    (*theta, *(-alpha_w))
+%   c3 = a3      (*delta)    c7 = K1    (*delta)
+%   c4 = a1*V    (*alpha_w)  invV = 1/V (alpha_w = v_w*invV)
 %
-%   S = INIT_SIMULINK_LPV() builds everything the full-ascent showcase needs
-%   and pushes it to the base workspace as named variables, so the Simulink
-%   model hm3_full_ascent.slx (lookup tables + integrators + the professor's
-%   wind generator) can reference them. It also returns the same data as a
-%   struct S of grid vectors and griddedInterpolant handles, ready for the
-%   pure-MATLAB LTV baseline (ODE_LPV_ASCENT / MAIN_FULL_ASCENT).
+%   INPUT
+%     o.tsched_step - gain-schedule grid step [s]    (default 5)
+%     o.t0          - schedule / sim start [s]        (default 5)
+%     o.Tstop       - sim horizon [s]                 (default 140)
+%     o.push        - push variables to base ws       (default true)
+%   OUTPUT
+%     S - struct: grids (tg, V, Q, ...), interpolants (fc1..fc7, fV, fQ, fKp,
+%         fKd, windfun, flex set), K0 frozen gains, tsched/Kp_sched/Kd_sched,
+%         tvc ss, notch constants
 %
-%   This is the LPV counterpart of HM3's frozen-time INIT_SIMULINK_HM3: the
-%   plant matrices of BUILD_PLANT_RIGID are no longer evaluated once at
-%   t = 72 s but turned into time histories, so the wind generator and the
-%   vehicle dynamics share the same clock. The rigid 4-state pitch plane is
-%   used (no bending / TVC): the showcase is the gain scheduling, not the
-%   flex model (see the ticket / README for the rationale).
-%
-%   The time-varying coefficients come from the reference data set
-%   General/hw3-v3/GreensiteLPV_DATA.mat (the very file LOAD_HW3_PARAMS
-%   samples at a single instant). The LPV plant, written in the same form as
-%   BUILD_PLANT_RIGID,
-%
-%       zddot     = a1*zdot + (a1*V+a4)*theta + a3*delta - a1*V*alpha_w
-%       thetaddot = (A6/V)*zdot + A6*theta    + K1*delta - A6 *alpha_w
-%
-%   is realised with one "effective coefficient" per term so each product is
-%   a single lookup x signal (every coefficient stays inspectable):
-%
-%       c1 = a1        (*zdot)      c5 = A6/V   (*zdot)
-%       c2 = a1*V+a4   (*theta)     c6 = A6     (*theta, *(-alpha_w))
-%       c3 = a3        (*delta)     c7 = K1     (*delta)
-%       c4 = a1*V      (*alpha_w)   invV = 1/V  (alpha_w = v_w*invV)
-%
-%   Name/value options:
-%     'tsched_step'  gain-schedule grid step [s]      (default 5)
-%     't0'           schedule start / sim start [s]   (default 5)
-%     'Tstop'        simulation horizon [s]           (default 140)
-%     'push'         push variables to base ws        (default true)
-%
-%   Variables exported to base (consumed by hm3_full_ascent.slx):
-%     lpv_t                          coefficient breakpoints (flight time)
-%     lpv_c1..lpv_c7, lpv_invV       LPV plant coefficient tables
-%     lpv_Q, lpv_V, lpv_h            dyn. pressure / speed / altitude tables
-%     Kp_th0 Kd_th0 Kp_z0 Kd_z0      FROZEN max-qbar PD gains (HM3 Task 1)
-%     tsched Kp_sched Kd_sched       scheduled pitch gains vs flight time
-%     sched                          0 = frozen, 1 = gain-scheduled (default 0)
-%     drywind GreensiteLPV           inputs the wind generator needs
-%     Tstart Tstop                   simulation start / stop time
+%   Base variables (consumed by hm3_full_ascent.slx):
+%     lpv_t, lpv_c1..lpv_c7, lpv_invV, lpv_Q/V/h, Kp_th0/Kd_th0/Kp_z0/Kd_z0,
+%     tsched/Kp_sched/Kd_sched, sched (0/1), drywind, GreensiteLPV, Tstart/Tstop,
+%     flex: lpv_omega/omega2/2zBMw/aqk/sig/phi, notch_zN/zD, tvc_num/tvc_den
 %
 %   See also ODE_LPV_ASCENT, MAIN_FULL_ASCENT, BUILD_HM3_FULL_ASCENT,
 %   LOAD_HW3_PARAMS, BUILD_PLANT_RIGID, DESIGN_CONTROLLER.
@@ -74,8 +53,8 @@ at   = @(f) interp1(L.(f).Time, squeeze(L.(f).Data), tg);
 V  = at('V');  A6 = at('A6'); K1 = at('K1');
 a1 = at('a1'); a3 = at('a3'); a4 = at('a4');
 Q  = at('Q');  h  = at('h');
-% bending / INS coefficients for the flexible showcase (T008): omega(t),
-% INS leakage sigma_ins(t)/phi_ins(t), TVC bending forcing aqk = -phi_tvc*Tc
+% flexible coefficients (T008): bending omega(t), INS leakage sig/phi,
+% TVC bending forcing aqk = -phi_tvc*Tc
 omega = at('omega'); sig = at('sigma_ins'); phi = at('phi_ins'); aqk = at('aqk');
 Vsafe = max(V, 1);                      % V(0)=0: guard A6/V and 1/V at lift-off
 
@@ -161,12 +140,16 @@ end
 
 % ------------------------------------------------------------------------
 function wg = run_wind_generator(gdir, Tstop, drywind, GreensiteLPV)
-%RUN_WIND_GENERATOR  Full-ascent wind from strong_wind.slx (never modified).
-%   The generator is loaded in memory, its two component outputs (mean
-%   profile v_wp and altitude-scheduled Dryden turbulence) are marked for
-%   logging, the model is simulated over [0, Tstop] with fixed internal noise
-%   seeds (reproducible), and closed WITHOUT saving. Returns the total wind
-%   v_w = v_wp + turbulence on the union of the two (variable-step) log grids.
+% Full-ascent wind from strong_wind.slx (loaded, simulated, closed unsaved).
+% Logs the two outputs (mean profile v_wp, altitude-scheduled Dryden turb),
+% fixed seeds (reproducible). Total wind on the union of the two log grids.
+%   INPUT
+%     gdir         - hw3-v3 dir
+%     Tstop        - sim horizon [s]
+%     drywind      - dispersion input
+%     GreensiteLPV - dataset the generator needs
+%   OUTPUT
+%     wg - struct: t, vw (= v_wp + turbulence)
 load_system(fullfile(gdir, 'strong_wind.slx'));
 cleanup = onCleanup(@() close_system('strong_wind', 0));        % discard edits
 

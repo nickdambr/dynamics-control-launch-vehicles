@@ -1,30 +1,17 @@
 function build_hm3_full_ascent_flex(o)
-%BUILD_HM3_FULL_ASCENT_FLEX  Author the FLEXIBLE full-ascent LPV model (T008).
+% Author hm3_full_ascent_flex.slx: BUILD_HM3_FULL_ASCENT plus the flexible
+% architecture (first bending mode, INS coupling, TVC + transport delay,
+% VARYING notch tracking omega(t)). Simulink mirror of ODE_LPV_FLEX.
+% PD gains FROZEN at max-q; the showcase is notch tracking, not scheduling.
+% Run INIT_SIMULINK_LPV first (pushes lpv_omega, lpv_2zBMw, lpv_aqk, lpv_sig,
+% lpv_phi, notch_zN/zD, tvc_num/tvc_den, ...).
+%   INPUT
+%     o.open - open model after build (default false)
 %
-%   BUILD_HM3_FULL_ASCENT_FLEX() builds hm3_full_ascent_flex.slx: the
-%   full-ascent LPV model of BUILD_HM3_FULL_ASCENT extended to the HM3 Task-2
-%   FLEXIBLE architecture — first bending mode, INS bending coupling, TVC +
-%   transport delay, and a VARYING bending notch that tracks omega(t). It is
-%   the Simulink mirror of ODE_LPV_FLEX (the source of truth);
-%   RUN_FLEX_SIMULINK overlays the two.
-%
-%   The z/theta plant dynamics are identical to the rigid model (bending does
-%   not feed into them in BUILD_PLANT_FULL); the flexible parts added here are:
-%     * bending states eta, etadot:
-%           etaddot = -omega(t)^2*eta - 2*zBM*omega(t)*etadot + aqk(t)*delta
-%     * INS measurements (bending leaks in through sigma_ins(t), phi_ins(t)):
-%           theta_m = theta + sigma*eta ,  z_m = z - phi*eta   (and rates)
-%     * varying notch (controllable-canonical, centre = omega(t)):
-%           xn1'=xn2 ;  xn2' = -omega^2*xn1 - 2*zD*omega*xn2 + u_pd
-%           v    = 2*(zN - zD)*omega*xn2 + u_pd
-%     * TVC servo + Pade delay (LTI Transfer Fcn): v -> delta.
-%   The PD gains are FROZEN at the max-qbar design (as in HM3 Task 2); the
-%   showcase is the notch tracking, not gain scheduling.
-%
-%   Run INIT_SIMULINK_LPV first (it pushes lpv_omega, lpv_omega2, lpv_2zBMw,
-%   lpv_aqk, lpv_sig, lpv_phi, notch_zN/zD, tvc_num/tvc_den, ...).
-%
-%   Name/value options: 'open' (default false).
+% z/theta plant identical to the rigid model (bending does not feed it).
+% Added: bending etaddot = -omega^2*eta - 2*zBM*omega*etadot + aqk*delta;
+% INS theta_m = theta + sig*eta, z_m = z - phi*eta (and rates);
+% varying notch (controllable-canonical, centre omega(t)); TVC = LTI Transfer Fcn.
 %
 %   See also BUILD_HM3_FULL_ASCENT, ODE_LPV_FLEX, RUN_FLEX_SIMULINK.
 
@@ -137,7 +124,7 @@ W('Gz/1','u_pd/1'); W('Gzd/1','u_pd/2'); W('Gth/1','u_pd/3'); W('Gthd/1','u_pd/4
 
 %% Varying notch: xn1'=xn2 ; xn2'=-omega^2*xn1 - 2*zD*omega*xn2 + u_pd
 A('G2zDw','built-in/Gain',[1120 40 1170 70],'Gain','2*notch_zD');          % 2*zD*omega
-A('Gcout','built-in/Gain',[1120 640 1175 670],'Gain','2*(notch_zN-notch_zD)'); % out coeff
+A('Gcout','built-in/Gain',[1120 640 1175 670],'Gain','2*(notch_zN-notch_zD)'); % output coeff
 W('omega/1','G2zDw/1'); W('omega/1','Gcout/1');
 A('Pn1','built-in/Product',[1200 360 1230 390],'Inputs','2');   % omega^2 * xn1
 A('Pn2','built-in/Product',[1200 400 1230 430],'Inputs','2');   % 2*zD*omega * xn2
@@ -156,7 +143,7 @@ W('u_pd/1','v_sum/1'); W('Pn3/1','v_sum/2');
 %% TVC (LTI) : v -> delta
 A('TVC','built-in/TransferFcn',[1580 300 1660 360],'Numerator','tvc_num','Denominator','tvc_den');
 W('v_sum/1','TVC/1');
-% delta feeds the plant (c3*delta, c7*delta), the bending (aqk*delta), logging
+% delta feeds plant (c3*delta, c7*delta), bending (aqk*delta), logging
 W('TVC/1','P3/2'); W('TVC/1','P7/2'); W('TVC/1','Pe3/2');
 
 %% Logging

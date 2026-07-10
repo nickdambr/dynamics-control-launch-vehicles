@@ -15,7 +15,7 @@ On each powered arc, with the bilinear-tangent steering inserted, the Hamiltonia
   \mathcal{H} = \lambda_y v_y + \frac{T}{m}\|\boldsymbol{\lambda}_v\| - \lambda_{v_y} - \lambda_m Q,
   \qquad \lambda_x \equiv 0 .
 \end{equation}
-The adjoint equations give $\lambda_{v_x}$ and $\lambda_y$ constant, $\lambda_{v_y}$ affine in time, and $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\| > 0$~\eqref{eq:lm}. The last point is used repeatedly: $\lambda_m$ is strictly increasing, so $\lambda_m(t_s) < \lambda_m(t_f)$.
+The adjoint equations give $\lambda_{v_x}$ and $\lambda_y$ constant, $\lambda_{v_y}$ affine in time, and $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\| > 0$~\eqref{eq:lm}. This last point is used repeatedly: $\lambda_m$ is strictly increasing, so $\lambda_m(t_s) < \lambda_m(t_f)$.
 
 \paragraph{Step 3 --- the junction as an interior-point condition.}
 Staging makes the problem a three-point boundary-value problem: arc~1 on $[0,t_s]$, arc~2 on $[t_s,t_f]$, joined at the free interior time $t_s$. With $\mathbf{z} = (x,y,v_x,v_y,m)$ the two arcs are linked by
@@ -41,7 +41,7 @@ The junction~\eqref{eq:app_link} couples the two arcs only through $N$, which th
 \end{equation}
 exact identities with no off-diagonal or state-dependent entries, because the jettisoned mass $\Delta(t_s)$ is a function of $t_s$ alone ($\partial\Delta/\partial\mathbf{z} = 0$).
 
-Conditions~\eqref{eq:app_35} are written for a one-sided junction, where the state is continuous and there is a single block $N_x$; here the state jumps, so the linkage ties the two distinct values $\mathbf{z}(t_s^-)$ and $\mathbf{z}(t_s^+)$ and the variational argument behind \eqref{eq:app_35} is worth carrying out. Adjoin the linkage to the cost with multiplier $\boldsymbol{\pi}$ and append the dynamics $\dot{\mathbf{z}} = \mathbf{f}$ on each arc through the costate:
+Conditions~\eqref{eq:app_35} are written for a one-sided junction, where the state is continuous and there is a single block $N_x$; here the state jumps, so the linkage ties the two distinct values $\mathbf{z}(t_s^-)$ and $\mathbf{z}(t_s^+)$, and the variational argument behind \eqref{eq:app_35} is worth carrying out in full. Adjoin the linkage to the cost with multiplier $\boldsymbol{\pi}$ and append the dynamics $\dot{\mathbf{z}} = \mathbf{f}$ on each arc through the costate:
 \begin{equation}
 \begin{aligned}
   \bar J = {}& \phi(\mathbf{z}(t_f)) + \boldsymbol{\pi}^{\!\top} N \\
@@ -88,13 +88,13 @@ It remains to pin down which $\lambda_m$ this is. The staging objective is to ma
   \lambda_m(t_f) = \frac{\partial\phi}{\partial m}\bigg|_{t_f} = 0 ,
   \label{eq:app_lmtf}
 \end{equation}
-which is the natural scale of the minimum-time problem. Since $\lambda_m(t_f) = 0$, we may replace $-\lambda_m(t_s)$ by $\lambda_m(t_f) - \lambda_m(t_s)$ --- adding a term that is exactly zero --- so that \eqref{eq:app_we_raw} reads
+which is the natural scale of the minimum-time problem. Since $\lambda_m(t_f) = 0$, replacing $-\lambda_m(t_s)$ by $\lambda_m(t_f) - \lambda_m(t_s)$ adds a term that is exactly zero, so that \eqref{eq:app_we_raw} reads
 \begin{equation}
   \mathcal{H}(t_s^+) - \mathcal{H}(t_s^-) = \eta Q\,\bigl[\lambda_m(t_f) - \lambda_m(t_s)\bigr].
   \label{eq:app_we}
 \end{equation}
 
-The rewrite is not cosmetic: it makes the condition independent of how the costates are scaled. The shooting BVP integrates $\lambda_m$ from $\lambda_{m,0} = 1$ at $t = 0$, not from $\lambda_m(t_f) = 0$; because $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\|$ depends on the other costates and not on $\lambda_m$ itself, the two scalings differ only by a constant offset of the whole $\lambda_m(t)$ curve. That offset cancels in the difference $\lambda_m(t_f) - \lambda_m(t_s)$ but survives in $\lambda_m(t_s)$ alone, so \eqref{eq:app_we} can be evaluated with whatever $\lambda_m$ the BVP carries, whereas \eqref{eq:app_we_raw} could not. \textbf{Sign:} $\lambda_m$ increasing $\Rightarrow \lambda_m(t_f) > \lambda_m(t_s)$, so the right-hand side is positive --- consistent with the positive jump of Step~4. This is the Weierstrass--Erdmann corner condition in action~\cite[Sec.~3.13, Prob.~1]{bryson1975}: with no explicit-time junction term both $\boldsymbol{\lambda}$ and $\mathcal{H}$ would be continuous, and it is precisely the explicit $t_s$ of the jettisoned mass that lets $\mathcal{H}$ jump while $\boldsymbol{\lambda}$ stays continuous.
+The rewrite matters: it makes the condition independent of how the costates are scaled. The shooting BVP integrates $\lambda_m$ from $\lambda_{m,0} = 1$ at $t = 0$, not from $\lambda_m(t_f) = 0$; because $\dot\lambda_m = (T/m^2)\|\boldsymbol{\lambda}_v\|$ depends on the other costates and not on $\lambda_m$ itself, the two scalings differ only by a constant offset of the whole $\lambda_m(t)$ curve. That offset cancels in the difference $\lambda_m(t_f) - \lambda_m(t_s)$ but survives in $\lambda_m(t_s)$ alone, so \eqref{eq:app_we} can be evaluated with whatever $\lambda_m$ the BVP carries, whereas \eqref{eq:app_we_raw} could not. \textbf{Sign:} $\lambda_m$ increasing $\Rightarrow \lambda_m(t_f) > \lambda_m(t_s)$, so the right-hand side is positive --- consistent with the positive jump of Step~4. This is the Weierstrass--Erdmann corner condition in action~\cite[Sec.~3.13, Prob.~1]{bryson1975}: with no explicit-time junction term both $\boldsymbol{\lambda}$ and $\mathcal{H}$ would be continuous, and it is precisely the explicit $t_s$ of the jettisoned mass that lets $\mathcal{H}$ jump while $\boldsymbol{\lambda}$ stays continuous.
 
 \paragraph{Step 6 --- equate and simplify.}
 Setting \eqref{eq:app_jump} equal to \eqref{eq:app_we} and using $T = cQ$,

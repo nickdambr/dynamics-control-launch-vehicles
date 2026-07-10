@@ -1,11 +1,9 @@
 classdef hm3LoopPerformanceTest < matlab.perftest.TestCase
-    %hm3LoopPerformanceTest Performance benchmarks for the HM3 hot path.
-    %  Unit level: one assemble_loop call -- the kernel that fminsearch
-    %  (design_controller) evaluates ~400 times and the Task-2 filter sweeps
-    %  evaluate ~150 times. System level: the full tuner cost evaluation
-    %  (assemble_loop + margin + isstable) and the lsim gust replay.
-    %  Workflow level: one complete design_controller search.
-    %  Run with: results = runperf('hm3LoopPerformanceTest')
+    % Performance benchmarks for the HM3 hot path.
+    %  Unit: one assemble_loop call (fminsearch hits it ~400x, the Task-2
+    %  sweeps ~150x). System: full tuner cost (assemble_loop + margin +
+    %  isstable) and the lsim gust replay. Workflow: one design_controller
+    %  search. Run: runperf('hm3LoopPerformanceTest')
 
     properties (Constant)
         % Task-1 PD design (pinned), same as hm3LoopTest
@@ -31,7 +29,7 @@ classdef hm3LoopPerformanceTest < matlab.perftest.TestCase
 
     methods (TestMethodSetup)
         function buildModels(testCase)
-            % All model construction outside the measurement boundary; the
+            % Model construction outside the measurement boundary; the
             % conditionally stable loop makes margin() warn on every call
             ws = warning('off', 'Control:analysis:MarginUnstable');
             testCase.addTeardown(@() warning(ws));

@@ -225,16 +225,17 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function res = shooting1(z0, p, opts_ode)
-% Shooting residual for a single burn arc, in the improved formulation of the
-% course notes (HW1, "migliorie numeriche"):
-%   (i)  costates are NORMALIZED by fixing lam_m0 = 1 (H is homogeneous of
-%        degree 1 in lambda, so the solution is defined up to a scale);
-%   (ii) the free-time condition H = 0 is imposed at the INITIAL instant,
-%        where it is purely algebraic (vx0 = vy0 = 0) and accumulates no
-%        integration error, instead of at t_f.
-% Each move removes one unknown/condition, leaving 4 unknowns and 4 residuals;
-% lam_m never enters the residual.
-%   z0 = [lam_vx0; lam_vy0; lam_y; tf]
+% Shooting residual for a single burn arc.
+%   INPUT
+%     z0       - unknowns [lam_vx0; lam_vy0; lam_y; tf]
+%     p        - struct: c, T, Q, yf
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - 4 residuals [y(tf)-yf; vx(tf)-1; vy(tf); H0]
+% Improved formulation: costates normalized to lam_m0=1 (H homogeneous deg 1 in
+% lambda) and H=0 imposed at t0, where it is algebraic (vx0=vy0=0) and error-free
+% instead of at tf. 4 unknowns, 4 residuals; lam_m never enters.
+% No arguments block by design: runs inside the fsolve loop.
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);
@@ -273,7 +274,12 @@ function res = shooting1(z0, p, opts_ode)
 end
 
 function pp = set_costates(p, z_sol)
-% Pack costate parameters into struct
+% Copy costates from solution vector into the parameter struct.
+%   INPUT
+%     p     - parameter struct
+%     z_sol - [lam_vx0; lam_vy0; lam_y; ...]
+%   OUTPUT
+%     pp - p with lam_vx0, lam_vy0, lam_y set
     pp = p;
     pp.lam_vx0 = z_sol(1);
     pp.lam_vy0 = z_sol(2);
@@ -281,8 +287,14 @@ function pp = set_costates(p, z_sol)
 end
 
 function dz = ode_burn_losses(t, z, p)
-% Extended ODE with velocity losses
-%   z = [x; y; vx; vy; m; lam_m; Wd; Wg]
+% Burn RHS extended with gravity/misalignment loss integrators.
+%   INPUT
+%     t - time (scalar)
+%     z - state [x; y; vx; vy; m; lam_m; Wd; Wg]
+%     p - struct: T, Q, c, lam_vx0, lam_vy0, lam_y
+%   OUTPUT
+%     dz - derivative (8x1)
+% No arguments block by design: runs inside ode45.
 
     vx = z(3); vy = z(4); m = z(5);
 

@@ -4,6 +4,9 @@
 			"path": "."
 		},
 		{
+			"path": "../../Claude/Projects/DCLV"
+		},
+		{
 			"path": "../../Appunti_DLCV"
 		}
 	],

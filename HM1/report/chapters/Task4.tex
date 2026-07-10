@@ -42,7 +42,7 @@ The shooting unknowns $\boldsymbol{\zeta}$ (Eq.~\ref{eq:unknowns}) are identical
 
 The optimal staging time $t_s^*$ is found by an \textbf{outer parametric sweep} (implemented in \texttt{main\_task4.m}): $t_s$ is varied over a dense grid of 50 points, the inner BVP is solved at each point (warm-started from the previous converged solution via continuation, as in Listing~\ref{lst:continuation}), and the payload \eqref{eq:payload} is maximized over the converged solutions. The starting guess for the inner BVP at the first grid point uses the single-stage solution from Task~1.
 
-A fully rigorous indirect treatment closes the free interior time $t_s$ with a corner condition at the jettison rather than sweeping for it. Since the delivered payload~\eqref{eq:pay_budget} depends only on the total burn time $t_f$, maximising it is the same as minimising $t_f$, and the optimum is the stationary point
+A fully indirect treatment closes the free interior time $t_s$ with a corner condition at the jettison rather than sweeping for it. Since the delivered payload~\eqref{eq:pay_budget} depends only on the total burn time $t_f$, maximising it is the same as minimising $t_f$, and the optimum is the stationary point
 \begin{equation}
     \frac{\mathrm{d}t_f}{\mathrm{d}t_s} = 0,
     \label{eq:staging_opt}
@@ -60,7 +60,7 @@ which balances the inert mass shed at staging (left) against the propulsive gain
 
 \subsection{Results}
 
-Figure~\ref{fig:task4_pay} shows the payload as a function of staging time $t_s$ for $Q = 2$, $y_f = 0.04$. The curve has a well-defined maximum; the single-stage baseline (dashed red) lies significantly below the two-stage peak.
+Figure~\ref{fig:task4_pay} shows the payload as a function of staging time $t_s$ for $Q = 2$, $y_f = 0.04$. The curve has a well-defined maximum, and the single-stage baseline (dashed red) lies well below the two-stage peak.
 
 \begin{figure}[H]
     \centering

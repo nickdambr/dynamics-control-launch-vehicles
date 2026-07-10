@@ -1,15 +1,13 @@
 classdef descentDynamicsPerformanceTest < matlab.perftest.TestCase
-    %descentDynamicsPerformanceTest Performance benchmarks for the HM2 hot loop.
-    %  Unit level: a single ode_descent evaluation and one rk4_zoh
-    %  ZOH-interval propagation -- the building blocks of the trapezoidal
-    %  and ZOH defect constraints that fmincon evaluates at every iteration.
-    %  System level: the ode45 replay of one ZOH interval at the
-    %  fidelity-check tolerances used by fwd_integrate.
+    %descentDynamicsPerformanceTest Benchmarks for the HM2 hot loop.
+    %  Unit level: one ode_descent eval and one rk4_zoh interval -- the
+    %  defect-constraint building blocks fmincon hits every iteration.
+    %  System level: ode45 replay of one ZOH interval at fwd_integrate tols.
     %  Run with: results = runperf('descentDynamicsPerformanceTest')
 
     properties (Constant)
-        Vc = 0.0777    % effective Tsiolkovsky number (Table 1 data)
-        dt = 0.0444    % one ZOH interval, non-dim (tf_nd / (N-1), N = 50)
+        Vc = 0.0777    % V_ref/c (Table 1 data)
+        dt = 0.0444    % one ZOH interval, non-dim (tf_nd/(N-1), N = 50)
     end
 
     properties
@@ -30,7 +28,7 @@ classdef descentDynamicsPerformanceTest < matlab.perftest.TestCase
 
     methods (TestMethodSetup)
         function setupState(testCase)
-            % Representative mid-descent state and near-hover control
+            % Mid-descent state, near-hover control
             testCase.x0 = [0.1; 0.5; -0.2; -0.4; 0.8];
             testCase.u0 = [0.1; 0.9];
         end
@@ -38,8 +36,8 @@ classdef descentDynamicsPerformanceTest < matlab.perftest.TestCase
 
     methods (Test)
         function testOdeDescentEvaluation(testCase)
-            % A single call is ~60 ns -- below the framework precision --
-            % so each measured sample is a batch of 1000 evaluations
+            % One call (~60 ns) is below framework precision; measure a
+            % batch of 1000 per sample
             x = testCase.x0;  u = testCase.u0;  vc = testCase.Vc;
             while testCase.keepMeasuring
                 for k = 1:1000
@@ -50,8 +48,8 @@ classdef descentDynamicsPerformanceTest < matlab.perftest.TestCase
         end
 
         function testRk4ZohPropagation(testCase, nSub)
-            % Batch of 100 propagations per sample: the 1-substep case is
-            % sub-microsecond and noise-dominated when measured singly
+            % Batch of 100 per sample: the 1-substep case is sub-microsecond
+            % and noise-dominated measured singly
             x  = testCase.x0;  u = testCase.u0;
             vc = testCase.Vc;  h = testCase.dt;
             while testCase.keepMeasuring

@@ -1,39 +1,20 @@
 function S = init_simulink_hm3(task, o)
-%INIT_SIMULINK_HM3  Populate the base workspace for the Simulink model.
-%
-%   S = INIT_SIMULINK_HM3(task) computes everything the block diagram
-%   models/hm3_closed_loop.slx needs and pushes it to the base workspace as
-%   named variables, so the State-Space / Transfer-Fcn / Gain blocks can
-%   reference them. It returns the same data as a struct S for convenience.
-%
-%   The script is the single source of truth: the gains and filters are the
-%   very ones designed and validated by the MATLAB scripts (Task 1-3), so
-%   the Simulink model only mirrors them. Run this before opening/simulating
-%   the model, and re-run it whenever a gain changes.
-%
-%   task = 1  rigid plant + ideal actuator (Task 1)
-%        = 2  full plant + TVC + delay + notch (Task 2)         [default]
-%        = 3  full plant, parametrised by mu_alpha/mu_c corners (Task 3)
-%
-%   Name/value options:
-%     'mu_alpha_scale', 'mu_c_scale'   corner scaling (Task 3), default 1
-%     'severity'                        wind severity, default 'severe'
-%     'profile'                         wind profile, default 'gust';
-%                                       'strongwind' = professor's generator
-%     'push', true/false                push to base workspace, default true
-%
-%   Variables exported (subset, depending on task):
-%     A_rigid B_rigid C_meas C_plot          rigid plant (Task 1)
-%     A_full  B_full                          full 6-state plant (Task 2/3)
-%     Bdelta_* Bwind_*                        input columns (delta / alpha_w)
-%     Kp_th Kd_th Kp_z Kd_z                   controller gains
-%     tvc_num tvc_den                         TVC + delay transfer function
-%     notch_num notch_den                     bending notch (Eq. 4)
-%     wind_ts                                 alpha_w(t) timeseries (From Wkspc)
-%     Tstop                                   suggested simulation stop time
-%
-%   See also LOAD_HW3_PARAMS, BUILD_PLANT_RIGID, BUILD_PLANT_FULL,
-%   DESIGN_CONTROLLER, SIMULINK_GUIDE (models/SIMULINK_GUIDE.md).
+% Populate the base workspace for models/hm3_closed_loop.slx.
+%   INPUT
+%     task - 1 rigid+ideal actuator | 2 full+TVC+delay+notch (default)
+%            | 3 full, mu_alpha/mu_c corners
+%     o    - name-value:
+%              mu_alpha_scale, mu_c_scale  corner scaling (Task 3), default 1
+%              severity  wind severity, default 'severe'
+%              profile   wind profile, default 'gust' ('strongwind' = generator)
+%              push      push vars to base workspace, default true
+%   OUTPUT
+%     S - struct of the same data. Exported vars (task-dependent):
+%           A_rigid/A_full, Bdelta_* Bwind_* (delta/alpha_w columns),
+%           C_meas_* C_plot_*, Kp_th Kd_th Kp_z Kd_z,
+%           tvc_num/tvc_den, notch_num/notch_den, wind_ts, Tstop
+%   Gains/filters are exactly those designed by the scripts; the model only
+%   mirrors them. Re-run whenever a gain changes.
 
 arguments
     task (1,1) {mustBeMember(task, [1 2 3])} = 2
@@ -45,10 +26,9 @@ arguments
 end
 
 %% Parameters and controller (designed by the scripts, reused here)
-%  The controller and the notch are FROZEN at the nominal design point, as
-%  in main_task3: robustness means fixed nominal gains evaluated on the
-%  perturbed plant. Re-tuning on the corner plant would destabilize the
-%  bending-augmented loop (and is not what the assignment asks).
+%  Controller and notch FROZEN at the nominal point, as in main_task3:
+%  robustness = fixed nominal gains on the perturbed plant. Re-tuning on the
+%  corner plant would destabilise the bending-augmented loop.
 p  = load_hw3_params('mu_alpha_scale',o.mu_alpha_scale,'mu_c_scale',o.mu_c_scale);
 p0 = load_hw3_params();                                   % nominal design point
 K  = design_controller(build_plant_rigid(p0), [], 'verbose', false);

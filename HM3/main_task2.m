@@ -1,25 +1,17 @@
 %% HM3 - Task 2: Full LV model (TVC dynamics, transport delay, bending mode)
-%  The rigid design of Task 1 is extended to the full 6-state model of
-%  Eq. (1): the lightly damped first bending mode (omega_BM = 18.9 rad/s,
-%  zeta_BM = 0.005) is reintroduced, the ideal actuator is replaced by the
-%  second-order TVC of Eq. (3) plus a 20 ms transport delay (Pade), and the
-%  INS measurement model of Eq. (2) couples the bending motion into the
-%  feedback. The workflow follows the assignment guidelines:
+%  Extends Task 1 to the full 6-state model (Eq. 1): lightly damped first
+%  bending mode (wBM = 18.9 rad/s, zBM = 0.005), 2nd-order TVC (Eq. 3) + 20 ms
+%  delay (Pade), and INS coupling (Eq. 2) of bending into the feedback.
 %
-%    Step A : rigid + PD                (warm start from Task 1)
-%    Step B : + TVC + delay             (low-freq margins survive, but the
-%                                        +39 dB bending resonance destabilises
-%                                        the loop)
-%    Step C : bending filter trade      (four candidates: the Eq.-4 lead-lag
-%                                        alone, a deep gain-stabilising notch,
-%                                        a course-style notch triplet, and
-%                                        notch + lead-lag)
-%    Step D : wBM-knowledge sensitivity (each candidate filter held fixed
-%                                        while the true bending frequency is
-%                                        perturbed by up to +/-10 %)
+%    Step A : rigid + PD            (warm start from Task 1)
+%    Step B : + TVC + delay         (low-freq margins survive; the +39 dB
+%                                     bending resonance destabilises the loop)
+%    Step C : bending filter trade  (Eq.-4 lead-lag alone, deep notch, notch
+%                                     triplet, notch + lead-lag)
+%    Step D : wBM sensitivity       (filters fixed, true wBM perturbed +/-10 %)
 %
-%  Reference: Homework 3 (Zavoli, v1.2, May 2026), Task 2.
-%  Toolboxes: Control System Toolbox (the auto-tuner uses base-MATLAB fminsearch).
+%  Ref: Homework 3 (Zavoli, v1.2, May 2026), Task 2.
+%  Toolboxes: Control System Toolbox (tuner uses base-MATLAB fminsearch).
 
 clear; close all; clc;
 warning('off','Control:analysis:MarginUnstable');
@@ -42,18 +34,14 @@ fprintf('  |L(omega_BM)| = %.1f dB   -> closed-loop stable: %d (max Re pole = %.
         20*log10(bode(Lb,p.wBM)), isstable(Tb), max(real(pole(Tb))));
 
 %% Step C - bending filter trade study
-%  Four candidates are compared before committing (PD gains kept fixed, per
-%  the guideline note that retuning is usually unnecessary):
-%   C-LL : the Eq.-4 filter as printed (non-minimum-phase numerator), swept
-%          over the suggested ranges zN 0.1-0.3, zD 0.4-0.6, wx = wBM +/- 4
-%          rad/s. Alone it never stabilises the loop: the least-unstable
-%          combination is retained for the Nichols overlay.
-%   C-N  : deep minimum-phase notch at wBM (gain stabilisation).
-%   C-T  : triplet of the same deep notch at {0.9, 1.0, 1.1} wBM - the
-%          course-notes recipe for bending-frequency uncertainty.
-%   C-NLL: deep notch + Eq.-4 lead-lag ("the Notch filter and possibly other
-%          filters"), partner swept over the same guideline ranges and
-%          selected for max delay margin.
+%  Four candidates, PD gains kept fixed (retuning usually unnecessary):
+%   C-LL : Eq.-4 filter as printed (NMP numerator), swept over zN 0.1-0.3,
+%          zD 0.4-0.6, wx = wBM +/- 4 rad/s. Alone it never stabilises;
+%          least-unstable combo kept for the Nichols overlay.
+%   C-N  : deep min-phase notch at wBM (gain stabilisation).
+%   C-T  : same notch at {0.9, 1.0, 1.1} wBM - course recipe for wBM spread.
+%   C-NLL: deep notch + Eq.-4 lead-lag, partner swept over the same ranges,
+%          picked for max delay margin.
 fprintf('\n=== Step C: bending filter trade ===\n');
 
 wx_grid = p.wBM + (-4:2:4);
@@ -83,10 +71,10 @@ fprintf(['  C-LL alone: %d/%d guideline candidates stabilise the loop; ' ...
 Hll = build_notch_filter(bestLL.wx, bestLL.zN, bestLL.zD, -1);
 
 % --- C-N: deep minimum-phase notch (the retained design) ---
-notch.wx = p.wBM;        % rad/s  (omega_BM)
+notch.wx = p.wBM;        % rad/s (= wBM)
 notch.zN = 0.002;        % numerator damping (deep, narrow null)
 notch.zD = 0.7;          % denominator damping
-notch.sgn = +1;          % +1 -> minimum-phase notch (gain stabilisation)
+notch.sgn = +1;          % +1 -> min-phase notch (gain stabilisation)
 Hn = build_notch_filter(notch.wx, notch.zN, notch.zD, notch.sgn);
 
 % --- C-T: course-style triplet at 0.9/1.0/1.1 wBM ---
@@ -125,56 +113,61 @@ cand = {'B     no filter    ', tf(1); ...
         'C-NLL notch+leadlag', Hcmb};
 nCand = size(cand,1);
 Lcand = cell(nCand,1);
-fprintf('\n  %-19s | %7s %7s %7s %8s %9s | %s\n', ...
-        'candidate','rigidGM','minGM','PM','DM[ms]','|L(wBM)|','stable');
+% Margins classified by frequency band (classify_margins): Aero GM (low freq),
+% Rigid PM / Rigid GM (rigid body + actuator lag), and the bending attenuation
+% |L(wBM)| (the deep notch gain-stabilises the mode, so there is no Flex crossover).
+bands = {'w_drift',0.3*sqrt(p.A6),'w_flex',0.6*p.wBM,'w_flex_hi',1.5*p.wBM,'w_bending',p.wBM};
+fprintf('\n  %-19s | %7s %7s %8s %9s %7s | %s\n', ...
+        'candidate','AeroGM','RigidPM','RigidGM','|L(wBM)|','DM[ms]','stable');
 for i = 1:nCand
     [Lc_, Tc_] = assemble_loop(Gfull, K, Wtvc*cand{i,2});
-    Lcand{i} = Lc_;
-    amc = allmargin(Lc_);
-    gmc = 20*log10(amc.GainMargin);  gfc = amc.GMFrequency;
-    idx = find(gfc>0.2 & gfc<1, 1);
-    if isempty(idx), rgm = NaN; else, rgm = abs(gmc(idx)); end
-    [~,Pmc] = margin(Lc_);
-    fprintf('  %-19s | %6.2f  %6.2f  %5.1f  %7.1f  %8.1f | %d\n', ...
-            cand{i,1}, rgm, min(abs(gmc)), abs(Pmc), ...
-            min(amc.DelayMargin)*1000, 20*log10(bode(Lc_,p.wBM)), isstable(Tc_));
+    Lcand{i} = minreal(Lc_, 1e-6);
+    mc = classify_margins(Lcand{i}, bands{:});
+    fprintf('  %-19s | %6.2f  %6.1f  %7.2f  %8.1f  %6.0f | %d\n', ...
+            cand{i,1}, abs(mc.aeroGM_dB), mc.rigidPM_deg, abs(mc.rigidGM_dB), ...
+            mc.LwBM_dB, 1e3*mc.DM_s, isstable(Tc_));
 end
 
-%% Step C decision - deep notch retained
-%  The deep notch gain-stabilises the resonance (|L(wBM)| << 0 dB) while
-%  staying flat at the rigid crossovers. The triplet, sized to the same
-%  depth, piles up ~30 deg of phase lag at the rigid crossover (three wide
-%  zD = 0.7 sections) and loses the conditionally stable low-frequency
-%  margin: consistent with the course-notes philosophy, the FIRST mode is
-%  too close to the rigid crossover to be blanket-notched - triplets belong
-%  to the higher modes. The notch+lead-lag combo is the robust alternative
-%  (see Step D) at the price of thinner nominal margins.
+%% Step C decision - deep notch, then RE-TUNE the PD for the actuator
+%  The deep notch gain-stabilises the resonance (|L(wBM)| << 0 dB) and keeps the
+%  low-frequency aerodynamic gain margin. But with the Task-1 PD gains --- which
+%  were designed on the IDEAL actuator --- the actuator + transport delay + notch
+%  phase lag has eaten most of the rigid phase margin: it collapses from 30 deg
+%  to ~15 deg, with the delay margin down at the ~100 ms guideline. The design
+%  must therefore be RE-TUNED on the full loop (D'Antuono: the TVC dynamics must
+%  be taken into account when placing the PD): raising the derivative gain
+%  restores the phase lost to the lag, with the bending still gain-stabilised.
 Wfull = Wtvc * Hn;
-[Lc, Tfull] = assemble_loop(Gfull, K, Wfull);
-[Gm,Pm,Wcg,Wcp] = margin(Lc);
-fprintf('\n=== Retained design: deep notch (wx=%.1f, zN=%.3f, zD=%.2f) ===\n', ...
-        notch.wx, notch.zN, notch.zD);
-fprintf('  |L(omega_BM)| = %.1f dB   -> closed-loop stable: %d (max Re pole = %.3g)\n', ...
-        20*log10(bode(Lc,p.wBM)), isstable(Tfull), max(real(pole(Tfull))));
-am = allmargin(Lc);
-gf = am.GMFrequency; gm = 20*log10(am.GainMargin);
-idx = find(gf>0.2 & gf<1, 1);
-if isempty(idx), rigidGM = NaN; else, rigidGM = gm(idx); end
-fprintf('  rigid-body |GM| = %.2f dB,  |PM| = %.1f deg (preserved from Task 1)\n', ...
-        abs(rigidGM), abs(Pm));
-fprintf('  delay margin    = %.1f ms on top of the 20 ms already modelled\n', ...
-        min(am.DelayMargin)*1000);
+
+% --- BEFORE re-tuning: Task-1 gains (ideal-actuator design) on the full loop ---
+Ktask1 = K;
+[Lb1, Tb1] = assemble_loop(Gfull, Ktask1, Wfull);  Lb1 = minreal(Lb1, 1e-6);
+mB = classify_margins(Lb1, bands{:});
+fprintf('\n=== Deep notch, Task-1 gains (BEFORE re-tuning) ===\n');
+fprintf('  Kp=%.3f Kd=%.3f | Aero |GM|=%.2f dB  Rigid PM=%.1f deg @%.2f  DM=%.0f ms | stable: %d\n', ...
+        Ktask1.Kp_th, Ktask1.Kd_th, abs(mB.aeroGM_dB), mB.rigidPM_deg, mB.rigidPM_w, ...
+        1e3*mB.DM_s, isstable(Tb1));
+
+% --- RE-TUNE the PD on the full Task-2 loop (actuator + delay + notch) ---
+fprintf('\n=== Re-tuned on the full loop (target Aero GM 6 dB / Rigid PM 30 deg) ===\n');
+[K, mF] = design_controller(Gfull, Wfull, 'w_flex', 0.6*p.wBM, ...
+              'w_flex_hi', 1.5*p.wBM, 'w_bending', p.wBM);
+[Lc, Tfull] = assemble_loop(Gfull, K, Wfull);  Lc = minreal(Lc, 1e-6);
+fprintf('  |L(omega_BM)| = %.1f dB (bending gain-stabilised) -> CL stable: %d (max Re pole = %.3g)\n', ...
+        mF.LwBM_dB, isstable(Tfull), max(real(pole(Tfull))));
+fprintf('  Aero |GM| = %.2f dB @ %.2f rad/s | Rigid GM = %.2f dB @ %.2f rad/s\n', ...
+        abs(mF.aeroGM_dB), mF.aeroGM_w, abs(mF.rigidGM_dB), mF.rigidGM_w);
+fprintf('  Rigid PM  = %.1f deg @ %.2f rad/s (recovered) | delay margin = %.0f ms\n', ...
+        mF.rigidPM_deg, mF.rigidPM_w, 1e3*mF.DM_s);
 
 %% Step D - sensitivity to the bending-frequency knowledge
-%  Filters stay FIXED (designed for wBM = 18.9 rad/s) while the true plant
-%  bending frequency is perturbed by up to +/-10 % (the tolerance the course
-%  notes cover with the notch triplet). The deep notch relies on exact
-%  knowledge of wBM; adding the NMP lead-lag phase-stabilises the resonance
-%  and buys most of the tolerance back.
+%  Filters FIXED (designed for wBM = 18.9 rad/s); true wBM perturbed +/-10 %.
+%  The deep notch needs exact wBM; the NMP lead-lag phase-stabilises the
+%  resonance and buys most of the tolerance back.
 fprintf('\n=== Step D: true wBM off-nominal, filters fixed ===\n');
 scales = 0.90:0.05:1.10;
 fprintf('  %-19s |', 'candidate');  fprintf('  x%.2f', scales);  fprintf('\n');
-for i = 3:nCand                     % C-N, C-T, C-NLL (B and C-LL never stable)
+for i = [3 5]                       % C-N (retained) and C-NLL (robust alternative)
     fprintf('  %-19s |', cand{i,1});
     for sc = scales
         ps = load_hw3_params();  ps.wBM = sc*ps.wBM;
@@ -186,7 +179,7 @@ for i = 3:nCand                     % C-N, C-T, C-NLL (B and C-LL never stable)
 end
 
 %% Time response to a wind gust (full model)
-w  = load_wind_profile(p);
+w  = load_wind_profile(p, Tend=80);   % 80 s horizon to match Task 1 (full-loop slow drift mode tau ~ 20 s)
 rf = simulate_gust_response(Tfull, w);
 rr = simulate_gust_response(Trigid, w);
 fprintf('\n--- Gust response (full model, %s gust) ---\n', w.severity);
@@ -196,20 +189,58 @@ fprintf('  peak |alpha| = %.3f deg -> peak qbar*alpha = %.1f kPa deg\n', ...
         rf.peak_alpha*180/pi, p.qbar/1000*rf.peak_alpha*180/pi);
 
 %% ---------------------------------------------------------------- Figures
-% Nichols: no filter vs least-unstable lead-lag vs deep notch.
-% Phase wrapping + axis cropping keep the (otherwise sprawling) bending
-% excursion legible around the critical region.
-nopt = nicholsoptions;
-nopt.PhaseWrapping = 'on';
-nopt.Grid = 'on';
-nopt.Title.String = 'Task 2 - Full-model loop: bending filter trade';
-f1 = figure('Name','nichols','Color','w','Position',[100 100 660 560]);
-hN = nicholsplot(Lcand{1},'r',Lcand{2},'g',Lcand{3},'b',nopt);
-setoptions(hN,'XLim',[-360 0],'YLim',[-40 60]);
-legend({'no filter (unstable)', ...
-        sprintf('lead-lag Eq.4 alone (best: \\omega_x=%.0f, \\zeta_N=%.2f, \\zeta_D=%.1f) - still unstable', ...
-                bestLL.wx, bestLL.zN, bestLL.zD), ...
-        'deep notch (retained, stable)'}, 'Location','northwest');
+% (1) Retained design: full-loop Nichols in the launch-vehicle convention
+%     (critical point +180 deg), with the classified rigid margins marked. The
+%     bending mode is gain-stabilised, so the loop stays far below 0 dB near wBM
+%     (no Flex crossover) rather than threading the critical point.
+f1 = figure('Name','nichols','Color','w','Position',[100 100 700 600]);
+plot_nichols_lv(Lc, mF, 'wrange', [1e-2 1e2], 'xlim', [-360 360], ...
+    'title', sprintf(['Task 2 - Full-loop Nichols, deep notch  ' ...
+             '(Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ, |L(\\omega_{BM})|=%.0f dB)'], ...
+             abs(mF.aeroGM_dB), mF.rigidPM_deg, mF.LwBM_dB));
+
+% (2) Before/after re-tuning: with the Task-1 (ideal-actuator) gains the
+%     actuator + delay + notch lag collapses the rigid phase margin; re-tuning
+%     the PD on the full loop restores it (same notch, +180 deg convention).
+f5 = figure('Name','retune','Color','w','Position',[100 100 700 600]);
+Lb1.InputName = '';  Lb1.OutputName = '';  Lc.InputName = '';  Lc.OutputName = '';
+hR = nicholsplot(Lb1, Lc, {1e-2, 1e2});
+setoptions(hR, 'PhaseMatching','on', 'PhaseMatchingFreq', mF.rigidPM_w, 'PhaseMatchingValue', 180, ...
+              'Grid','on', 'XLim',{[-360 360]}, 'YLim',{[-40 40]}, ...
+              'XLimMode','manual', 'YLimMode','manual');
+title(gca, 'Task 2 - PD re-tuning on the full loop: rigid phase margin recovered');
+legend({sprintf('Task-1 gains (ideal actuator): Rigid PM = %.0f^\\circ', mB.rigidPM_deg), ...
+        sprintf('re-tuned on full loop: Rigid PM = %.0f^\\circ', mF.rigidPM_deg)}, ...
+        'Location','southwest');
+
+% (3) Bending-filter trade: no filter vs least-unstable lead-lag vs deep notch,
+% in the launch-vehicle convention (critical point +180 deg) --- consistent with
+% the other Nichols charts. A single common phase shift (from the retained deep-
+% notch rigid crossover) is applied to all three loops so their bending lobes are
+% directly comparable: the rigid region sits near +180 deg, the bending lobes near
+% the wrapped -180 deg critical point.
+f4 = figure('Name','nichols_trade','Color','w','Position',[100 100 700 600]);
+ax = gca;  ngrid;  hold(ax,'on');
+wv  = logspace(-2, log10(300), 5000);
+[~, ph0] = bode(Lcand{3}, wv);  ph0 = squeeze(ph0);          % deep-notch reference phase
+sh0 = 360*round((180 - interp1(wv, ph0, mB.rigidPM_w))/360); % common +180 shift
+trcol = [0.85 0.15 0.15; 0.10 0.60 0.10; 0.10 0.20 0.85];    % red / green / blue
+trnam = {'no filter (unstable)', ...
+         sprintf('lead-lag Eq.4 alone (\\omega_x=%.0f, \\zeta_N=%.2f, \\zeta_D=%.1f) - marginal', ...
+                 bestLL.wx, bestLL.zN, bestLL.zD), ...
+         'deep notch (retained, stable)'};
+ht = gobjects(3,1);
+for i = 1:3
+    [mag, ph] = bode(Lcand{i}, wv);  mag = squeeze(mag);  ph = squeeze(ph) + sh0;
+    ht(i) = plot(ax, ph, 20*log10(mag), 'Color', trcol(i,:), 'LineWidth', 1.4, ...
+                 'DisplayName', trnam{i});
+end
+plot(ax,  180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
+plot(ax, -180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
+xlim(ax, [-360 360]);  ylim(ax, [-40 40]);
+xlabel(ax,'Open-Loop Phase (deg)');  ylabel(ax,'Open-Loop Gain (dB)');
+title(ax,'Task 2 - Full-model loop: bending filter trade');
+legend(ht, 'Location', 'northwest', 'FontSize', 9);
 
 % Gust response of the full model: theta, z, zdot, delta
 f2 = figure('Name','gust_response','Color','w','Position',[100 100 760 620]);
@@ -238,7 +269,7 @@ xlabel('t [s]'); ylabel('\delta [deg]'); legend('rigid','full','Location','best'
 %% Export figures
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
 if ~exist(fig_dir,'dir'); mkdir(fig_dir); end
-for f = [f1 f2 f3]
+for f = [f1 f2 f3 f4 f5]
     try
         theme(f, 'light');    % force light theme (ignore desktop dark mode)
     catch

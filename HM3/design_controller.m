@@ -1,29 +1,26 @@
 function [K, m] = design_controller(G, Wact, o)
-%DESIGN_CONTROLLER  Tune the pitch PD gains to target gain/phase margins.
+% Design the pitch PD gains on the FULL launch-vehicle loop (D'Antuono method).
 %
-%   [K, m] = DESIGN_CONTROLLER(G, Wact) tunes the pitch proportional and
-%   derivative gains (Kp_th, Kd_th) so that the open-loop transfer of
-%   ASSEMBLE_LOOP attains the assignment targets
+%   Starting from the canonical closed-form gains on the decoupled rotational
+%   dynamics (D'Antuono Eq. 3.6-3.7) Kp = 2*A6/K1, Kd = sqrt(A6)/K1, the gains
+%   are RE-TUNED on the FULL loop (attitude + lateral drift + actuator) so the
+%   CLASSIFIED Aero GM and Rigid PM hit the assignment targets. This retune is
+%   what actually meets the requirement: the lateral-drift feedback erodes the
+%   aerodynamic gain margin (the canonical decoupled 6 dB drops to ~4 dB on the
+%   full loop). Margins are classified by frequency band (classify_margins);
+%   the closed-loop stability verdict is isstable() of the full loop.
 %
-%       |GM| ~ 6 dB ,   |PM| ~ 30 deg
-%
-%   while keeping the closed loop stable. Because the rigid airframe is
-%   open-loop unstable (pole at +sqrt(A6)), the loop is conditionally
-%   stable and MARGIN reports the low-frequency aerodynamic gain margin;
-%   the targets are therefore matched in magnitude (as read off the Nichols
-%   chart). The lateral-drift gains Kp_z, Kd_z are small and negative per
-%   the assignment guidelines and are held fixed during the search.
-%
-%   Pass Wact = [] (or tf(1)) for the ideal-actuator rigid case (Task 1),
-%   or the TVC+delay(+notch) chain for the full model (Task 2).
-%
-%   Name/value options:
-%     'Kp_z','Kd_z'   fixed lateral gains      (default -1e-3, -1e-3)
-%     'GM','PM'       margin targets           (default 6 dB, 30 deg)
-%     'K0'            [Kp_th0 Kd_th0] guess    (default [2.0 1.4])
-%     'verbose'       print result             (default true)
-%
-%   See also ASSEMBLE_LOOP, MARGIN.
+%   INPUT
+%     G    - rigid plant (build_plant_rigid); A6,K1 read by state name
+%     Wact - actuator chain; [] or tf(1) = ideal actuator (Task 1)
+%     o    - name-value:
+%              Kp_z, Kd_z  fixed lateral-drift gains (default -1e-3, -1e-3)
+%              GM, PM      margin targets            (default 6 dB, 30 deg)
+%              K0          ignored (kept for call compatibility)
+%              verbose     print result              (default true)
+%   OUTPUT
+%     K - tuned gain struct (Kp_th, Kd_th, Kp_z, Kd_z)
+%     m - classified margins (see classify_margins) + stable, L, T
 
 arguments
     G {mustBeA(G, 'lti')}
@@ -32,45 +29,63 @@ arguments
     o.Kd_z    (1,1) {mustBeNumeric, mustBeReal} = -1e-3
     o.GM      (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 6
     o.PM      (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 30
-    o.K0      (1,2) {mustBeNumeric, mustBeReal, mustBePositive} = [2.0 1.4]
+    o.K0      (1,2) {mustBeNumeric, mustBeReal} = [0 0]   % accepted, unused
+    o.w_flex    (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = Inf  % rigid/flex bound
+    o.w_flex_hi (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = Inf  % upper flex bound
+    o.w_bending (1,1) {mustBeNumeric, mustBeReal} = NaN                  % bending freq
     o.verbose (1,1) logical = true
 end
+if isempty(Wact), Wact = tf(1); end
 
-if isempty(Wact), Wact = tf(1); end    % [] is the documented ideal-actuator alias
+% decoupled rotational coefficients (by state/input name)
+iTh = strcmp(G.StateName, 'theta');
+iTd = strcmp(G.StateName, 'thetadot');
+iDe = strcmp(G.InputName, 'delta');
+A6  = G.A(iTd, iTh);
+K1  = G.B(iTd, iDe);
+w_drift = 0.3*sqrt(A6);          % drift/rigid boundary for the classifier
+bands = {'w_drift', w_drift, 'w_flex', o.w_flex, 'w_flex_hi', o.w_flex_hi, ...
+         'w_bending', o.w_bending};   % Task 1: defaults (no bending); Task 2: full-loop bands
 
-% MARGIN warns on every evaluation of the conditionally stable loop; mute it
-% for the whole search and restore the caller's warning state on exit.
-warnState = warning('off','Control:analysis:MarginUnstable');
+% MARGIN warns on every conditionally-stable evaluation; mute for the search.
+warnState   = warning('off', 'Control:analysis:MarginUnstable');
 restoreWarn = onCleanup(@() warning(warnState));
 
-    function c = cost(x)
-        Kt.Kp_th = exp(x(1));  Kt.Kd_th = exp(x(2));
-        Kt.Kp_z  = o.Kp_z;     Kt.Kd_z  = o.Kd_z;
-        [L,T] = assemble_loop(G, Kt, Wact);
-        [Gm,Pm] = margin(L);
-        gm_db = 20*log10(Gm);
-        c = (abs(gm_db)-o.GM)^2 + (abs(Pm)-o.PM)^2;
-        if ~isstable(T), c = c + 1e4; end           % keep CL stable
-        if ~isfinite(c), c = 1e6; end
-    end
+% Re-tune (Kp,Kd) on the full loop from the canonical closed-form start.
+x0 = log([2*A6/K1, sqrt(A6)/K1]);         % D'Antuono Eq. 3.6-3.7
+xo = fminsearch(@cost, x0, ...
+                optimset('Display','off','TolX',1e-4,'TolFun',1e-3,'MaxFunEvals',400));
 
-x0  = log(o.K0);
-opts = optimset('Display','off','TolX',1e-4,'TolFun',1e-4,'MaxFunEvals',400);
-xopt = fminsearch(@cost, x0, opts);
-
-K.Kp_th = exp(xopt(1));
-K.Kd_th = exp(xopt(2));
+K.Kp_th = exp(xo(1));
+K.Kd_th = exp(xo(2));
 K.Kp_z  = o.Kp_z;
 K.Kd_z  = o.Kd_z;
 
-[L,T] = assemble_loop(G, K, Wact);
-[Gm,Pm,Wcg,Wcp] = margin(L);
-m = struct('GM_dB',20*log10(Gm),'PM_deg',Pm,'wc_gain',Wcg,'wc_phase',Wcp, ...
-           'stable',isstable(T),'L',L,'T',T);
+[L, T]   = assemble_loop(G, K, Wact);
+L        = minreal(L, 1e-6);
+m        = classify_margins(L, bands{:});
+m.stable = isstable(T);
+m.L      = L;
+m.T      = T;
 
 if o.verbose
-    fprintf(['  PD design: Kp_th=%.4f Kd_th=%.4f | Kp_z=%.1e Kd_z=%.1e\n' ...
-             '             GM=%.2f dB (w=%.3g) PM=%.1f deg (w=%.3g) | CL stable: %d\n'], ...
-            K.Kp_th,K.Kd_th,K.Kp_z,K.Kd_z, m.GM_dB,m.wc_gain,m.PM_deg,m.wc_phase,m.stable);
+    fprintf(['  PD design (full loop): Kp_th=%.4f Kd_th=%.4f | Kp_z=%.1e Kd_z=%.1e\n' ...
+             '    Aero |GM|=%.2f dB @%.2f rad/s  Rigid PM=%.1f deg @%.2f rad/s  DM=%.0f ms | CL stable: %d\n'], ...
+            K.Kp_th, K.Kd_th, K.Kp_z, K.Kd_z, ...
+            abs(m.aeroGM_dB), m.aeroGM_w, m.rigidPM_deg, m.rigidPM_w, 1e3*m.DM_s, m.stable);
 end
+
+    function c = cost(x)
+        % Full-loop margin-matching cost. x = log([Kp_th Kd_th]).
+        Kt.Kp_th = exp(x(1));  Kt.Kd_th = exp(x(2));
+        Kt.Kp_z  = o.Kp_z;     Kt.Kd_z  = o.Kd_z;
+        [Lt, Tt] = assemble_loop(G, Kt, Wact);
+        Lt = minreal(Lt, 1e-6);
+        mt = classify_margins(Lt, bands{:});
+        if isnan(mt.aeroGM_dB) || isnan(mt.rigidPM_deg)
+            c = 1e6;  return;                 % lost a required crossover
+        end
+        c = (abs(mt.aeroGM_dB) - o.GM)^2 + (mt.rigidPM_deg - o.PM)^2;
+        if ~isstable(Tt), c = c + 1e4; end
+    end
 end

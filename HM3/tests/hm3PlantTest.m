@@ -1,8 +1,8 @@
 classdef hm3PlantTest < matlab.unittest.TestCase
-    %hm3PlantTest Unit tests for load_hw3_params / build_plant_rigid / build_plant_full.
-    %  Assertions pin the physics of the Greensite pitch-plane model at the
-    %  max-qbar snapshot (t = 72 s): Table-1 coefficient values, the unstable
-    %  airframe pole at +sqrt(A6), and the INS bending contamination of Eq. (2).
+    % Unit tests for load_hw3_params / build_plant_rigid / build_plant_full.
+    %  Pins the Greensite pitch-plane physics at max-qbar (t = 72 s): Table-1
+    %  coefficients, the unstable airframe pole at +sqrt(A6), and the INS
+    %  bending contamination of Eq. (2).
 
     properties
         p    % nominal parameter struct, loaded once per class

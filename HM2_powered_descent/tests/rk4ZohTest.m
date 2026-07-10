@@ -1,10 +1,9 @@
 classdef rk4ZohTest < matlab.unittest.TestCase
-    %rk4ZohTest Unit tests for rk4_zoh.m (fixed-step RK4 ZOH propagator).
-    %  Reference solutions come from ode45 at tight tolerance on the same
-    %  ode_descent dynamics with the control held constant.
+    %rk4ZohTest Unit tests for rk4_zoh.m.
+    %  Reference: ode45 at tight tolerance on ode_descent, u held constant.
 
     properties (Constant)
-        Vc = 0.0777                    % effective Tsiolkovsky number
+        Vc = 0.0777                    % V_ref/c
         x0 = [0.3; 1; -0.2; -0.6; 1]   % non-dim initial state
         u  = [0.5; 1.0]                % non-dim ZOH control
         dt = 0.4                       % non-dim ZOH interval
@@ -25,15 +24,15 @@ classdef rk4ZohTest < matlab.unittest.TestCase
         end
 
         function testMassRowIsExact(testCase)
-            % dm/dt = -Vc*|u| is constant under ZOH, so RK4 integrates the
-            % mass row exactly for any number of substeps
+            % dm/dt = -Vc*|u| is constant under ZOH, so RK4 is exact on the
+            % mass row for any substep count
             xRk4 = rk4_zoh(testCase.x0, testCase.u, testCase.dt, testCase.Vc, 1);
             mExpected = testCase.x0(5) - testCase.Vc*norm(testCase.u)*testCase.dt;
             testCase.verifyEqual(xRk4(5), mExpected, 'AbsTol', 1e-14);
         end
 
         function testFourthOrderConvergence(testCase)
-            % Halving the substep size must cut the error by ~2^4
+            % Halving the substep should cut error by ~2^4 (order >= 3.5)
             xRef = rk4ZohTest.ode45Reference();
             err = arrayfun(@(n) norm(rk4_zoh(testCase.x0, testCase.u, ...
                 testCase.dt, testCase.Vc, n) - xRef), [1 2 4 8]);
@@ -44,6 +43,9 @@ classdef rk4ZohTest < matlab.unittest.TestCase
 
     methods (Static)
         function xRef = ode45Reference()
+            % Tight ode45 reference over one ZOH interval.
+            %   OUTPUT
+            %     xRef - state at t = dt (5x1)
             opts = odeset('RelTol', 1e-12, 'AbsTol', 1e-14);
             [~, Y] = ode45(@(t, x) ode_descent(x, rk4ZohTest.u, rk4ZohTest.Vc), ...
                            [0 rk4ZohTest.dt], rk4ZohTest.x0, opts);

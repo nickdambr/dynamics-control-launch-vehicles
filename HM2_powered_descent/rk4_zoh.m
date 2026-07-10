@@ -1,11 +1,16 @@
 function x_next = rk4_zoh(x, u, dt, Vc, n_sub)
-% Propagate the non-dim descent dynamics (ode_descent) over one ZOH
-% interval of length dt with a fixed-step RK4 scheme, holding the control
-% u constant, using n_sub substeps.
-% Shared by main_task2.m (nonlinear ZOH transcription) and the test suite.
+% RK4 propagation of ode_descent over one ZOH interval, u held constant.
+%   INPUT
+%     x     - state [x; y; vx; vy; m]
+%     u     - thrust [Tx; Ty] (held over dt)
+%     dt    - interval length
+%     Vc    - V_ref/c
+%     n_sub - RK4 substeps
+%   OUTPUT
+%     x_next - state at end of interval (5x1)
 %
-% No arguments validation by design: hot-loop propagator called by the
-% fmincon ZOH transcription; validate at the call site.
+% No arguments validation by design: hot-loop propagator inside fmincon;
+% validate at the call site.
 
 h = dt / n_sub;
 for ii = 1:n_sub

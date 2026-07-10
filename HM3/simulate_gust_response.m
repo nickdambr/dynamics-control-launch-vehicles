@@ -1,18 +1,11 @@
 function r = simulate_gust_response(T, w)
-%SIMULATE_GUST_RESPONSE  Closed-loop time response to a wind gust.
-%
-%   r = SIMULATE_GUST_RESPONSE(T, w) simulates the closed-loop model T
-%   (from ASSEMBLE_LOOP, inputs {alpha_w, theta_ref}, outputs
-%   {theta, z, zdot, delta}) driven by the wind disturbance w (from
-%   LOAD_WIND_PROFILE), with theta_ref = 0.
-%
-%   The output struct r contains the time vector and the key time
-%   histories requested by the assignment: theta, z, zdot, delta, plus the
-%   driving alpha_w, the total angle of attack alpha = theta + zdot/V +
-%   alpha_w (the aerodynamic-load driver at max-qbar) and scalar peak
-%   metrics.
-%
-%   See also LOAD_WIND_PROFILE, ASSEMBLE_LOOP.
+% Closed-loop time response to a wind gust (theta_ref = 0).
+%   INPUT
+%     T - closed loop (assemble_loop), in {alpha_w theta_ref}, out {theta z zdot delta}
+%     w - wind struct (load_wind_profile)
+%   OUTPUT
+%     r - struct: t, alphaw, theta, z, zdot, delta, alpha = theta+zdot/V+alphaw
+%         (aero-load driver at max-qbar), plus peak_* metrics
 
 arguments
     T {mustBeA(T, 'lti')}

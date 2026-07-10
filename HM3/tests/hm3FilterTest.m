@@ -1,9 +1,7 @@
 classdef hm3FilterTest < matlab.unittest.TestCase
-    %hm3FilterTest Unit tests for build_tvc and build_notch_filter.
-    %  Pins the analytic properties of the Eq.-3 actuator chain (unity DC
-    %  gain, 2nd-order + Pade delay order) and the Eq.-4 section (depth
-    %  zN/zD at the centre frequency, unity gain far from it, RHP zeros for
-    %  the non-minimum-phase variant).
+    % Unit tests for build_tvc and build_notch_filter.
+    %  Pins Eq.-3 actuator (unity DC gain, 2nd-order + Pade order) and Eq.-4
+    %  section (depth zN/zD at centre, unity gain far off, RHP zeros for NMP).
 
     properties
         p
@@ -34,8 +32,8 @@ classdef hm3FilterTest < matlab.unittest.TestCase
         end
 
         function testTvcDelayPhaseAtLowFrequency(testCase)
-            % Pade section reproduces the exp(-j*w*tau) phase lag well below
-            % its own bandwidth; total phase = actuator + delay contributions
+            % Pade reproduces exp(-j*w*tau) phase lag well below its bandwidth;
+            % total phase = actuator + delay
             pp = testCase.p;
             wTest = 2.0;                                   % rad/s, low frequency
             h  = freqresp(build_tvc(pp), wTest);

@@ -1,8 +1,8 @@
 classdef odeBurnTest < matlab.unittest.TestCase
-    %odeBurnTest Unit tests for ode_burn.m (HM1 powered-flight dynamics).
-    %  Checks the linear-tangent steering law, the costate equations and
-    %  two analytic limits (ballistic flight, vertical Tsiolkovsky burn).
-    %  All quantities are non-dimensional (g = 1).
+    %odeBurnTest Unit tests for ode_burn.m (HM1 powered flight).
+    %  Covers the linear-tangent steering law, the costate equations, and two
+    %  analytic limits (ballistic flight, vertical Tsiolkovsky burn).
+    %  Non-dimensional (g = 1).
 
     methods (TestClassSetup)
         function addHm1ToPath(testCase)

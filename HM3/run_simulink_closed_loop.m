@@ -1,25 +1,14 @@
 function out = run_simulink_closed_loop(task, o)
-%RUN_SIMULINK_CLOSED_LOOP  Simulate hm3_closed_loop.slx and overlay vs script.
-%
-%   out = RUN_SIMULINK_CLOSED_LOOP(task) initialises the base workspace with
-%   INIT_SIMULINK_HM3, simulates the block model models/hm3_closed_loop.slx
-%   for the requested task, and overlays the Simulink time histories on the
-%   pure-MATLAB closed-loop response (the script is the source of truth; the
-%   model should reproduce it). A figure task<task>_simulink_vs_script.png
-%   is written to figures/.
-%
-%   The model is NOT auto-generated (a .slx is a binary file built
-%   interactively): follow models/SIMULINK_GUIDE.md to create it. If the
-%   model is missing, this function prints the next step and returns empty.
-%
-%   Name/value options ('mu_alpha_scale', 'mu_c_scale', 'severity',
-%   'profile') are forwarded to INIT_SIMULINK_HM3.
-%
-%   The model is expected to log four signals named (signal logging or To
-%   Workspace, format "Structure With Time" or "Timeseries"):
-%       theta_sl, z_sl, zdot_sl, delta_sl
-%
-%   See also INIT_SIMULINK_HM3, SIMULATE_GUST_RESPONSE.
+% Simulate hm3_closed_loop.slx and overlay it on the script response.
+%   INPUT
+%     task - 1 | 2 | 3 (see init_simulink_hm3)
+%     o    - name-value mu_alpha_scale/mu_c_scale/severity/profile, forwarded
+%            to init_simulink_hm3
+%   OUTPUT
+%     out - struct('script', rs, 'simulink', sl); [] if the model is missing
+%   Writes figures/task<task>_simulink_vs_script.png. The .slx is built by
+%   hand (models/SIMULINK_GUIDE.md), not auto-generated; if absent, prints the
+%   next step and returns []. Model must log: theta_sl z_sl zdot_sl delta_sl.
 
 arguments
     task (1,1) {mustBeMember(task, [1 2 3])} = 2
@@ -39,11 +28,11 @@ if ~isfile(mdlfile)
     return;
 end
 
-%% Initialise workspace (gains, matrices, wind, Tstop) and the script baseline
+%% Init workspace (gains, matrices, wind, Tstop) and the script baseline
 optArgs = namedargs2cell(o);
 S = init_simulink_hm3(task, optArgs{:});
 
-% script baseline (same controller/plant as the model should embed)
+% script baseline (same controller/plant the model embeds)
 p = S.p;
 if task == 1
     G = build_plant_rigid(p);  Wact = [];
@@ -53,7 +42,7 @@ else
 end
 K.Kp_th=S.Kp_th; K.Kd_th=S.Kd_th; K.Kp_z=S.Kp_z; K.Kd_z=S.Kd_z;
 [~,T] = assemble_loop(G,K,Wact);
-% replay the EXACT wind the model will see (any 'profile'/'severity' option)
+% replay the exact wind the model sees (whatever profile/severity was set)
 w = struct('t', S.wind_ts.Time(:), 'alphaw', squeeze(S.wind_ts.Data), 'V', p.V);
 rs = simulate_gust_response(T,w);
 
@@ -86,7 +75,7 @@ catch
     f.Color = 'w';        % fallback for pre-R2025a MATLAB
 end
 suffix = '';                       % non-default wind -> separate figure file
-if ~strcmpi(o.profile, 'gust')
+if ~strcmpi(o.profile, 'gust')     % keep the default gust figure unsuffixed
     suffix = ['_' lower(char(o.profile))];
 end
 exportgraphics(f, fullfile(fig_dir,sprintf('task%d_simulink_vs_script%s.png',task,suffix)),'Resolution',200);
@@ -95,7 +84,9 @@ out = struct('script',rs,'simulink',sl);
 end
 
 function [t,y] = get_logged_signal(so, name)
-%GET_LOGGED_SIGNAL  Fetch a logged signal from a SimulationOutput by name.
+% Fetch a logged signal from a SimulationOutput by name.
+%   INPUT  so, name - SimulationOutput, signal name
+%   OUTPUT t, y      - time/data ([] if not found)
 t = []; y = [];
 try
     if isprop(so,'logsout') && ~isempty(so.logsout) && ...

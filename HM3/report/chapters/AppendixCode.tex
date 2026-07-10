@@ -4,7 +4,9 @@
 
 \section{Implementation: Key Code Excerpts}\label{sec:appendix_code}
 
-The full MATLAB sources live in the \texttt{HM3/} folder of the repository: \texttt{main\_task1.m}--\texttt{main\_task3.m} drive the three tasks, and the helper functions (\texttt{load\_hw3\_params}, \texttt{build\_plant\_rigid}, \texttt{build\_plant\_full}, \texttt{build\_tvc}, \texttt{build\_notch\_filter}, \texttt{design\_controller}, \texttt{assemble\_loop}, \texttt{simulate\_gust\_response}) are shared across them. This appendix collects the three routines that set up the control problem: the rigid plant, the loop closure the Nichols analysis is drawn from, and the bending notch.
+\begin{sloppypar}
+The full MATLAB sources live in the \texttt{HM3/} folder of the repository: \texttt{main\_task1.m}, \texttt{main\_task2.m} and \texttt{main\_task3.m} drive the three tasks, and the helper functions (\texttt{load\_hw3\_params}, \texttt{build\_plant\_rigid}, \texttt{build\_plant\_full}, \texttt{build\_tvc}, \texttt{build\_notch\_filter}, \texttt{design\_controller}, \texttt{assemble\_loop}, \texttt{simulate\_gust\_response}) are shared across them. This appendix collects the three routines that set up the control problem: the rigid plant, the loop closure the Nichols analysis is drawn from, and the bending notch.
+\end{sloppypar}
 
 Listing~\ref{lst:hm3_plant} builds the rigid pitch-plane state-space model at the max-$\bar q$ condition by dropping the bending states from the assignment dynamics; the unstable airframe pole sits at $+\sqrt{A_6}$.
 

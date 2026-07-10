@@ -1,32 +1,15 @@
 function build_hm3_full_ascent(o)
-%BUILD_HM3_FULL_ASCENT  Author the full-ascent LPV Simulink model from code.
+% Author hm3_full_ascent.slx from code: time-varying (LPV) rigid pitch-plane
+% LV, with the professor's wind generator in the loop. Simulink mirror of
+% ODE_LPV_ASCENT / MAIN_FULL_ASCENT (source of truth). Run INIT_SIMULINK_LPV
+% first so the referenced base variables exist.
+%   INPUT
+%     o.open - open model after build (default false)
 %
-%   BUILD_HM3_FULL_ASCENT() programmatically constructs
-%   LTV_FULL_ASCENT/hm3_full_ascent.slx: a time-varying ("LPV") rigid
-%   pitch-plane launch vehicle with the professor's wind generator wired
-%   directly into the loop. The model is the Simulink mirror of the
-%   pure-MATLAB baseline ODE_LPV_ASCENT / MAIN_FULL_ASCENT (the source of
-%   truth); RUN_FULL_ASCENT_SIMULINK overlays the two.
-%
-%   Building from a script (rather than by hand, as HM3's frozen-time
-%   hm3_closed_loop.slx in models/SIMULINK_GUIDE.md) keeps the model fully
-%   reproducible: this file IS the model definition. Run INIT_SIMULINK_LPV
-%   first so the referenced workspace variables exist.
-%
-%   Architecture (every coefficient stays an inspectable lookup on flight time):
-%     * Clock -> 1-D lookups c1..c7, invV  (breakpoints lpv_t)
-%     * rigid LPV plant, BUILD_PLANT_RIGID form, as products + integrators:
-%           zddot     = c1*zdot + c2*theta + c3*delta - c4*alpha_w
-%           thetaddot = c5*zdot + c6*theta + c7*delta - c6*alpha_w
-%     * WindGen: a one-time copy of strong_wind/Subsystem (the professor's
-%       file is loaded read-only and never saved); alpha_w = (v_wp+turb)*invV
-%     * controller: delta = -(Kp*theta + Kd*thetadot + Kp_z*z + Kd_z*zdot),
-%       with the pitch gains switched between the FROZEN max-qbar pair and the
-%       gain SCHEDULE by the scalar 'sched' (0/1), mirroring how 'task' picks
-%       the variant in hm3_closed_loop.
-%
-%   Name/value options:
-%     'open'   open the model after building   (default false)
+% Layout: Clock -> 1-D lookups c1..c7, invV (bp lpv_t); plant as products +
+% integrators; WindGen = one-time copy of strong_wind/Subsystem (read-only,
+% never saved); controller delta = -(Kp*theta + Kd*thetadot + Kp_z*z + Kd_z*zdot),
+% pitch gains switched FROZEN<->SCHEDULE by scalar 'sched' (0/1).
 %
 %   See also INIT_SIMULINK_LPV, RUN_FULL_ASCENT_SIMULINK, ODE_LPV_ASCENT.
 
@@ -40,20 +23,20 @@ hm3  = fileparts(here);
 gdir = fullfile(hm3, 'General', 'hw3-v3');
 addpath(here); addpath(hm3);
 
-%% Load the professor's generator (read-only) so its Subsystem can be copied
+%% Load the professor's generator (read-only) to copy its Subsystem
 load_system(fullfile(gdir, 'strong_wind.slx'));
 cleanupSW = onCleanup(@() close_system('strong_wind', 0));      % never saved
 
 %% Fresh model + solver
 if bdIsLoaded(mdl), close_system(mdl, 0); end
 new_system(mdl);
-% MaxStep is bounded so the solver resolves the generator's 0.1 s noise
-% innovations; the ode45 replay then overlays the run to ~1e-7 rad on theta.
+% MaxStep bounded to resolve the generator's 0.1 s noise innovations;
+% ode45 replay then overlays to ~1e-7 rad on theta.
 set_param(mdl, 'Solver', 'ode45', 'SolverType', 'Variable-step', ...
           'StartTime', '0', 'StopTime', 'Tstop', 'MaxStep', '0.02', ...
           'SignalLogging', 'on', 'SignalLoggingName', 'logsout');
 
-% block-add / wire helpers ------------------------------------------------
+% block-add / wire helpers
 A = @(name, src, pos, varargin) add_block(src, [mdl '/' name], 'Position', pos, varargin{:});
 W = @(s, d) add_line(mdl, s, d, 'autorouting', 'on');
 LK = 'simulink/Lookup Tables/n-D Lookup Table';
@@ -120,8 +103,8 @@ W('aw_prod/1','P8/2');  % alpha_w * c6
 A('sched','built-in/Constant',[760 600 800 630],'Value','sched');
 A('Kp_f','built-in/Constant',[760 470 800 500],'Value','Kp_th0');
 A('Kd_f','built-in/Constant',[760 540 800 570],'Value','Kd_th0');
-% Clip extrapolation below tsched(1): hold the endpoint gain (match the ode
-% replay's 'nearest' extrapolation, so the scheduled overlay is exact too).
+% Clip below tsched(1): hold endpoint gain, matching the ode replay's
+% 'nearest' extrapolation so the scheduled overlay is exact.
 A('Kp_s',LK,[760 410 810 440],'NumberOfTableDimensions','1','BreakpointsForDimension1','tsched','Table','Kp_sched','ExtrapMethod','Clip');
 A('Kd_s',LK,[760 660 810 690],'NumberOfTableDimensions','1','BreakpointsForDimension1','tsched','Table','Kd_sched','ExtrapMethod','Clip');
 % Switch: u2 >= 0.5 -> port1 (scheduled), else port3 (frozen)
@@ -150,7 +133,7 @@ W('delta_sum/1','P3/2');
 W('delta_sum/1','P7/2');
 
 %% Logging (contract with RUN_FULL_ASCENT_SIMULINK)
-tw = {'-1','MaxDataPoints','inf'};   % log every solver step (no 1000-pt cap)
+tw = {'-1','MaxDataPoints','inf'};   % every solver step, no 1000-pt cap
 A('log_theta','built-in/ToWorkspace',[760 110 820 140],'VariableName','theta_sl','SaveFormat','Timeseries','SampleTime',tw{:});
 A('log_z',    'built-in/ToWorkspace',[760 160 820 190],'VariableName','z_sl','SaveFormat','Timeseries','SampleTime',tw{:});
 A('log_zdot', 'built-in/ToWorkspace',[760 210 820 240],'VariableName','zdot_sl','SaveFormat','Timeseries','SampleTime',tw{:});

@@ -1,17 +1,14 @@
 %% HM3 LPV showcase — flexible vehicle: fixed vs varying notch (T008, Goal 1)
-%  The frozen-time HM3 Task-2 design gain-stabilises the first bending mode
-%  with a deep notch centred on omega_BM(72) = 18.9 rad/s. Over the ascent the
-%  true bending frequency omega(t) sweeps 16.5 -> 31.8 rad/s, so the FIXED
-%  notch detunes and eventually stops covering the resonance. This script
-%  lifts the full 6-state flexible plant (BUILD_PLANT_FULL, bending + INS
-%  coupling + TVC + delay) to the LPV setting and compares:
+%  HM3 Task-2 gain-stabilises the first bending mode with a deep notch at
+%  omega_BM(72) = 18.9 rad/s. Over the ascent omega(t) sweeps 16.5 -> 31.8 rad/s,
+%  so the FIXED notch detunes and stops covering the resonance. Lifts the
+%  6-state flexible plant (BUILD_PLANT_FULL: bending + INS coupling + TVC +
+%  delay) to LPV and compares:
+%    fixed   - notch at omega(72), held over the flight (HM3 as-is)
+%    varying - notch at omega(t)                        (LPV retune)
 %
-%    fixed   notch centred at omega(72), held over the flight  (HM3 as-is)
-%    varying notch centred on omega(t)                          (LPV retune)
-%
-%  The LTV ode45 integration (ODE_LPV_FLEX) is the source of truth; the
-%  Simulink model hm3_full_ascent_flex.slx reproduces it (RUN_FLEX_SIMULINK).
-%  Reference: ticket T008. NOT part of the HM3 deliverable.
+%  ode45 (ODE_LPV_FLEX) is the source of truth; hm3_full_ascent_flex.slx
+%  reproduces it (RUN_FLEX_SIMULINK). Ticket T008. NOT part of the deliverable.
 
 clear; close all; clc;
 warning('off', 'Control:analysis:MarginUnstable');
@@ -94,7 +91,12 @@ fprintf('\nFigures written to %s\n', fig_dir);
 
 %% ------------------------------------------------------------ local helper
 function M = make_flex(S, fwn)
-%MAKE_FLEX  ODE_LPV_FLEX struct with the given notch-centre handle fwn(t).
+% Build the ODE_LPV_FLEX struct with a given notch-centre handle.
+%   INPUT
+%     S   - init_simulink_lpv struct
+%     fwn - notch centre handle fwn(t) (omega(t) varying, @(t)w72 fixed)
+%   OUTPUT
+%     M - struct for ODE_LPV_FLEX
 M = struct('fa1', S.fa1, 'fa3', S.fa3, 'fa4', S.fa4, 'fA6', S.fA6, 'fK1', S.fK1, ...
            'fV', S.fV, 'fomega', S.fomega, 'faqk', S.faqk, 'fsig', S.fsig, 'fphi', S.fphi, ...
            'windfun', S.windfun, 'fwn', fwn, 'zN', S.notch.zN, 'zD', S.notch.zD, ...

@@ -1,29 +1,18 @@
 function G = build_plant_full(p, meas)
-%BUILD_PLANT_FULL  Full pitch-plane LV plant with bending mode (Task 2/3).
-%
-%   G = BUILD_PLANT_FULL(p) returns the 6-state model of Eq. (1):
-%
-%       x = [z, zdot, theta, thetadot, eta, etadot]'
-%
-%   with inputs u = [delta, alpha_w]' and outputs
-%
-%       y = [theta_m, thetadot_m, z_m, zdot_m, theta, z, zdot]'
-%
-%   The measurement block (first four outputs) follows the INS model of
-%   Eq. (2): the bending generalised coordinate eta leaks into the gyro and
-%   accelerometer channels through sigma_ins and phi_ins. It is precisely
-%   this contamination that destabilises the loop at the bending frequency
-%   and motivates the notch / lead-lag filter of Task 2.
-%
-%   G = BUILD_PLANT_FULL(p, 'true') bypasses the INS model and feeds back
-%   the true (uncontaminated) states instead, useful as a debugging
-%   baseline. Default is 'ins'.
-%
-%   See also BUILD_PLANT_RIGID, BUILD_INS_MODEL, BUILD_NOTCH_FILTER.
+% Full pitch-plane LV plant with bending mode (Task 2/3, Eq. 1).
+%   INPUT
+%     p    - param struct (load_hw3_params)
+%     meas - 'ins' (Eq. 2, bending leaks into measurements) | 'true'
+%            (uncontaminated feedback). Default 'ins'.
+%   OUTPUT
+%     G - ss, 6 states [z zdot theta thetadot eta etadot], in [delta alpha_w],
+%         out [theta_m thetadot_m z_m zdot_m theta z zdot]
+%   INS bending contamination (sigma_ins, phi_ins) is what destabilises the
+%   loop at wBM and motivates the Task-2 notch.
 
 arguments
     p (1,1) struct
-    meas {mustBeTextScalar} = 'ins'   % 'ins' | 'true', matched case-insensitively
+    meas {mustBeTextScalar} = 'ins'   % 'ins' | 'true', case-insensitive
 end
 
 w = p.wBM;  z = p.zBM;

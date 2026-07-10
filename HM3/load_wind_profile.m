@@ -1,41 +1,24 @@
 function w = load_wind_profile(p, o)
-%LOAD_WIND_PROFILE  Wind angle-of-attack disturbance for the gust simulation.
-%
-%   w = LOAD_WIND_PROFILE(p) returns a struct describing a wind disturbance
-%   to drive the closed-loop time response (Task 1-3). The disturbance is
-%   expressed as a wind-induced angle of attack
-%
-%       alpha_w(t) = v_w(t) / V
-%
-%   where v_w is the lateral wind velocity [m/s] and V is the LV relative
-%   speed at max-qbar. The default is a deterministic "1-cosine" discrete
-%   gust whose amplitude is taken from the reference dry-wind dispersion
-%   (drywind.mat) at the current altitude, severe regime.
-%
-%   Name/value options:
-%     'profile'  'gust' (default) | 'step' | 'doublet' | 'strongwind'
-%     'severity' 'light'|'moderate'|'severe' (default 'severe')
-%     'Vg'       gust peak velocity [m/s]    (default: drywind sigma @ Alt)
-%     'Tg'       gust duration [s]           (default 3 s)
-%     'Tend'     simulation horizon [s]      (default 12 s)
-%     'dt'       sample time [s]             (default 0.005 s)
-%     't0'       gust onset time [s]         (default 1 s)
-%
-%   'strongwind' runs the professor's wind generator
-%   (General/hw3-v3/strong_wind.slx: mean profile + altitude-scheduled
-%   Dryden turbulence, fixed noise seed) and windows the total wind
-%   v_wp + noisy_wind around the max-qbar instant p.t_ref, so the frozen
-%   time closed loop is driven by the wind it would actually see there.
-%   The .slx is loaded in memory and never modified.
-%
-%   Output fields: t (1xN), vw (1xN) [m/s], alphaw (1xN) [rad], plus the
-%   metadata used to build it.
-%
-%   See also SIMULATE_GUST_RESPONSE, LOAD_HW3_PARAMS.
+% Wind angle-of-attack disturbance for the gust simulation. alpha_w = v_w/V.
+%   INPUT
+%     p - param struct (uses V, Alt, t_ref)
+%     o - name-value:
+%           profile  'gust'(default)|'step'|'doublet'|'strongwind'
+%           severity 'light'|'moderate'|'severe' (default 'severe')
+%           Vg       gust peak velocity [m/s]    (default: drywind sigma @ Alt)
+%           Tg       gust duration [s]           (default 3)
+%           Tend     horizon [s]                 (default 12)
+%           dt       sample time [s]             (default 0.005)
+%           t0       gust onset [s]              (default 1)
+%   OUTPUT
+%     w - struct: t, vw [m/s], alphaw [rad], plus build metadata
+%   'gust' = 1-cosine discrete gust, amplitude from drywind.mat dispersion.
+%   'strongwind' runs strong_wind.slx (mean + altitude-scheduled Dryden, fixed
+%   seed) and windows the total wind at max-qbar; the .slx is never modified.
 
 arguments
     p (1,1) struct
-    o.profile  {mustBeTextScalar} = 'gust'   % matched case-insensitively below
+    o.profile  {mustBeTextScalar} = 'gust'   % case-insensitive below
     o.severity {mustBeMember(o.severity, ["light","moderate","severe"])} = 'severe'
     o.Vg   {mustBeNumeric, mustBeReal, mustBeScalarOrEmpty} = []
     o.Tg   (1,1) {mustBeNumeric, mustBeReal, mustBePositive} = 3.0
@@ -44,7 +27,7 @@ arguments
     o.t0   (1,1) {mustBeNumeric, mustBeReal, mustBeNonnegative} = 1.0
 end
 
-% --- professor's generator: simulate strong_wind.slx and window at max-qbar ---
+% --- strongwind: simulate strong_wind.slx and window at max-qbar ---
 if strcmpi(o.profile, 'strongwind')
     w = local_strong_wind(p, o);
     return;
@@ -86,11 +69,11 @@ w = struct('t',t,'vw',vw,'alphaw',vw/p.V, 'V',p.V, ...
 end
 
 function w = local_strong_wind(p, o)
-%LOCAL_STRONG_WIND  Total wind from strong_wind.slx, windowed at max-qbar.
-%   The generator model is loaded in memory, its two outputs (mean profile
-%   v_wp and Dryden turbulence) are marked for signal logging, and the model
-%   is closed WITHOUT saving, so the professor's file is never touched. The
-%   noise seeds are fixed inside the model, so the run is reproducible.
+% Total wind from strong_wind.slx, windowed at max-qbar.
+%   INPUT  p, o - as in load_wind_profile
+%   OUTPUT w    - wind struct (same shape as the analytic profiles)
+%   Model loaded in memory, its two outputs (mean v_wp, Dryden turbulence)
+%   logged, closed WITHOUT saving (file untouched). Seeds fixed -> reproducible.
 here = fileparts(mfilename('fullpath'));
 gdir = fullfile(here,'General','hw3-v3');
 dw   = load(fullfile(gdir,'drywind.mat'));
@@ -101,11 +84,11 @@ cleanup = onCleanup(@() close_system('strong_wind', 0));   % discard edits
 
 ph = get_param('strong_wind/Subsystem','PortHandles');
 names = {'sw_vwp','sw_turb'};
-for k = 1:2                      % logging lives on the source PORT, not the line
+for k = 1:2                      % logging is on the source PORT, not the line
     set_param(ph.Outport(k), 'Name', names{k}, 'DataLogging', 'on');
 end
 
-t1 = p.t_ref - o.t0;                       % window start, gust-onset aligned
+t1 = p.t_ref - o.t0;                       % window start, aligned to gust onset
 in = Simulink.SimulationInput('strong_wind');
 in = in.setVariable('drywind', dw.drywind);
 in = in.setVariable('GreensiteLPV', lpv.GreensiteLPV);
@@ -117,7 +100,7 @@ vwp  = so.logsout.getElement('sw_vwp').Values;
 turb = so.logsout.getElement('sw_turb').Values;
 
 t  = 0:o.dt:o.Tend;
-[t1u, i1] = unique(vwp.Time);              % variable-step logs may repeat times
+[t1u, i1] = unique(vwp.Time);              % variable-step logs can repeat times
 [t2u, i2] = unique(turb.Time);
 d1 = squeeze(vwp.Data);  d2 = squeeze(turb.Data);
 vw = interp1(t1u, d1(i1), t1 + t, 'linear') + ...

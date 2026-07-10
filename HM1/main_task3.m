@@ -219,26 +219,42 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function dz = ode_vertical(~, z, T, Q)
+% Vertical-climb RHS, phi = pi/2.
+%   INPUT
+%     z    - state [y; vy; m]
+%     T, Q - thrust, mass flow rate
+%   OUTPUT
+%     dz - derivative (3x1)
     vy = z(2); m = z(3);
     dz = [vy; T/m - 1; -Q];
 end
 
 function [value, isterminal, direction] = event_altitude(~, z, y_target)
+% Event: stop the climb when y reaches y_target (rising).
+%   INPUT
+%     z        - state [y; vy; m]
+%     y_target - altitude to stop at
+%   OUTPUT
+%     value, isterminal, direction - ode45 event triple
     value = z(1) - y_target;
     isterminal = 1;
     direction = 1;
 end
 
 function res = shooting3(z0, p, opts_ode)
-% Shooting residual for burn + coast
-%   z0 = [lam_vx0; lam_vy0; lam_y; lam_m0; t_burn]
-%
-% Conditions at engine cutoff (tc):
-%   1. vxc = 1
-%   2. yc + 0.5*vyc^2 = yf
-%   3. lam_m(tc) = 1
-%   4. lam_vy(tc) = lam_y * vyc  (coast optimality)
-%   5. S(tc) = |lam_v|/mc - lam_m/c = 0  (switching function; lam_m(tc)=1)
+% Shooting residual for burn + coast.
+%   INPUT
+%     z0       - unknowns [lam_vx0; lam_vy0; lam_y; lam_m0; t_burn]
+%     p        - struct: c, Q, T, yf, x0, y0, vx0, vy0, m0
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - 5 residuals, conditions at cutoff (tc):
+%             1. vxc = 1
+%             2. yc + 0.5*vyc^2 = yf
+%             3. lam_m(tc) = 1
+%             4. lam_vy(tc) = lam_y*vyc      (coast optimality)
+%             5. S(tc) = |lam_v|/mc - lam_m/c = 0  (switching, lam_m(tc)=1)
+% No arguments block by design: runs inside the fsolve loop.
 
     lam_vx0 = z0(1);
     lam_vy0 = z0(2);
@@ -276,12 +292,9 @@ function res = shooting3(z0, p, opts_ode)
     lam_v_norm = sqrt(lam_vx0^2 + lam_vy_c^2);
 
     % Switching function (Lez. 6): S = |lam_v|/m - lam_m/c. Condition 3 pins
-    % lam_mc = 1 (lam_m constant along the coast), so at the cutoff this equals
-    % |lam_v|/mc - 1/c. The 1/c form (S evaluated at lam_m = 1) is kept here: it
-    % gives fsolve a tighter basin that lands on the physical (vyc > 0) root,
-    % whereas the literal lam_mc/c form lets it drift to the spurious vyc < 0
-    % branch. The report states the general lam_m/c form; the two coincide at
-    % cutoff.
+    % lam_mc = 1, so at cutoff S = |lam_v|/mc - 1/c. Using the 1/c form (not the
+    % literal lam_mc/c) keeps fsolve in the basin of the physical vyc>0 root; the
+    % lam_mc/c form drifts to the spurious vyc<0 branch. The two coincide at cutoff.
     S = lam_v_norm / mc - 1 / p.c;
 
     res = [vxc - 1;

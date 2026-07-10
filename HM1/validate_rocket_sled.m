@@ -1,13 +1,12 @@
-%% VALIDATION - Rocket sled (indirect/shooting benchmark, Appendix A)
-%  Minimum-energy point-to-point transfer with a known closed-form solution.
-%  Validates the ode45 + fsolve single-shooting machinery (same tolerances
-%  used for the ascent BVP) against the analytic optimum, before trusting it
-%  on the harder ascent problem.
+%% VALIDATION - Rocket sled (shooting benchmark, Appendix A)
+%  Min-energy point-to-point transfer with a closed-form solution. Checks the
+%  ode45 + fsolve single-shooting machinery (same tolerances as the ascent BVP)
+%  against the analytic optimum before using it on the ascent problem.
 %
-%  Problem:  rdot = v,  vdot = u,   minimize J = int_0^2 u^2 dt
-%            r(0)=0, v(0)=0, r(2)=1/2, v(2)=0,  tf = 2 (fixed).
-%  Hamiltonian (maximization convention):  H = -u^2 + lam_r*v + lam_v*u
-%  Costates:  lam_r_dot = 0,  lam_v_dot = -lam_r ;  stationarity:  u = lam_v/2.
+%  Problem:  rdot = v,  vdot = u,   min J = int_0^2 u^2 dt
+%            r(0)=0, v(0)=0, r(2)=1/2, v(2)=0,  tf = 2 fixed.
+%  Hamiltonian:  H = -u^2 + lam_r*v + lam_v*u
+%  Costates:  lam_r_dot = 0,  lam_v_dot = -lam_r ;  u = lam_v/2.
 %  Closed form: lam_r0 = lam_v0 = 3/2  =>  u*(t) = (3/4)(1 - t).
 
 clear; close all; clc;
@@ -23,7 +22,7 @@ opts_fs  = optimoptions('fsolve', 'Display', 'off', ...
     'FunctionTolerance', 1e-12, 'StepTolerance', 1e-12);
 
 %% Single shooting: unknowns are the two initial costates [lam_r0; lam_v0]
-lam_guess = [0; 0];   % deliberately away from the analytic (3/2, 3/2)
+lam_guess = [0; 0];   % away from the analytic (3/2, 3/2)
 [lam_sol, res, ef] = fsolve(@(L) sled_residual(L, tf, rf, vf, opts_ode), ...
                             lam_guess, opts_fs);
 
@@ -50,7 +49,11 @@ end
 
 %% ===================== LOCAL FUNCTIONS =====================
 function ds = sled_ode(~, s)
-% State s = [r; v; lam_r; lam_v]; optimal control u = lam_v/2.
+% Sled RHS, u = lam_v/2.
+%   INPUT
+%     s - state [r; v; lam_r; lam_v]
+%   OUTPUT
+%     ds - derivative (4x1)
     ds = [ s(2);       % rdot = v
            s(4)/2;     % vdot = u = lam_v/2
            0;          % lam_r_dot = 0
@@ -58,7 +61,14 @@ function ds = sled_ode(~, s)
 end
 
 function res = sled_residual(L, tf, rf, vf, opts_ode)
-% Integrate from rest with initial costates L = [lam_r0; lam_v0]; residual at tf.
+% Shooting residual at tf, integrating from rest.
+%   INPUT
+%     L        - initial costates [lam_r0; lam_v0]
+%     tf       - final time
+%     rf, vf   - targets at tf
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - [r(tf)-rf; v(tf)-vf]
     [~, S] = ode45(@(t,s) sled_ode(t,s), [0 tf], [0; 0; L(1); L(2)], opts_ode);
     res = [S(end,1) - rf; S(end,2) - vf];
 end

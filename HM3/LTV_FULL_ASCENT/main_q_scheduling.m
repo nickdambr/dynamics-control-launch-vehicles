@@ -1,19 +1,16 @@
 %% HM3 LPV showcase — scheduling on q(t) instead of t (T008, Goal 2)
-%  The gain schedule of MAIN_FULL_ASCENT is keyed on flight TIME. A flight
-%  controller cannot measure time-since-launch directly; the textbook LPV
-%  choice is to schedule on a measurable parameter — here the dynamic
-%  pressure q (the quantity that drives the aerodynamic instability). This
-%  script re-keys the same DESIGN_CONTROLLER gains on q(t) and asks the honest
-%  question: is q a good scheduling variable for this vehicle?
+%  MAIN_FULL_ASCENT keys the gain schedule on flight TIME, which a controller
+%  cannot measure directly. Re-keys the same DESIGN_CONTROLLER gains on the
+%  measurable dynamic pressure q(t) and asks whether q is a good scheduling
+%  variable here.
 %
-%  Finding: NO, not cleanly. The aerodynamic instability A6(t) peaks at
-%  t ~ 72 s but the dynamic pressure Q(t) peaks earlier (~65-67 s), so the
-%  gain-vs-q map is HYSTERETIC — the ascending and descending q branches need
-%  different gains at the same q — and Q plateaus late in flight while the
-%  gains keep falling. The script quantifies the resulting schedule error.
-%  (Mach, which is monotonic, would be the better measurable; noted in README.)
+%  Finding: not cleanly. The instability A6(t) peaks at t~72 s but Q(t) peaks
+%  earlier (~65-67 s), so the gain-vs-q map is HYSTERETIC (ascending and
+%  descending q branches need different gains at the same q), and Q plateaus
+%  late while the gains keep falling. The script quantifies the schedule error.
+%  Mach (monotonic) would be the better measurable; noted in README.
 %
-%  Reference: ticket T008. Rigid LPV plant (Goal 2 is independent of bending).
+%  Reference: ticket T008. Rigid LPV plant (Goal 2 independent of bending).
 
 clear; close all; clc;
 warning('off', 'Control:analysis:MarginUnstable');
@@ -29,12 +26,12 @@ Qs = S.fQ(S.tsched)/1000;                 % dyn. pressure at schedule points [kP
 qa  = Qs(1:ipk);  Kpa = S.Kp_sched(1:ipk);  Kda = S.Kd_sched(1:ipk);
 Kp_of_q = griddedInterpolant(qa, Kpa, 'linear', 'nearest');
 Kd_of_q = griddedInterpolant(qa, Kda, 'linear', 'nearest');
-% gains as a function of TIME when scheduled on the measured q(t)
+% gains vs TIME when scheduled on measured q(t)
 fKp_q = @(t) Kp_of_q(S.fQ(t)/1000);
 fKd_q = @(t) Kd_of_q(S.fQ(t)/1000);
 
-% hysteresis: gain the q-lookup commands on the descending branch vs the
-% gain that branch actually needs (the t-schedule), at matched q
+% hysteresis: q-lookup command on the descending branch vs the gain that
+% branch needs (the t-schedule), at matched q
 Kp_cmd_dn = fKp_q(S.tsched(ipk+1:end));
 Kp_need_dn = S.Kp_sched(ipk+1:end);
 hyst = max(abs(Kp_cmd_dn - Kp_need_dn) ./ Kp_need_dn) * 100;
@@ -128,7 +125,13 @@ fprintf('\nFigures written to %s\n', fig_dir);
 
 %% ------------------------------------------------------------ local helpers
 function M = make_model(S, mode, fKp_q, fKd_q)
-%MAKE_MODEL  ODE_LPV_ASCENT struct; mode = frozen | t (time) | q (dyn. pressure).
+% Build the ODE_LPV_ASCENT struct for a scheduling mode.
+%   INPUT
+%     S            - init_simulink_lpv struct
+%     mode         - 'frozen' | 't' (time) | 'q' (dyn. pressure)
+%     fKp_q, fKd_q - q-keyed gain handles (used when mode = 'q')
+%   OUTPUT
+%     M - struct for ODE_LPV_ASCENT
 M = struct('fc1', S.fc1, 'fc2', S.fc2, 'fc3', S.fc3, 'fc4', S.fc4, ...
            'fc5', S.fc5, 'fc6', S.fc6, 'fc7', S.fc7, 'windfun', S.windfun, ...
            'Kp_th0', S.K0.Kp_th, 'Kd_th0', S.K0.Kd_th, ...
@@ -141,6 +144,14 @@ end
 end
 
 function r = unpack(tt, x, S, M)
+% Time histories + peak metrics from an ode45 solution.
+%   INPUT
+%     tt - time grid
+%     x  - ode45 states (Nx4)
+%     S  - init_simulink_lpv struct
+%     M  - model struct from make_model
+%   OUTPUT
+%     r - struct: t, theta, z, delta, peaks
 if M.sched, Kp = M.fKp(tt); Kd = M.fKd(tt);
 else,       Kp = M.Kp_th0*ones(size(tt)); Kd = M.Kd_th0*ones(size(tt)); end
 delta = -(Kp.*x(:, 3) + Kd.*x(:, 4) + S.K0.Kp_z*x(:, 1) + S.K0.Kd_z*x(:, 2));
@@ -150,6 +161,13 @@ r.pk_z = max(abs(r.z));  r.pk_delta = max(abs(delta))*180/pi;
 end
 
 function [gm_db, pm_deg] = loop_margin(G, K)
+% Gain/phase margin of the rigid loop (ideal actuator).
+%   INPUT
+%     G - plant
+%     K - gains struct
+%   OUTPUT
+%     gm_db  - gain margin [dB]
+%     pm_deg - phase margin [deg]
 [L, ~] = assemble_loop(G, K, []);
 [g, p] = margin(L);
 gm_db = 20*log10(g);  pm_deg = p;

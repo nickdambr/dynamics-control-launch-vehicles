@@ -1,23 +1,12 @@
 function G = build_plant_rigid(p)
-%BUILD_PLANT_RIGID  Rigid-body pitch-plane LV plant at max-qbar (Task 1).
-%
-%   G = BUILD_PLANT_RIGID(p) returns a state-space model of the rigid LV
-%   obtained from Eq. (1) of the assignment by dropping the bending mode
-%   (eta, etadot). The 4 states are
-%
-%       x = [z, zdot, theta, thetadot]'
-%
-%   with inputs u = [delta, alpha_w]' (TVC deflection and wind angle of
-%   attack) and outputs
-%
-%       y = [theta_m, thetadot_m, z_m, zdot_m, theta, z, zdot]'
-%
-%   The first four are the INS measurements fed back to the controller
-%   (identical to the true states in the rigid case, since there is no
-%   bending contamination) and the last three are convenience signals for
-%   plotting. Parameters come from LOAD_HW3_PARAMS.
-%
-%   See also BUILD_PLANT_FULL, LOAD_HW3_PARAMS.
+% Rigid pitch-plane LV plant at max-qbar (Task 1, Eq. 1 minus bending).
+%   INPUT
+%     p - param struct (load_hw3_params)
+%   OUTPUT
+%     G - ss, 4 states [z zdot theta thetadot], in [delta alpha_w],
+%         out [theta_m thetadot_m z_m zdot_m theta z zdot]
+%   First 4 outputs feed the controller (= true states here, no bending);
+%   last 3 are plotting signals.
 
 A = [0   1        0          0;
      0   p.a1     p.a1*p.V+p.a4   0;

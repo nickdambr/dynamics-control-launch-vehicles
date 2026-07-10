@@ -1,18 +1,17 @@
 function dz = ode_burn(t, z, p)
-% ODE for powered flight with linear tangent steering law
-%   z = [x; y; vx; vy; m; lam_m]
-%   p = struct with fields: T, Q, c, lam_vx0, lam_vy0, lam_y
+% Powered-flight RHS, linear-tangent steering.
+%   INPUT
+%     t - time (scalar)
+%     z - state [x; y; vx; vy; m; lam_m]
+%     p - struct: T, Q, c, lam_vx0, lam_vy0, lam_y
+%   OUTPUT
+%     dz - state derivative (6x1)
 %
-% Costate structure (linear tangent law):
-%   lam_x  = 0        (x free at tf)
-%   lam_y  = const    = p.lam_y
-%   lam_vx = const    = p.lam_vx0
-%   lam_vy = linear   = p.lam_vy0 - p.lam_y * t
+% Costates: lam_x=0, lam_y=p.lam_y, lam_vx=p.lam_vx0,
+% lam_vy=p.lam_vy0 - p.lam_y*t. Thrust angle phi=atan2(lam_vy,lam_vx).
 %
-% Optimal thrust angle: phi = atan2(lam_vy, lam_vx)
-%
-% No arguments validation by design: this RHS is called ~1e6+ times by
-% ode45 inside the fsolve shooting loops; validate at the call site.
+% No arguments block by design: called ~1e6+ times inside ode45/fsolve;
+% validate at the call site.
 
 vx = z(3); vy = z(4); m = z(5);
 

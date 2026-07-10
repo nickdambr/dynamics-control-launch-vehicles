@@ -1,16 +1,13 @@
 %% HM2 - Task 1: Powered Descent and Landing via Direct Collocation
 %  Trapezoidal transcription, fixed-duration, minimum-fuel.
-%  2D Cartesian, point-mass, no aerodynamics, flat Earth.
+%  2D Cartesian point-mass, no aero, flat Earth.
 %
-%  The OCP is solved in non-dimensional form (in the same spirit as HM1):
-%  reference scales L_ref = y0, a_ref = g, t_ref = sqrt(L_ref/g),
-%  V_ref = sqrt(g*L_ref), m_ref = m0, T_ref = m0*g.  The single residual
-%  dimensionless parameter is V_c = V_ref/c (effective Tsiolkovsky number).
-%  Internal solvers operate on the non-dim data; results are scaled back to
-%  SI at the boundary for printing and plotting.
+%  Solved non-dim: L_ref = y0, a_ref = g, t_ref = sqrt(L_ref/g),
+%  V_ref = sqrt(g*L_ref), m_ref = m0, T_ref = m0*g. Only residual
+%  parameter is V_c = V_ref/c. Results scaled back to SI for print/plot.
 %
 %  Reference: Homework 2 - Powered Descent Landing (Zavoli, April 2026)
-%  Solver: fmincon (sqp).  No external dependency.
+%  Solver: fmincon (sqp). No external dependency.
 
 clear; close all; clc;
 
@@ -26,7 +23,7 @@ data.g0       = 9.80665;       % m/s^2  (standard gravity)
 data.c        = data.Isp * data.g0;
 data.Tmin     = 0;             % N
 data.Tmax     = 70000;         % N
-data.theta_mx = deg2rad(60);   % glide-slope half-angle (radians, already nondim)
+data.theta_mx = deg2rad(60);   % glide-slope half-angle [rad]
 
 tf_nom = 38;                   % s
 N      = 50;                   % collocation nodes
@@ -88,9 +85,8 @@ for k = 1:numel(tf_list)
 end
 
 %% Grid-convergence study (nominal tf, increasing N)
-%  Fidelity metric: forward-integrate the PWL control through the nonlinear
-%  dynamics with ode45 and take the max position+velocity node error (nondim),
-%  same metric used for the Task 2 transcription comparison.
+%  Fidelity metric: replay the PWL control through ode45, take max
+%  position+velocity node error (nondim). Same metric as Task 2.
 N_list = [25, 50, 100];
 fprintf('\n--- Grid convergence (tf = %.2f s) ---\n', tf_nom);
 fprintf('%6s | %10s | %14s | %10s\n', 'N', 'm_f [kg]', 'max err [-]', 'wall [s]');
@@ -106,12 +102,17 @@ end
 
 %% =====================================================================
 %  Helper functions
-%  Note: hot-loop functions (dyn_rhs, trap_nonlcon) deliberately skip
-%  arguments validation -- they sit inside the fmincon/ode45 inner loop.
+%  Hot-loop functions (dyn_rhs, trap_nonlcon) skip arguments validation --
+%  they sit inside the fmincon/ode45 inner loop.
 %  =====================================================================
 
 function [ref, dnd] = nondim(d)
-    % Reference scales (HM1-style choice: g and L set the units)
+    % Build reference scales and non-dim problem data.
+    %   INPUT
+    %     d   - struct: SI problem data
+    %   OUTPUT
+    %     ref - struct: reference scales (L,g,t,V,m,T)
+    %     dnd - struct: non-dim data
     arguments
         d (1,1) struct
     end
@@ -121,7 +122,6 @@ function [ref, dnd] = nondim(d)
     ref.V = sqrt(ref.g * ref.L);     % velocity  [m/s]
     ref.m = d.m0;                    % mass      [kg]
     ref.T = ref.m * ref.g;           % thrust    [N]
-    % Non-dim problem data
     dnd.x0       = d.x0  / ref.L;
     dnd.y0       = d.y0  / ref.L;
     dnd.vx0      = d.vx0 / ref.V;
@@ -129,12 +129,17 @@ function [ref, dnd] = nondim(d)
     dnd.m0       = d.m0  / ref.m;    % == 1
     dnd.Tmin     = d.Tmin / ref.T;
     dnd.Tmax     = d.Tmax / ref.T;
-    dnd.Vc       = ref.V / d.c;      % the only residual nondim parameter
+    dnd.Vc       = ref.V / d.c;      % only residual nondim parameter
     dnd.theta_mx = d.theta_mx;
 end
 
 function sol = dim_sol(s_nd, ref)
-    % Convert a non-dim solution struct back to SI units for output/plots.
+    % Scale a non-dim solution struct back to SI.
+    %   INPUT
+    %     s_nd - struct: non-dim solution
+    %     ref  - struct: reference scales
+    %   OUTPUT
+    %     sol  - struct: SI solution
     arguments
         s_nd (1,1) struct
         ref  (1,1) struct
@@ -151,7 +156,7 @@ function sol = dim_sol(s_nd, ref)
     sol.tf   = s_nd.tf  * ref.t;
     sol.m_f  = s_nd.m_f * ref.m;
     sol.fuel = (s_nd.m0 - s_nd.m_f) * ref.m;
-    % Solver diagnostics carried over unchanged (lambda stays non-dim)
+    % Solver diagnostics unchanged (lambda stays non-dim)
     sol.exitflag = s_nd.exitflag;
     sol.iters    = s_nd.iters;
     sol.fopt     = s_nd.fopt;
@@ -159,8 +164,14 @@ function sol = dim_sol(s_nd, ref)
 end
 
 function sol = solve_trapcol(tf, N, d)
-    % Trapezoidal direct collocation NLP (in non-dim variables).
+    % Trapezoidal direct collocation NLP (non-dim).
     %   z = [x; y; vx; vy; m; Tx; Ty] stacked node-by-node, length 7*N.
+    %   INPUT
+    %     tf  - flight time (nondim)
+    %     N   - node count
+    %     d   - struct: non-dim data
+    %   OUTPUT
+    %     sol - struct: non-dim solution + diagnostics
     arguments
         tf (1,1) double {mustBePositive, mustBeFinite}
         N  (1,1) double {mustBeInteger, mustBeGreaterThanOrEqual(N, 2)}
@@ -171,7 +182,7 @@ function sol = solve_trapcol(tf, N, d)
     nz = 7 * N;
     idx = @(i) (i-1)*7 + (1:7);
 
-    % --- Initial guess: linear state interpolation, hover thrust (T = m*1) ---
+    % --- Initial guess: linear state interp, hover thrust (T = m) ---
     z0 = zeros(nz, 1);
     for i = 1:N
         a  = (i-1) / (N-1);
@@ -182,7 +193,7 @@ function sol = solve_trapcol(tf, N, d)
         z0(s(4)) = (1-a) * d.vy0;
         z0(s(5)) = d.m0 * (1 - 0.3*a);
         z0(s(6)) = 0;
-        z0(s(7)) = d.m0;             % hover (gravity = 1 in nondim)
+        z0(s(7)) = d.m0;             % hover (gravity = 1 nondim)
     end
 
     % --- Variable bounds ---
@@ -256,6 +267,16 @@ function sol = solve_trapcol(tf, N, d)
 end
 
 function [c_ineq, c_eq] = trap_nonlcon(z, N, dt, d)
+    % Trapezoidal collocation constraints.
+    %   INPUT
+    %     z      - stacked decision vector (7N x1)
+    %     N      - node count
+    %     dt     - node spacing (nondim)
+    %     d      - struct: non-dim data
+    %   OUTPUT
+    %     c_ineq - path constraints (<=0)
+    %     c_eq   - collocation defects (=0)
+    % No arguments validation by design: fmincon nonlcon hot loop.
     Z = reshape(z, 7, N);
 
     % --- Dynamics RHS at every node (non-dim) ---
@@ -264,7 +285,7 @@ function [c_ineq, c_eq] = trap_nonlcon(z, N, dt, d)
         f(:,i) = dyn_rhs(Z(:,i), d.Vc);
     end
 
-    % --- Trapezoidal defects ---
+    % --- Trapezoidal defects (enforce x_{k+1}-x_k = 0.5 dt (f_k+f_{k+1})) ---
     defs = zeros(5, N-1);
     for k = 1:N-1
         defs(:,k) = Z(1:5, k+1) - Z(1:5, k) - 0.5*dt*(f(:,k) + f(:,k+1));
@@ -283,20 +304,27 @@ function [c_ineq, c_eq] = trap_nonlcon(z, N, dt, d)
 end
 
 function dx = dyn_rhs(s, Vc)
-    % Non-dim continuous dynamics.  State s = [x; y; vx; vy; m; Tx; Ty];
-    % returns d/dt of [x; y; vx; vy; m].  Thin wrapper around ode_descent.m
-    % (shared with main_task2.m and the test suite).
+    % Wrapper around ode_descent: splits stacked state/control.
+    %   INPUT
+    %     s  - [x; y; vx; vy; m; Tx; Ty]
+    %     Vc - V_ref/c
+    %   OUTPUT
+    %     dx - d/dt [x; y; vx; vy; m] (5x1)
+    % No arguments validation by design: fmincon/ode45 hot loop.
     dx = ode_descent(s(1:5), s(6:7), Vc);
 end
 
 function dg = diagnostics(sol, d, N)
-    % Post-solve diagnostics on the SI solution:
-    %   - switching times of the max-coast-max thrust profile (linear
-    %     interpolation of the |T| crossings at 0.5*Tmax) and coast length;
-    %   - minimum glide-slope margin over the nodes above 1 m altitude
-    %     (atan(|x|/y) is 0/0 at the pad, so sub-metre nodes are excluded);
-    %   - KKT activity from the (non-dim) fmincon multipliers; ineqnonlin
-    %     rows are stacked as [thr_lo; thr_hi; gs_pos; gs_neg], N rows each.
+    % Post-solve diagnostics on the SI solution.
+    %   INPUT
+    %     sol - struct: SI solution (incl. lambda)
+    %     d   - struct: SI problem data
+    %     N   - node count
+    %   OUTPUT
+    %     dg  - struct: switch times, coast, glide-slope margin, KKT activity
+    % Switch times from |T| crossings at 0.5*Tmax (linear interp). Glide-slope
+    % margin masks sub-metre nodes (atan(|x|/y) is 0/0 at the pad). KKT from
+    % ineqnonlin multipliers, stacked [thr_lo; thr_hi; gs_pos; gs_neg], N each.
     arguments
         sol (1,1) struct
         d   (1,1) struct
@@ -321,9 +349,13 @@ function dg = diagnostics(sol, d, N)
 end
 
 function [t, X] = fwd_integrate_pwl(sol, d)
-    % Forward-integrate the nonlinear (non-dim) dynamics under the
-    % piecewise-linear control implied by the trapezoidal transcription,
-    % sampling at the grid nodes (same construction as in main_task2.m).
+    % Replay PWL control through ode45, sample at grid nodes.
+    %   INPUT
+    %     sol - struct: non-dim solution
+    %     d   - struct: non-dim data
+    %   OUTPUT
+    %     t   - node times (Nx1)
+    %     X   - replayed state (Nx5)
     arguments
         sol (1,1) struct
         d   (1,1) struct
@@ -345,12 +377,21 @@ function [t, X] = fwd_integrate_pwl(sol, d)
 end
 
 function e = node_err(sol, X)
-    % Per-node position+velocity error norm (non-dim) between the NLP
-    % solution and the ode45 replay.  Mass is monitored separately.
+    % Per-node pos+vel error norm, NLP vs ode45 replay (mass excluded).
+    %   INPUT
+    %     sol - struct: non-dim solution
+    %     X   - replayed state (Nx5)
+    %   OUTPUT
+    %     e   - error norm per node (Nx1)
     e = vecnorm([sol.x sol.y sol.vx sol.vy] - X(:,1:4), 2, 2);
 end
 
 function plot_results(sols, tf_list, d)
+    % Plot trajectory, thrust, mass, glide-slope for the tf sweep.
+    %   INPUT
+    %     sols    - cell: SI solutions, one per tf
+    %     tf_list - flight times [s]
+    %     d       - struct: SI problem data
     arguments
         sols    cell
         tf_list double {mustBeVector}
@@ -400,8 +441,8 @@ function plot_results(sols, tf_list, d)
     legend('Location','best');
 
     % --- Glide-slope angle vs time ---
-    % Nodes below 1 m altitude are masked: atan(|x|/y) -> 0/0 at the pad,
-    % where mm-level (within-tolerance) residuals produce arbitrary angles.
+    % Mask nodes below 1 m: atan(|x|/y) -> 0/0 at the pad, where
+    % within-tolerance residuals give arbitrary angles.
     figure('Name','Glide-slope','Position',[100 100 600 400]);
     hold on; grid on;
     for k = 1:numel(sols)
@@ -412,7 +453,7 @@ function plot_results(sols, tf_list, d)
     end
     yline(rad2deg(d.theta_mx), 'k--', '\theta_{max}', ...
         'LabelHorizontalAlignment', 'left', 'HandleVisibility', 'off');
-    yl = ylim; ylim([yl(1), rad2deg(d.theta_mx) + 4]);   % keep the bound off the frame
+    yl = ylim; ylim([yl(1), rad2deg(d.theta_mx) + 4]);   % keep bound off frame
     xlabel('t  [s]'); ylabel('atan(|x|/y)  [deg]');
     title('Glide-slope angle');
     legend('Location','best');

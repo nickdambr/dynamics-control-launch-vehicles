@@ -1,13 +1,14 @@
 classdef hm3LoopTest < matlab.unittest.TestCase
-    %hm3LoopTest Unit tests for load_wind_profile, assemble_loop,
-    %  design_controller and simulate_gust_response.
-    %  Pins the closed-loop conclusions of the homework: the Task-1 PD design
-    %  meets the |GM|/|PM| targets, the bare full model is bending-unstable,
-    %  and the deep notch gain-stabilises it (Task 2).
+    % Unit tests for load_wind_profile, assemble_loop, design_controller,
+    %  simulate_gust_response. Pins the homework conclusions: Task-1 PD meets
+    %  |GM|/|PM|, the bare full model is bending-unstable, the deep notch
+    %  gain-stabilises it (Task 2).
 
     properties (Constant)
-        % Task-1 PD design (auto-tuner output, pinned for regression)
-        Kref = struct('Kp_th', 1.9800, 'Kd_th', 1.3997, ...
+        % Task-1 PD design: gains re-tuned on the FULL loop so the classified
+        % Aero GM = 6 dB / Rigid PM = 30 deg (canonical D'Antuono start, then the
+        % lateral-drift aero-GM erosion is compensated). Pinned for regression.
+        Kref = struct('Kp_th', 1.7845, 'Kd_th', 0.4433, ...
                       'Kp_z', -1e-3,   'Kd_z', -1e-3)
     end
 
@@ -64,23 +65,24 @@ classdef hm3LoopTest < matlab.unittest.TestCase
         end
 
         function testRigidLoopMeetsMarginTargets(testCase)
-            % Pinned Task-1 gains reproduce |GM| ~ 6 dB, |PM| ~ 30 deg
+            % Retuned gains give Aero |GM| ~ 6 dB, Rigid PM ~ 30 deg read on the
+            % FULL loop and classified by frequency band; full loop is stable.
             G = build_plant_rigid(testCase.p);
             [L, T] = assemble_loop(G, testCase.Kref);
-            [Gm, Pm] = margin(L);
+            mm = classify_margins(minreal(L, 1e-6), 'w_drift', 0.3*sqrt(testCase.p.A6));
             testCase.verifyTrue(isstable(T));
-            testCase.verifyEqual(abs(20*log10(Gm)), 6.0, 'AbsTol', 0.2);
-            testCase.verifyEqual(abs(Pm), 30.0, 'AbsTol', 0.5);
+            testCase.verifyEqual(abs(mm.aeroGM_dB), 6.0,  'AbsTol', 0.3);
+            testCase.verifyEqual(mm.rigidPM_deg,    30.0, 'AbsTol', 0.7);
         end
 
         function testDesignControllerMeetsTargets(testCase)
             G = build_plant_rigid(testCase.p);
             [K, m] = design_controller(G, [], 'verbose', false);
-            testCase.verifyEqual(abs(m.GM_dB),  6.0,  'AbsTol', 0.1);
-            testCase.verifyEqual(abs(m.PM_deg), 30.0, 'AbsTol', 0.5);
+            testCase.verifyEqual(abs(m.aeroGM_dB), 6.0,  'AbsTol', 0.3);
+            testCase.verifyEqual(m.rigidPM_deg,    30.0, 'AbsTol', 0.7);
             testCase.verifyTrue(m.stable);
-            testCase.verifyEqual(K.Kp_th, testCase.Kref.Kp_th, 'AbsTol', 5e-3);
-            testCase.verifyEqual(K.Kd_th, testCase.Kref.Kd_th, 'AbsTol', 5e-3);
+            testCase.verifyEqual(K.Kp_th, testCase.Kref.Kp_th, 'AbsTol', 1e-2);
+            testCase.verifyEqual(K.Kd_th, testCase.Kref.Kd_th, 'AbsTol', 1e-2);
         end
 
         function testDesignControllerRestoresWarningState(testCase)

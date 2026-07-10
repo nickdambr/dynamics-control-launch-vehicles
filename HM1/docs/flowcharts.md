@@ -1,8 +1,8 @@
 # HM1 — Control-Flow Diagrams (ISO 5807)
 
-Detailed, color-coded step-by-step flowcharts of the four entry-point scripts
-and the shared routines in this folder, obtained by static reading of the
-source. Symbols follow **ISO 5807** (terminator, process, predefined process,
+Detailed, color-coded step-by-step flowcharts of the four entry-point scripts,
+the two Appendix validation scripts, and the shared routines in this folder,
+obtained by static reading of the source. Symbols follow **ISO 5807** (terminator, process, predefined process,
 decision, preparation, data I/O) and are mapped onto Mermaid node shapes —
 and colored by category — so the diagrams render natively on GitHub.
 
@@ -50,6 +50,12 @@ flowchart TD
     odel["ode_burn_losses"]:::io
   end
 
+  subgraph valid["Appendix validation scripts"]
+    vr["validate_rocket_sled.m<br/>min-energy sled · closed-form check"]:::entryC
+    vs["validate_staging_corner.m<br/>staging corner condition · 5-unknown solve"]:::entryC
+    sled[["sled_ode<br/>sled RHS · u = lam_v/2"]]:::io
+  end
+
   m1 -->|"@shooting1"| fsolve
   m2 -->|"@shooting2"| fsolve
   m3 -->|"@shooting3"| fsolve
@@ -59,6 +65,10 @@ flowchart TD
   ode45 --> odeb
   m2 & m3 -->|"@ode_vertical"| ode45
   m1 -->|"@ode_burn_losses"| ode45
+  vr -->|"@sled_residual"| fsolve
+  vs -->|"@shooting_inner / @shooting_corner"| fsolve
+  vs -.->|"@ode_burn"| odeb
+  vr -.-> sled
 
   classDef entryC fill:#e7d4f7,stroke:#6f42c1,color:#111
   classDef engine fill:#d7d7d7,stroke:#333,color:#111
@@ -274,3 +284,69 @@ flowchart TD
 > **Note.** `shooting3` departs from the common pattern: 5 unknowns (`lam_m0`
 > kept free) plus switching/coast conditions at cutoff instead of `H = 0` at
 > `t0`. It is the only variant not reducible to the 4-unknown scheme above.
+
+---
+
+## 6 · Appendix validation scripts
+
+Two standalone checks that back the appendix claims: `validate_rocket_sled.m`
+(Appendix A) recovers a closed-form optimum, and `validate_staging_corner.m`
+(Appendix C) reproduces the swept staging optimum of Task 4 and shows that
+dropping the burnout reference misplaces it.
+
+```mermaid
+flowchart TD
+  sv([Start validate_rocket_sled]):::term --> pv{{"Setup: tf=2, rf=1/2, vf=0, ODE/fsolve opts"}}:::setup
+  pv --> fsv[["fsolve(sled_residual) from lam = [0; 0]"]]:::proc
+  fsv --> rep["Recover lam_r0, lam_v0; terminal residual"]:::proc
+  rep --> cc["Cross-check: ode45(sled_ode) -> u_num vs u* = 3/4(1 - t)"]:::proc
+  cc --> passv{"ef &gt; 0 and ||lam - 1.5|| &lt; 1e-6 ?"}:::decision
+  passv -->|yes| okv[/"print PASS (recovers 3/2, 3/2)"/]:::io
+  passv -->|no| failv[/"print FAIL"/]:::err
+  okv --> ev([End]):::term
+  failv --> ev
+
+  subgraph SR["sled_residual(L) · sled_ode"]
+    sr([Entry]):::term --> sri["ode45(sled_ode): integrate [0; 0; Lr; Lv] to tf"]:::proc
+    sri --> sro(["res = [r(tf)-rf; v(tf)-vf]"]):::term
+  end
+
+  classDef term fill:#d7d7d7,stroke:#333,color:#111
+  classDef setup fill:#fff3cd,stroke:#b8860b,color:#111
+  classDef proc fill:#cfe2ff,stroke:#1c5d99,color:#111
+  classDef io fill:#d1e7dd,stroke:#2e7d4f,color:#111
+  classDef decision fill:#ffe08a,stroke:#b8860b,color:#111
+  classDef err fill:#f8d7da,stroke:#b02a37,color:#111
+```
+
+```mermaid
+flowchart TD
+  ss([Start validate_staging_corner]):::term --> ps{{"Setup: c, eta, yf, Q, T (same as main_task4)"}}:::setup
+  ps --> warm[["Step 1 · warm start: fsolve(shooting_inner) at ts0=0.33 (4 unknowns)"]]:::proc
+  warm --> wconv{"warm start converged?"}:::decision
+  wconv -->|no| werr[/"error(): abort"/]:::err
+  wconv -->|yes| aug[["Step 2 · augmented: fsolve(shooting_corner) 5 unknowns + corner residual"]]:::proc
+  aug --> ext["propagate -> mf; payload = mf - eta*Q*(tf - ts)"]:::proc
+  ext --> passs{"ef &gt; 0 and |ts - 0.336| &lt; 5e-3 ?"}:::decision
+  passs -->|yes| oks[/"print PASS (ts=0.336, tf=0.424, mu=0.068)"/]:::io
+  passs -->|no| fails[/"print FAIL"/]:::err
+  oks --> caut[["Cautionary: fsolve(shooting_corner_wrong) · un-referenced term"]]:::proc
+  fails --> caut
+  caut --> cautp[/"print spurious ts ≈ 0.225"/]:::io
+  cautp --> es([End]):::term
+
+  subgraph PR["propagate(w) + shooting_corner residual"]
+    pr([Entry]):::term --> pr1["ode45(ode_burn): stage 1 over [0, ts]"]:::proc
+    pr1 --> pr2["jettison: m+ = m- - eta*Q*ts (lam_m continuous)"]:::proc
+    pr2 --> pr3["ode45(ode_burn): stage 2 over [ts, tf]"]:::proc
+    pr3 --> pr4["res = [y(tf)-yf; vx(tf)-1; vy(tf); H0; corner]"]:::proc
+    pr4 --> pro(["corner = eta(lam_m(tf)-lam_m(ts)) - c|lam_v|(1/m+ - 1/m-)"]):::term
+  end
+
+  classDef term fill:#d7d7d7,stroke:#333,color:#111
+  classDef setup fill:#fff3cd,stroke:#b8860b,color:#111
+  classDef proc fill:#cfe2ff,stroke:#1c5d99,color:#111
+  classDef io fill:#d1e7dd,stroke:#2e7d4f,color:#111
+  classDef decision fill:#ffe08a,stroke:#b8860b,color:#111
+  classDef err fill:#f8d7da,stroke:#b02a37,color:#111
+```

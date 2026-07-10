@@ -1,29 +1,24 @@
 %% HM3 - Monte-Carlo stability-margin robustness (probabilistic Task 3)
-%  Probabilistic counterpart of main_task3.m. The Task-2 controller (rigid PD
-%  + bending notch fixed at the NOMINAL bending frequency) is held fixed, and
-%  the physical uncertainties are now treated as RANDOM VARIABLES rather than
-%  the four deterministic +/-30 % box vertices. For each Monte-Carlo draw the
-%  open-loop transfer L is reassembled and its stability margins are recomputed,
-%  yielding distributions of gain/phase/delay margin, a probability of stability
-%  P(stable), a Nichols "cloud", and the parameter sensitivities that drive the
-%  worst cases.
+%  Probabilistic counterpart of main_task3. Task-2 controller (rigid PD +
+%  bending notch fixed at nominal wBM) held fixed; uncertainties are now
+%  random variables instead of the four +/-30 % box vertices. Each draw
+%  reassembles L and recomputes margins -> distributions of GM/PM/DM,
+%  P(stable), a Nichols cloud, and the parameter sensitivities.
 %
-%  Uncertain parameters (multiplicative factors on the nominal Table-1 values):
-%     mu_alpha = A6   aerodynamic moment        Gaussian, 3-sigma = +/-30 % (Task-3 box)
-%     mu_c     = K1   control effectiveness     Gaussian, 3-sigma = +/-30 % (Task-3 box)
-%     wBM             first bending frequency   Gaussian, 3-sigma = +/-6 %  (notch detuning)
-%     zBM             bending damping           lognormal, factor ~ [0.45, 2.2] at 2-sigma
-%     tau             TVC transport delay       uniform,  +/-25 %
+%  Uncertain factors (multiplicative on nominal Table-1 values):
+%     mu_alpha = A6   aero moment          Gaussian, 3-sigma +/-30 % (Task-3 box)
+%     mu_c     = K1   control effect.      Gaussian, 3-sigma +/-30 % (Task-3 box)
+%     wBM             1st bending freq      Gaussian, 3-sigma +/-6 %  (notch detuning)
+%     zBM             bending damping       lognormal, ~[0.45, 2.2] at 2-sigma
+%     tau             TVC delay             uniform, +/-25 %
 %
-%  The notch is NOT retuned when wBM disperses: this is exactly the realistic
-%  robustness question (the deep notch needs near-exact wBM knowledge, see the
-%  Task-2 detuning note in the README), so wBM is the dominant driver.
+%  Notch NOT retuned when wBM disperses (deep notch needs near-exact wBM), so
+%  wBM is the dominant driver.
 %
-%  Dependencies: Control System Toolbox only. parfor degrades to a serial loop
-%  without the Parallel Computing Toolbox; percentiles use a base-MATLAB helper
-%  (no Statistics Toolbox needed).
+%  Deps: Control System Toolbox only. parfor degrades to serial without PCT;
+%  percentiles use a base-MATLAB helper (no Statistics Toolbox).
 %
-%  Reference: Homework 3 (Zavoli, v1.2, May 2026), Task 3 (extension).
+%  Ref: Homework 3 (Zavoli, v1.2, May 2026), Task 3 (extension).
 
 clear; close all; clc;
 warning('off','Control:analysis:MarginUnstable');
@@ -59,8 +54,7 @@ fprintf('Fixed controller: Kp_th=%.3f Kd_th=%.3f | notch wx=%.1f zN=%.3f zD=%.2f
 fprintf('Monte-Carlo: N=%d samples, seed=%d\n', N, seed);
 
 %% --------------------------------------------------- Pre-sample uncertainties
-%  Sampling is done OUTSIDE the parfor (deterministic given the seed, and keeps
-%  the parallel loop body RNG-free).
+%  Sample OUTSIDE the parfor: deterministic given the seed, loop body RNG-free.
 rng(seed);
 fa = sample_factor(unc.mu_alpha, N);   % mu_alpha = A6 factor
 fc = sample_factor(unc.mu_c,     N);   % mu_c     = K1 factor
@@ -79,7 +73,7 @@ stab    = false(N,1); % closed-loop stability flag
 
 t_mc = tic;
 parfor i = 1:N
-    % perturbed parameters (start from nominal, scale the uncertain fields)
+    % perturbed params: start from nominal, scale the uncertain fields
     p = p0;
     p.A6  = p0.A6  * fa(i);
     p.K1  = p0.K1  * fc(i);
@@ -87,7 +81,7 @@ parfor i = 1:N
     p.zBM = p0.zBM * fz(i);
     p.tau = p0.tau * ft(i);
 
-    % reassemble the loop with the FIXED controller + FIXED (nominal) notch
+    % reassemble with the FIXED controller + FIXED (nominal) notch
     Gf      = build_plant_full(p,'ins');
     Wf      = build_tvc(p,3) * Wnotch;
     [L, T]  = assemble_loop(Gf, K, Wf);
@@ -196,9 +190,9 @@ f3 = figure('Name','sensitivity','Color','w','Position',[160 160 980 400]);
 tl3 = tiledlayout(f3,1,2,'TileSpacing','compact','Padding','compact');
 title(tl3,'Monte-Carlo sensitivities of the worst gain margin');
 
-% (a) (mu_alpha, mu_c) plane: stable vs unstable draws, with the Task-3 box + vertices.
-%     Task 3 found all four box vertices stable in (mu_alpha,mu_c) alone; once the
-%     bending/delay uncertainties are dispersed too, instability appears inside the box.
+% (a) (mu_alpha, mu_c) plane: stable vs unstable draws, Task-3 box + vertices.
+%     Task 3 found all four vertices stable in (mu_alpha,mu_c) alone; dispersing
+%     bending/delay too makes instability appear inside the box.
 ax1 = nexttile; hold(ax1,'on'); box(ax1,'on');
 plot(ax1, fa(stab),  fc(stab),  '.', 'Color',[0.20 0.55 0.45],'MarkerSize',7);  % stable
 plot(ax1, fa(~stab), fc(~stab), 'rx','MarkerSize',6,'LineWidth',1.0);            % unstable
@@ -244,7 +238,10 @@ fprintf('\nFigures written to %s\nResults saved to mc_results.mat\n', fig_dir);
 
 %% ============================================================ local functions
 function f = sample_factor(spec, n)
-%SAMPLE_FACTOR  Draw n multiplicative uncertainty factors (median/mean ~ 1).
+% Draw n multiplicative uncertainty factors (median/mean ~ 1).
+%   INPUT  spec - struct: dist 'gauss'|'uniform'|'lognorm', + sigma/trunc/half
+%          n    - sample count
+%   OUTPUT f    - n x 1 factors
 switch lower(spec.dist)
     case 'gauss'
         f = 1 + spec.sigma*randn(n,1);
@@ -266,10 +263,12 @@ end
 end
 
 function [g, ph] = nichols_branch(L, w, ref)
-%NICHOLS_BRANCH  Aligned Nichols data (gain dB, phase deg) on grid w.
-%   When ref (a nominal phase vector) is given, the curve is shifted by a
-%   multiple of 360 deg so its low-frequency branch matches the nominal one,
-%   which keeps the Monte-Carlo cloud on a single branch.
+% Aligned Nichols data (gain dB, phase deg) on grid w.
+%   INPUT  L   - open loop
+%          w   - frequency grid [rad/s]
+%          ref - nominal phase vector ([] = none); shifts ph by 360k so the
+%                low-freq branch matches nominal (keeps the cloud on one branch)
+%   OUTPUT g, ph - gain [dB], phase [deg]
 [mag, phase] = nichols(L, w);
 g  = 20*log10(squeeze(mag));
 ph = squeeze(phase);
@@ -279,13 +278,18 @@ end
 end
 
 function print_pct(name, x, q)
-%PRINT_PCT  Print 5/50/95 percentiles of finite samples (base-MATLAB).
+% Print percentiles of finite samples (base-MATLAB).
+%   INPUT  name - row label
+%          x    - samples
+%          q    - percentiles [%] (3 values)
 v = local_quantile(x, q);
 fprintf('%-12s %8.2f %8.2f %8.2f\n', name, v(1), v(2), v(3));
 end
 
 function qv = local_quantile(x, p)
-%LOCAL_QUANTILE  Percentiles without the Statistics Toolbox (midpoint rule).
+% Percentiles without the Statistics Toolbox (midpoint rule).
+%   INPUT  x - samples;  p - percentiles [%]
+%   OUTPUT qv - percentile values
 x = sort(x(isfinite(x)));
 if isempty(x), qv = nan(size(p)); return; end
 n  = numel(x);
@@ -294,7 +298,11 @@ qv  = interp1(1:n, x, pos, 'linear');
 end
 
 function hist_metric(x, name, refline, refcol)
-%HIST_METRIC  One histogram tile with optional reference line + median.
+% One histogram tile with optional reference line + median.
+%   INPUT  x       - samples
+%          name    - x-axis label
+%          refline - [xval NaN] reference line ([] = none)
+%          refcol  - reference line colour
 nexttile; hold on; grid on; box on;
 v = x(isfinite(x));
 histogram(v, 'NumBins', 30, 'FaceColor',[0.30 0.50 0.75], 'EdgeColor','none');

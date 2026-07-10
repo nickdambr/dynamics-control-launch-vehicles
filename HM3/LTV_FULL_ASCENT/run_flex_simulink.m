@@ -1,14 +1,11 @@
 function out = run_flex_simulink(o)
-%RUN_FLEX_SIMULINK  Simulate hm3_full_ascent_flex.slx and overlay vs the baseline.
-%
-%   out = RUN_FLEX_SIMULINK() initialises the base workspace with
-%   INIT_SIMULINK_LPV, simulates the FLEXIBLE full-ascent LPV model
-%   (bending + INS coupling + TVC + varying notch, frozen gains), and overlays
-%   the Simulink time histories on the pure-MATLAB LTV ode45 replay
-%   (ODE_LPV_FLEX) driven by the wind the model generated. A figure
-%   flex_simulink_vs_script.png is written to figures/.
-%
-%   Name/value options: 'rebuild' (default false) re-authors the model.
+% Simulate hm3_full_ascent_flex.slx (bending + INS + TVC + varying notch,
+% frozen gains) and overlay vs the ode45 baseline (ODE_LPV_FLEX), driven by
+% the wind the model generated. Writes flex_simulink_vs_script.png.
+%   INPUT
+%     o.rebuild - re-author model with BUILD_HM3_FULL_ASCENT_FLEX first (default false)
+%   OUTPUT
+%     out - struct: t, err (theta/eta/delta)
 %
 %   See also BUILD_HM3_FULL_ASCENT_FLEX, ODE_LPV_FLEX, MAIN_FLEX.
 
@@ -33,7 +30,7 @@ so = sim(mdl, 'StopTime', num2str(S.Tstop));
 th = so.theta_sl;  et = so.eta_sl;  de = so.delta_sl;  aw = so.alpha_w_sl;
 tt = th.Time;
 
-% --- ode45 replay (varying notch, frozen gains) on the SAME wind ---
+% ode45 replay (varying notch, frozen gains) on the SAME wind
 M = struct('fa1', S.fa1, 'fa3', S.fa3, 'fa4', S.fa4, 'fA6', S.fA6, 'fK1', S.fK1, ...
            'fV', S.fV, 'fomega', S.fomega, 'faqk', S.faqk, 'fsig', S.fsig, 'fphi', S.fphi, ...
            'windfun', griddedInterpolant(aw.Time, squeeze(aw.Data), 'linear', 'nearest'), ...

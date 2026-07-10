@@ -1,25 +1,18 @@
-%% HM3 — Beyond the assignment: full-ascent LPV attitude control
-%  The frozen-time HM3 design (plant, PD gains, notch and TVC all evaluated at
-%  the max-qbar instant t_ref = 72 s) is extended to the WHOLE ascent. The
-%  rigid pitch-plane plant of BUILD_PLANT_RIGID is made time-varying — its
-%  coefficients are read from GreensiteLPV_DATA.mat at every instant — so the
-%  professor's wind generator (strong_wind.slx, 0-140 s) and the vehicle
-%  dynamics share one clock. Two controllers are compared on the same LTV
-%  plant:
+%% HM3 full-ascent LPV attitude control (beyond the assignment)
+%  Extends the frozen-time HM3 design (plant/PD/notch/TVC at max-q, t_ref=72 s)
+%  to the whole ascent. The rigid pitch-plane plant (BUILD_PLANT_RIGID) is made
+%  time-varying from GreensiteLPV_DATA.mat, so the wind generator
+%  (strong_wind.slx, 0-140 s) and the dynamics share one clock. Compares on the
+%  same LTV plant:
+%    frozen    - single max-q PD held over the flight (shows where it degrades)
+%    scheduled - PD gains Kp_th(t), Kd_th(t) from DESIGN_CONTROLLER on a grid
+%                of frozen plants (continuation)
 %
-%    Frozen      : the single max-qbar PD design held over the whole flight,
-%                  showing where a one-point design degrades.
-%    Scheduled   : a PD gain schedule Kp_th(t), Kd_th(t) obtained by running
-%                  DESIGN_CONTROLLER on a grid of frozen plants (continuation).
-%
-%  The MATLAB LTV ode45 integration here is the SOURCE OF TRUTH; the Simulink
-%  model hm3_full_ascent.slx (built by BUILD_HM3_FULL_ASCENT) reproduces it
-%  (overlay in RUN_FULL_ASCENT_SIMULINK). This is a portfolio showcase, NOT a
-%  part of the HM3 deliverable — the assignment asks for the max-qbar point
-%  design only.
-%
+%  ode45 here is the source of truth; hm3_full_ascent.slx
+%  (BUILD_HM3_FULL_ASCENT) reproduces it (RUN_FULL_ASCENT_SIMULINK). Portfolio
+%  showcase, NOT part of the HM3 deliverable (assignment is the max-q point only).
 %  Reference: Homework 3 (Zavoli, v1.2, May 2026); ticket T007.
-%  Toolboxes: Control System Toolbox (the schedule reuses HM3's fminsearch tuner).
+%  Toolboxes: Control System Toolbox (schedule reuses HM3's fminsearch tuner).
 
 clear; close all; clc;
 warning('off', 'Control:analysis:MarginUnstable');
@@ -42,9 +35,8 @@ rF = unpack(tt, xF, S, 0);                       % frozen-gain response
 rS = unpack(tt, xS, S, 1);                       % gain-scheduled response
 
 %% Frozen-time margin sweep along the trajectory
-%  At each flight time freeze the plant and read the loop margins, once with
-%  the fixed max-qbar gains (how far the single-point design stretches) and
-%  once with the scheduled gains (flat by construction).
+%  Freeze the plant at each time, read loop margins with the fixed max-q gains
+%  (how far the single-point design stretches) and with the scheduled gains.
 tm = (t0:2.5:Tend).';
 [gmF, pmF, gmS, pmS] = deal(zeros(size(tm)));
 for i = 1:numel(tm)
@@ -59,7 +51,7 @@ p72 = load_hw3_params();                          % t_ref = 72 s
 [~, T72] = assemble_loop(build_plant_rigid(p72), S.K0, []);
 wg72 = load_wind_profile(p72);                    % HM3 1-cosine gust (12 s)
 rHM3 = simulate_gust_response(T72, wg72);          % HM3 frozen-time response
-Mf = make_model(S, 0);                             % LPV model frozen at 72 s
+Mf = make_model(S, 0);                             % LPV model, coeffs frozen at 72 s
 cc = @(v) griddedInterpolant([0 200], [v v], 'linear', 'nearest');
 Mf.fc1 = cc(S.fc1(72)); Mf.fc2 = cc(S.fc2(72)); Mf.fc3 = cc(S.fc3(72));
 Mf.fc4 = cc(S.fc4(72)); Mf.fc5 = cc(S.fc5(72)); Mf.fc6 = cc(S.fc6(72));
@@ -129,7 +121,12 @@ fprintf('\nFigures written to %s\n', fig_dir);
 
 %% ------------------------------------------------------------ local helpers
 function M = make_model(S, sched)
-%MAKE_MODEL  Pack INIT_SIMULINK_LPV data into the struct ODE_LPV_ASCENT wants.
+% Pack INIT_SIMULINK_LPV data into the ODE_LPV_ASCENT struct.
+%   INPUT
+%     S     - init_simulink_lpv struct
+%     sched - 0 frozen gains, 1 scheduled
+%   OUTPUT
+%     M - struct for ODE_LPV_ASCENT
 M = struct('fc1', S.fc1, 'fc2', S.fc2, 'fc3', S.fc3, 'fc4', S.fc4, ...
            'fc5', S.fc5, 'fc6', S.fc6, 'fc7', S.fc7, 'windfun', S.windfun, ...
            'fKp', S.fKp, 'fKd', S.fKd, 'Kp_th0', S.K0.Kp_th, 'Kd_th0', S.K0.Kd_th, ...
@@ -137,9 +134,15 @@ M = struct('fc1', S.fc1, 'fc2', S.fc2, 'fc3', S.fc3, 'fc4', S.fc4, ...
 end
 
 function r = unpack(tt, x, S, sched)
-%UNPACK  Time histories + load indicator + peak metrics from an ode45 solution.
-%   delta is the static control map of the state, reconstructed with the gains
-%   actually used in this run (frozen max-qbar gains, or the schedule).
+% Time histories, load indicator and peak metrics from an ode45 solution.
+% delta reconstructed with the gains used in this run (frozen or scheduled).
+%   INPUT
+%     tt    - time grid
+%     x     - ode45 states (Nx4)
+%     S     - init_simulink_lpv struct
+%     sched - 0 frozen gains, 1 scheduled
+%   OUTPUT
+%     r - struct: t, theta, z, zdot, thetadot, delta, alpha, qa, peaks
 if sched
     Kp = S.fKp(tt);  Kd = S.fKd(tt);
 else
@@ -158,7 +161,13 @@ r.pk_qa    = max(abs(r.qa));
 end
 
 function [gm_db, pm_deg] = loop_margin(G, K)
-%LOOP_MARGIN  Gain/phase margin of the rigid loop (ideal actuator), in dB/deg.
+% Gain/phase margin of the rigid loop (ideal actuator).
+%   INPUT
+%     G - plant
+%     K - gains struct
+%   OUTPUT
+%     gm_db  - gain margin [dB]
+%     pm_deg - phase margin [deg]
 [L, ~] = assemble_loop(G, K, []);
 [g, p] = margin(L);
 gm_db = 20*log10(g);  pm_deg = p;

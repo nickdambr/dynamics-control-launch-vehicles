@@ -11,27 +11,29 @@ entirely in the frequency domain.
 \begin{itemize}
 \item \textbf{Task 1.} A proportional--derivative attitude law with weak negative
 drift feedback stabilises the rigid airframe (open-loop pole at
-$+1.84$~rad/s) and meets the design targets $|GM|\approx 6$~dB,
-$|PM|\approx 30^\circ$. The loop is conditionally stable, and I kept that in
-mind when reading the margins.
+$+1.84$~rad/s) and meets the design targets $|GM_a|\approx 6$~dB,
+$PM\approx 30^\circ$ --- the aerodynamic gain margin and rigid-body phase margin,
+read on the full conditionally-stable loop and classified by frequency band.
 \item \textbf{Task 2.} Introducing the TVC actuator, the transport delay and the
-lightly damped bending mode destabilises the loop through a $+39$~dB resonance.
-A four-way filter trade showed that the Eq.-4 lead-lag alone never stabilises
-the loop within the suggested parameter ranges ($0/75$ combinations), and that
-a notch triplet sacrifices too much phase at low frequency for a
-conditionally stable loop; a deep gain-stabilising notch centred on
-$\omega_{BM}$ restores stability while preserving the rigid margins, with
-negligible change to the nominal gust response. I quantified how much it leans
-on knowing the bending frequency exactly ($\pm 5\%$ detuning is fatal) and found
-a robust notch$+$lead-lag variant that tolerates nearly $\pm 10\%$ at the price
-of thinner nominal margins.
-\item \textbf{Task 3.} The fixed Task~2 controller is robust to $\pm 30\%$
-independent variations of $\mu_\alpha$ and $\mu_c$: all four vertices of the
-uncertainty box remain stable. Uncertainty on $\mu_\alpha$ erodes the rigid
-margin and the gust performance, uncertainty on $\mu_c$ erodes the bending and
-delay margins, and the worst vertex (high $\mu_\alpha$ with low $\mu_c$)
-compounds them, leaving only $1.5$~dB and $9^\circ$ --- the quantitative
-argument for gain scheduling in a flight design.
+lightly damped bending mode destabilises the loop through a $+29$~dB resonance.
+A four-way filter trade retained a deep gain-stabilising notch at $\omega_{BM}$
+(the Eq.-4 lead-lag alone now stabilises the milder peak in $45/75$ cases, but
+only marginally, while a notch triplet over-notches and goes unstable at
+nominal). Crucially, the actuator, delay and notch lag collapse the rigid phase
+margin of the ideal-actuator Task-1 gains from $30^\circ$ to $15^\circ$, so the
+PD is \textbf{re-tuned on the full loop} ($K_{D,\theta}: 0.44\to0.69$),
+recovering $30^\circ$ and a $165$~ms delay margin with the bending gain-stabilised
+at $-18$~dB. The deep notch leans on knowing the bending frequency: it tolerates
+$-10\%$ but fails at $+5\%$, whereas a notch$+$lead-lag variant holds the full
+$\pm 10\%$ at the price of thinner nominal margins.
+\item \textbf{Task 3.} The fixed re-tuned Task~2 controller is robust to
+$\pm 30\%$ independent variations of $\mu_\alpha$ and $\mu_c$: all nine cases
+(the four box vertices plus the four single-parameter edges) remain stable. The binding limit is the aerodynamic gain
+margin (the control-to-aero authority ratio): it erodes as $\mu_\alpha$ grows or
+$\mu_c$ shrinks, and the worst vertex V3 (high $\mu_\alpha$ with low $\mu_c$)
+compounds both, leaving it at only $0.9$~dB with $18^\circ$ of phase and doubling
+the gust excursions --- the quantitative argument for gain scheduling in a flight
+design.
 \end{itemize}
 
 \paragraph{Limitations and extensions.} Four modelling choices bound the scope
@@ -40,8 +42,8 @@ steady-state attitude error to a constant gimbal misalignment, which a
 proportional--integral--derivative extension would null. (ii) The stiff
 second-order TVC model neglects the nozzle back-reaction (the dog-wags-tail
 feedback) and the hydraulic load-resonance of the actuator;
-retaining the gimbal angle as a state, together with the tail-wags-dog zero of
-Eq.~\eqref{eq:twd}~\cite[Sec.~6.1]{barrows2020}, is the natural next fidelity
+retaining the gimbal angle as a state, together with the tail-wags-dog reaction of
+Eq.~\eqref{eq:twd}~\cite[Lecture~20]{dclvnotes}, is the natural next fidelity
 step. (iii) Sensor placement relative to the bending-mode nodes matters as much
 as the filter --- an aft gyro station flips the
 sign of the modal slope and can phase-stabilise a mode that would otherwise need
@@ -51,7 +53,7 @@ would add low-frequency, lightly damped modes coupling into the rigid loop and
 the drift channel.
 
 The design shows the textbook trade-off of launch-vehicle attitude
-control~\cite{greensite1970,wie2008,barrows2020}: enough gain to stabilise the
+control~\cite[Lecture~18]{dclvnotes}: enough gain to stabilise the
 unstable airframe, but not so much that it excites the structural modes, and the
 Nichols chart lets me see both constraints on one plot. A Simulink
 block-diagram mirror of the closed loop reproduces the script results and is

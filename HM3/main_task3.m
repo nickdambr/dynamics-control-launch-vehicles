@@ -1,29 +1,28 @@
 %% HM3 - Task 3: Robustness to parametric uncertainty (optional)
-%  The aerodynamic moment coefficient mu_alpha = A6 and the control
-%  effectiveness mu_c = K1 are treated as uncertain. The controller is held
-%  FIXED at the Task 2 design (no re-tuning) and its stability/performance
-%  robustness is assessed over the FOUR CORNER CASES of the uncertainty box,
-%  i.e. the vertices obtained by independently varying mu_alpha and mu_c by
-%  +/-30 % (V1..V4). The four one-at-a-time variations (S1..S4) are kept as
-%  a complementary sensitivity study: they attribute the effects to each
-%  parameter, but they sit on the edge midpoints of the box, not on its
-%  corners, and therefore miss the worst-case combination (V3: more unstable
-%  airframe AND less control authority).
+%  mu_alpha = A6 (aero moment) and mu_c = K1 (control effectiveness) treated
+%  as uncertain. Controller FIXED at the Task-2 design (no re-tuning),
+%  assessed over the four +/-30 % box vertices V1..V4 (the assignment corner
+%  cases). S1..S4 are one-at-a-time sensitivities: edge midpoints, not
+%  corners, so they miss the worst combo (V3: more unstable airframe AND less
+%  control authority).
 %
-%  Analysis: Nichols overlay (frequency domain) + wind-gust simulations
-%  (time domain) for every case, with a summary GM/PM/delay-margin table.
+%  Analysis: Nichols overlay + wind-gust sims per case, GM/PM/DM table.
 %
-%  Reference: Homework 3 (Zavoli, v1.2, May 2026), Task 3.
+%  Ref: Homework 3 (Zavoli, v1.2, May 2026), Task 3.
 
 clear; close all; clc;
 warning('off','Control:analysis:MarginUnstable');
 
-%% Fixed controller (Task 2 design): rigid PD + bending notch
+%% Fixed controller (Task 2 retained design): PD re-tuned on the full loop + notch
+%  The PD gains are the Task-2 design RE-TUNED on the full loop (actuator + delay
+%  + notch), not the ideal-actuator Task-1 gains; held fixed across the corners.
 p0     = load_hw3_params();
-Grigid = build_plant_rigid(p0);
-K      = design_controller(Grigid, [], 'verbose', false);
 notch  = struct('wx',p0.wBM,'zN',0.002,'zD',0.7,'sgn',+1);
-fprintf('Fixed controller: Kp_th=%.3f Kd_th=%.3f | notch wx=%.1f zN=%.3f zD=%.2f\n', ...
+Gfull0 = build_plant_full(p0,'ins');
+Wact0  = build_tvc(p0,3) * build_notch_filter(notch.wx,notch.zN,notch.zD,notch.sgn);
+K = design_controller(Gfull0, Wact0, 'w_flex',0.6*p0.wBM, 'w_flex_hi',1.5*p0.wBM, ...
+                      'w_bending',p0.wBM, 'verbose',false);
+fprintf('Fixed controller (Task-2 re-tuned): Kp_th=%.3f Kd_th=%.3f | notch wx=%.1f zN=%.3f zD=%.2f\n', ...
         K.Kp_th, K.Kd_th, notch.wx, notch.zN, notch.zD);
 
 %% Cases: box vertices (corner cases) + one-at-a-time sensitivities
@@ -41,46 +40,55 @@ cases = {
 nC    = size(cases,1);
 nPlot = 5;                             % figures show Nominal + V1..V4 only
 
-w = load_wind_profile(p0);             % same gust for all cases
-L = cell(nC,1); res = cell(nC,1);
+w = load_wind_profile(p0, Tend=80);    % same gust for all cases; 80 s horizon to match Task 1
+L = cell(nC,1); res = cell(nC,1); mm = cell(nC,1);
 
-fprintf('\n%-8s %6s %6s | %8s %8s %7s %8s | %9s %7s %6s\n', ...
-        'Case','mu_a','mu_c','rigidGM','minGM','PM','DM[ms]','peakTh','peakZ','stab');
+fprintf('\n%-8s %6s %6s | %7s %7s %8s %7s | %8s %7s %5s\n', ...
+        'Case','mu_a','mu_c','AeroGM','RigidPM','RigidGM','DM[ms]','peakTh','peakZ','stab');
 for i = 1:nC
     p  = load_hw3_params('mu_alpha_scale',cases{i,2},'mu_c_scale',cases{i,3});
     Gf = build_plant_full(p,'ins');
     Wf = build_tvc(p,3) * build_notch_filter(notch.wx,notch.zN,notch.zD,notch.sgn);
     [L{i}, T] = assemble_loop(Gf, K, Wf);
+    L{i} = minreal(L{i}, 1e-6);
 
-    am = allmargin(L{i});
-    gf = am.GMFrequency; gm = 20*log10(am.GainMargin);
-    idx = find(gf>0.2 & gf<1, 1);
-    if isempty(idx), rigidGM = NaN; else, rigidGM = abs(gm(idx)); end
-    minGM   = min(abs(gm));
-    dm      = min(am.DelayMargin);
-    [~,Pm]  = margin(L{i});
+    % margins classified per corner (aero-pole band follows the corner's A6)
+    mm{i} = classify_margins(L{i}, 'w_drift',0.3*sqrt(p.A6), 'w_flex',0.6*p.wBM, ...
+                             'w_flex_hi',1.5*p.wBM, 'w_bending',p.wBM);
     r = simulate_gust_response(T, w);
     res{i} = r;
 
-    fprintf('%-8s %6.2f %6.2f | %7.2f  %7.2f %6.1f %8.1f | %8.3f %7.2f %6d\n', ...
+    fprintf('%-8s %6.2f %6.2f | %6.2f  %6.1f  %7.2f  %6.0f | %7.3f %6.2f %5d\n', ...
             cases{i,1}, cases{i,2}, cases{i,3}, ...
-            rigidGM, minGM, abs(Pm), dm*1000, ...
+            abs(mm{i}.aeroGM_dB), mm{i}.rigidPM_deg, abs(mm{i}.rigidGM_dB), 1e3*mm{i}.DM_s, ...
             r.peak_theta*180/pi, r.peak_z, isstable(T));
 end
 fprintf(['\n(V* = uncertainty-box vertices, the assignment corner cases;' ...
-         ' S* = one-at-a-time sensitivities.)\n']);
+         ' S* = one-at-a-time sensitivities. AeroGM/RigidGM in dB, RigidPM in deg.)\n']);
 
 %% ---------------------------------------------------------------- Figures
 cols = lines(nPlot);
-% Nichols overlay over Nominal + vertices (phase wrapping + cropping)
-nopt = nicholsoptions;
-nopt.PhaseWrapping = 'on';
-nopt.Grid = 'on';
-nopt.Title.String = 'Task 3 - Nichols overlay over the +/-30% corner cases';
-f1 = figure('Name','nichols_corners','Color','w','Position',[100 100 660 560]);
-hN = nicholsplot(L{1:nPlot}, nopt);
-setoptions(hN,'XLim',[-360 0],'YLim',[-40 60]);
-legend(cases(1:nPlot,1),'Location','northwest');
+% Nichols overlay over Nominal + vertices, launch-vehicle convention (critical
+% point +180 deg). A single common phase shift (from the nominal rigid crossover)
+% is applied to all corners so their spread is directly comparable. Zoomed on the
+% rigid region: V3 (max instability, min authority) is the corner whose aerodynamic
+% gain margin nearly vanishes -- its curve rides closest to the +180 critical point.
+f1 = figure('Name','nichols_corners','Color','w','Position',[100 100 700 600]);
+ax = gca;  ngrid;  hold(ax,'on');
+wv  = logspace(-2, log10(30), 3000);
+[~, ph1] = bode(L{1}, wv);  ph1 = squeeze(ph1);       % nominal phase (deg, unwrapped)
+sh0 = 360*round((180 - interp1(wv, ph1, mm{1}.rigidPM_w))/360);   % common +180 shift
+hc = gobjects(nPlot,1);
+for i = 1:nPlot
+    [mag, ph] = bode(L{i}, wv);  mag = squeeze(mag);  ph = squeeze(ph) + sh0;
+    hc(i) = plot(ax, ph, 20*log10(mag), 'Color', cols(i,:), 'LineWidth', 1.5, ...
+                 'DisplayName', cases{i,1});
+end
+plot(ax, 180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
+xlim(ax, [90 270]);  ylim(ax, [-15 20]);
+xlabel(ax,'Open-Loop Phase (deg)');  ylabel(ax,'Open-Loop Gain (dB)');
+title(ax,'Task 3 - Nichols overlay over the \pm30% corner cases');
+legend(hc, 'Location', 'southwest', 'FontSize', 9);
 
 % Gust response overlay: pitch and lateral drift (Nominal + vertices)
 f2 = figure('Name','gust_corners','Color','w','Position',[100 100 820 360]);

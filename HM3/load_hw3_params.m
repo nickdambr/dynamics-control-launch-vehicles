@@ -1,28 +1,19 @@
 function p = load_hw3_params(opt)
-%LOAD_HW3_PARAMS  Launch-vehicle parameters at the max-qbar condition (t = 72 s).
-%
-%   p = LOAD_HW3_PARAMS() returns a struct with the pitch-plane model
-%   parameters of the Greensite fictitious launch vehicle at t = 72 s,
-%   following Table 1 of "Homework 3 - Attitude Control of a Launch Vehicle
-%   in Atmospheric Flight" (Zavoli, v1.2, 18 May 2026).
-%
-%   The time-varying coefficients are read from the reference data set
-%   GreensiteLPV_DATA.mat (interpolated at t = 72 s) when available; the
-%   geometry/mass quantities that only appear in Table 1 are hard-coded.
-%   If the data file is missing, the whole table falls back to literals.
-%
-%   p = LOAD_HW3_PARAMS('mu_alpha_scale', sa, 'mu_c_scale', sc) scales the
-%   aerodynamic moment coefficient mu_alpha = A6 and the control
-%   effectiveness mu_c = K1 by the given factors (used in Task 3 for the
-%   +/-30 % corner cases). Defaults are 1.0.
-%
-%   Field summary (units in comments):
-%     A6,K1,a1,a3,a4   pitch/lateral coefficients   [1/s^2]
-%     V                relative velocity            [m/s]
-%     wBM,zBM          first bending mode freq/damp [rad/s], [-]
-%     phi_ins,sigma_ins INS bending observation     [-], [rad/m]
-%     phi_tvc          TVC bending forcing          [1/kg]
-%     wTVC,zTVC,tau    TVC actuator + pure delay    [rad/s],[-],[s]
+% Greensite LV pitch-plane parameters at max-qbar (t = 72 s), Table 1.
+%   INPUT (name-value)
+%     mu_alpha_scale - factor on mu_alpha = A6   (Task-3 corners, default 1)
+%     mu_c_scale     - factor on mu_c     = K1   (Task-3 corners, default 1)
+%     t_ref          - reference instant [s]     (default 72)
+%   OUTPUT
+%     p - param struct. Fields:
+%       A6,K1,a1,a3,a4   pitch/lateral coeffs       [1/s^2]
+%       V                relative velocity          [m/s]
+%       wBM,zBM          1st bending freq/damp       [rad/s], [-]
+%       phi_ins,sigma_ins INS bending observation    [-], [rad/m]
+%       phi_tvc          TVC bending forcing        [1/kg]
+%       wTVC,zTVC,tau    TVC actuator + delay       [rad/s],[-],[s]
+%   Time-varying coeffs come from GreensiteLPV_DATA.mat (interp @ t_ref) when
+%   present; otherwise the whole table falls back to literals.
 
 %% Options (name-value)
 arguments
@@ -31,10 +22,10 @@ arguments
     opt.t_ref          (1,1) {mustBeNumeric, mustBeReal} = 72
 end
 
-%% Table 1 literals (authoritative source: the assignment PDF)
+%% Table 1 literals (source: assignment PDF)
 p = struct();
 p.t_ref         = opt.t_ref;     % s    reference instant (max-qbar)
-% --- geometry / mass / forces (Table 1, time-invariant in this snapshot) ---
+% --- geometry / mass / forces (time-invariant in this snapshot) ---
 p.m             = 7.38e4;        % kg
 p.l_alpha       = 10.39;         % m
 p.l_c           = 9.84;          % m
@@ -42,9 +33,9 @@ p.Iyy           = 3.28e6;        % kg m^2
 p.Alt           = 15143;         % m
 p.Tt_minus_D    = 1.71e6;        % N
 p.N_alpha       = 1.07e6;        % N/rad
-% NOTE: Table 1 is internally inconsistent on a4: -(Tt-D)/m = -23.17 1/s^2
-% with the Tt-D and m above, yet the table lists a4 = -27.2710. The LPV data
-% set agrees with the latter, so a4 (not Tt-D) is what enters the dynamics.
+% a4 inconsistency: -(Tt-D)/m = -23.17 1/s^2 from the values above, but the
+% table lists a4 = -27.2710. The LPV set agrees with -27.2710, so that is
+% what enters the dynamics.
 % --- aero/control coefficients (Table 1 nominal) ---
 p.A6            = 3.3818;        % 1/s^2  aerodynamic moment (mu_alpha)
 p.K1            = 4.5647;        % 1/s^2  control effectiveness (mu_c)
@@ -65,7 +56,7 @@ p.wTVC          = 70;            % rad/s
 p.zTVC          = 0.7;           % -
 p.tau           = 0.020;         % s      pure transport delay
 
-%% Prefer the reference LPV data set for the time-varying coefficients
+%% Prefer the LPV data set for the time-varying coefficients
 datafile = fullfile(fileparts(mfilename('fullpath')), ...
                     'General', 'hw3-v3', 'GreensiteLPV_DATA.mat');
 if isfile(datafile)

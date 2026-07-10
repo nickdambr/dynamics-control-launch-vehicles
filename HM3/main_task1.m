@@ -58,11 +58,10 @@ fprintf('  lateral drift (load-relief): peak |z| = %.1f m (<500 m), peak |zdot| 
 % Full-loop Nichols in the D'Antuono Fig. 3.2 convention: the loop comes from the
 % top (lateral-drift integrator), the rigid critical point sits at +180 deg, and
 % the classified Aero GM / Rigid PM are marked at their crossover frequencies.
-f1 = figure('Name','nichols','Color','w','Position',[100 100 680 580]);
-plot_nichols_lv(L, m, 'wrange', [1e-2 1e2]);
-xlim([-360 360]);
-title(sprintf('Task 1 - Full-loop Nichols  (Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ)', ...
-      abs(m.aeroGM_dB), m.rigidPM_deg));
+f1 = figure('Name','nichols','Color','w','Position',[100 100 700 600]);
+plot_nichols_lv(L, m, 'wrange', [1e-2 1e2], 'xlim', [-360 360], ...
+    'title', sprintf('Task 1 - Full-loop Nichols  (Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ)', ...
+             abs(m.aeroGM_dB), m.rigidPM_deg));
 
 % Gust response: theta, z, zdot, delta
 f2 = figure('Name','gust_response','Color','w','Position',[100 100 760 620]);

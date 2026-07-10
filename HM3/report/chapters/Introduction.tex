@@ -11,7 +11,7 @@ control: the aerodynamic moment destabilises the airframe and the wind
 disturbance is largest. I design the controller with classical
 frequency-domain tools, using the Nichols chart as the main stability
 indicator, following the short-period pitch-plane model of
-Greensite~\cite{greensite1970}.
+Greensite~\cite{greensite_cr826}.
 
 \subsection{Design methodology: frozen coefficients at max-$\bar q$}
 
@@ -71,7 +71,7 @@ the airframe transfer function $\theta/\delta = K_1/(s^2 - A_6)$ carries an
 open-loop pole at $s = +\sqrt{A_6} = +1.84$~rad/s in the right half-plane: the
 \textbf{statically unstable} airframe of a vehicle whose centre of pressure lies
 ahead of its centre of mass, for which feedback is
-mandatory~\cite[Eqs.~(9.2.25)--(9.2.26)]{barrows2020}. The TVC coefficient $K_1$
+mandatory~\cite[Lecture~15]{dclvnotes}. The TVC coefficient $K_1$
 sets the control authority available to counter it.
 
 The sensed quantities are produced by the inertial unit (assignment Eq.~2),
@@ -108,7 +108,7 @@ an \textbf{all-pass} rational function ($|P(j\omega)| = 1$ for all $\omega$) tha
 reproduces the phase lag of the delay while leaving the loop gain unchanged.
 I keep order three, matching the implementation, so that the approximation
 stays accurate up to the bending frequency, where $\omega_{BM}\tau \approx 0.38$
-is no longer negligible~\cite{franklin2015}. Parameters at $t=72$~s are read from the
+is no longer negligible. Parameters at $t=72$~s are read from the
 reference data set \texttt{GreensiteLPV\_DATA.mat} (cross-checked against
 Table~1 of the assignment); the salient values are reported in
 Table~\ref{tab:params}.
@@ -153,24 +153,96 @@ bounded without fighting the natural load-relieving weathercock of the
 airframe; I therefore monitor both $z$ and $\bar q\,\alpha$ in the gust
 simulations. The actual deflection follows from the actuator and
 the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\,\delta_{cmd}$.
+The complete loop is sketched in Figure~\ref{fig:loop_full}.
+
+\begin{figure}[H]
+\centering
+\definecolor{accent}{HTML}{15324F}
+\definecolor{accent2}{HTML}{B4451F}
+\definecolor{paper}{HTML}{F7F9FB}
+\definecolor{lift}{HTML}{2E8B7A}
+\begin{tikzpicture}[font=\footnotesize, >={Stealth[length=2.2mm]},
+  blk/.style={draw=accent, line width=0.8pt, rounded corners=2pt, fill=paper,
+              align=center, minimum width=17mm, minimum height=11mm, inner sep=3pt},
+  plant/.style={blk, draw=accent2, fill=accent2!8},
+  sm/.style={draw=accent, line width=0.8pt, circle, inner sep=0pt, minimum size=5.5mm},
+  fl/.style={-{Stealth[length=2.2mm]}, accent, line width=0.8pt}]
+  \node[sm] (s) at (0,0) {};
+  \node[accent, font=\scriptsize] at (-0.34,0.20) {$+$};
+  \node[accent, font=\scriptsize] at (0.22,-0.34) {$-$};
+  \node[blk]   (pd)  at (2.1,0)  {PD\\\scriptsize $K_{P,\theta}+K_{D,\theta}s$};
+  \node[blk]   (nx)  at (4.7,0)  {Notch\\\scriptsize $H_x(s)$};
+  \node[blk]   (tvc) at (7.3,0)  {TVC servo\\\scriptsize $W_{TVC}(s)\,e^{-\tau s}$};
+  \node[plant] (g)   at (10.2,0) {Flexible LV\\\scriptsize $G(s)$};
+  \draw[fl] (-1.6,0) -- node[above,font=\scriptsize]{$\theta_{ref}$} (s);
+  \draw[fl] (s) -- (pd);
+  \draw[fl] (pd) -- node[above,font=\scriptsize]{$\delta_{cmd}$} (nx);
+  \draw[fl] (nx) -- (tvc);
+  \draw[fl] (tvc) -- node[above,font=\scriptsize]{$\delta$} (g);
+  \draw[fl] (g) -- ++(1.9,0) coordinate(out) node[right,font=\scriptsize]{$\mathbf{y}$};
+  \node[lift, font=\scriptsize] (aw) at (10.2,1.55) {$\alpha_w$};
+  \draw[fl, lift] (aw) -- (g.north);
+  \coordinate (fb) at (11.5,0);
+  \draw[fl] (fb) -- (11.5,-1.6) -- (0,-1.6) -- (s.south);
+  \node[accent, font=\scriptsize, below] at (5.2,-1.6)
+     {$\mathbf{y}=[\theta_m,\ \dot\theta_m,\ z_m,\ \dot z_m]$ (INS)};
+\end{tikzpicture}
+\caption{Full attitude-control loop (Tasks~2--3): the PD law, the bending notch
+$H_x$, the TVC servo with transport delay, and the flexible airframe forced by
+the wind angle of attack $\alpha_w$. The INS measurement vector $\mathbf{y}$
+closes the loop; its lateral-drift channels carry the weak $K_{P,z},K_{D,z}$
+feedback of Eq.~\eqref{eq:control}. Task~1 uses the same loop with $H_x=1$,
+$W_{TVC}=1$ and the rigid plant (Figure~\ref{fig:loop_rigid}).}
+\label{fig:loop_full}
+\end{figure}
 
 \subsection{A note on conditional stability}
 
 Because the open-loop airframe carries a single right-half-plane pole
-($P_R = 1$, the $+1.84$~rad/s aerodynamic pole), the loop is
-\textbf{conditionally stable}. By the Nyquist criterion $N = P_R - Z_R$,
-closed-loop stability ($Z_R = 0$) demands exactly one counter-clockwise
-encirclement of the critical point, so stability is lost if the loop gain is
-reduced below a threshold, not only if it is
-increased~\cite[Eq.~(9.4.12), Figs.~9.17--9.18]{barrows2020}. An aerodynamically
-unstable vehicle driven through a second-order (or higher) actuator therefore
-has two gain margins---a low-frequency aerodynamic margin (reduce
-gain $\to$ unstable) and a high-frequency rigid-body margin (increase
-gain $\to$ unstable)---which on the Nichols chart show up as two $0$~dB crossings
-of the $-180^\circ$ line. I therefore read the \texttt{margin} routine in
-magnitude, and the assignment targets $|GM|\approx 6$~dB and
-$|PM|\approx 30^\circ$ refer to this finite stable gain band. This is standard
-practice for the attitude control of aerodynamically unstable
-launchers~\cite{wie2008,franklin2015}.
+(the $+1.84$~rad/s aerodynamic pole $s = +\sqrt{\mu_\alpha}$), the loop is
+\textbf{conditionally stable}: the proportional gain must be large enough to
+overcome the static aerodynamic instability, $K_{P,\theta} > \mu_\alpha/\mu_c$,
+so stability is lost if the loop gain is reduced below this threshold, not only
+if it is increased~\cite[Lecture~15]{dclvnotes}. An aerodynamically unstable
+vehicle driven through a second-order (or higher) actuator therefore has two
+gain margins---a low-frequency aerodynamic margin (reduce gain $\to$ unstable)
+and a high-frequency rigid-body margin (increase gain $\to$ unstable)---which on
+the Nichols chart show up as two $0$~dB crossings of the $-180^\circ$
+line~\cite[Lecture~16]{dclvnotes}. The margins are therefore read on the
+\emph{full} open loop and classified by frequency band, rather than taken from
+\texttt{margin}'s default crossover: the aerodynamic gain margin at the
+low-frequency $-180^\circ$ crossing (a gain-reduction margin,
+$|GM_a|\approx 6$~dB), the rigid-body phase margin at the gain
+crossover ($PM\approx 30^\circ$), and---once the actuator and bending are present
+(Task~2)---the high-frequency rigid-body gain margin and the bending Flex
+margins. This is standard practice for the attitude control of aerodynamically
+unstable launchers~\cite{barrowsorr}.
+
+The same conditional stability is visible in the $s$-plane: the root locus of
+the rigid loop (Figure~\ref{fig:introrl}) starts at the open-loop poles, one of
+which --- the aerodynamic pole $+\sqrt{\mu_\alpha}$ --- lies in the right
+half-plane, and, as the loop gain grows, that pole is drawn across the imaginary
+axis into the left half-plane. Stabilising the airframe therefore demands a
+\emph{minimum} loop gain, $K_{P,\theta}>\mu_\alpha/\mu_c$; the upper bound that
+closes the finite stable band comes from the actuator lag and is read on the
+Nichols chart.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{intro_rootlocus.png}
+\caption{Conditional stability on the root locus of the rigid Task-1 loop
+(built-in \texttt{rlocus}). Following the usual convention, $\times$ marks the
+open-loop poles (where the branches start, $k=0$) and $\circ$ the open-loop zeros
+(where they end, $k\to\infty$); the branches trace the closed-loop poles as the
+loop gain grows. As the loop gain grows the unstable aerodynamic pole
+at $+\sqrt{\mu_\alpha}=+1.84$~rad/s ($\times$ in the right half-plane) is drawn
+into the left half-plane, so the closed loop is stable at the design gain; the
+drift mode leaves the real axis into the lightly damped pair near the imaginary
+axis. Stability therefore requires a \emph{minimum} loop gain,
+$K_{P,\theta}>\mu_\alpha/\mu_c=0.74$ (the low-frequency aerodynamic margin); the
+high-frequency margin set by the actuator lag is the second $0$~dB crossing on
+the Nichols chart.}
+\label{fig:introrl}
+\end{figure}
 
 \end{document}

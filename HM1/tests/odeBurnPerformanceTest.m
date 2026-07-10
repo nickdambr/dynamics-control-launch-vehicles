@@ -1,8 +1,8 @@
 classdef odeBurnPerformanceTest < matlab.perftest.TestCase
-    %odeBurnPerformanceTest Performance benchmarks for the HM1 hot loop.
-    %  Unit level: a single ode_burn RHS evaluation (called ~1e6+ times by
-    %  the fsolve shooting sweeps of main_task1..4). System level: one
-    %  ode45 burn-arc integration at loose vs shooting-grade tolerances.
+    %odeBurnPerformanceTest Benchmarks for the HM1 hot loop.
+    %  Unit: one ode_burn RHS evaluation (called ~1e6+ times by the fsolve
+    %  sweeps of main_task1..4). System: one ode45 burn-arc integration at
+    %  loose vs shooting-grade tolerances.
     %  Run with: results = runperf('odeBurnPerformanceTest')
 
     properties

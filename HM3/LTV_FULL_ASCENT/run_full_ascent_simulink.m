@@ -1,22 +1,14 @@
 function out = run_full_ascent_simulink(o)
-%RUN_FULL_ASCENT_SIMULINK  Simulate hm3_full_ascent.slx and overlay vs the baseline.
-%
-%   out = RUN_FULL_ASCENT_SIMULINK() initialises the base workspace with
-%   INIT_SIMULINK_LPV, simulates the full-ascent LPV model
-%   hm3_full_ascent.slx for both controllers (frozen / gain-scheduled), and
-%   overlays the Simulink time histories on the pure-MATLAB LTV ode45 replay
-%   (ODE_LPV_ASCENT). The script is the source of truth; the model reproduces
-%   it. The replay is driven by the wind the model actually generated
-%   (alpha_w logged from the in-loop generator), so the only residual is the
-%   wind interpolation between solver steps (~1e-7 rad on theta with the
-%   model's bounded MaxStep). A figure fullascent_simulink_vs_script.png is
-%   written to figures/.
-%
-%   Name/value options:
-%     'rebuild'  re-author the model with BUILD_HM3_FULL_ASCENT first (default false)
-%
-%   The model logs five signals (To Workspace, Timeseries):
-%       theta_sl, z_sl, zdot_sl, delta_sl, alpha_w_sl
+% Simulate hm3_full_ascent.slx (frozen + scheduled) and overlay vs the ode45
+% baseline (ODE_LPV_ASCENT). Replay driven by the wind the model generated
+% (logged alpha_w), so the residual is just wind interpolation between solver
+% steps (~1e-7 rad on theta). Writes fullascent_simulink_vs_script.png.
+% Model logs (To Workspace, Timeseries): theta_sl, z_sl, zdot_sl, delta_sl,
+% alpha_w_sl.
+%   INPUT
+%     o.rebuild - re-author model with BUILD_HM3_FULL_ASCENT first (default false)
+%   OUTPUT
+%     out - struct: frozen/scheduled, each with t and err (theta/z/delta)
 %
 %   See also INIT_SIMULINK_LPV, BUILD_HM3_FULL_ASCENT, ODE_LPV_ASCENT,
 %   MAIN_FULL_ASCENT.
@@ -52,7 +44,7 @@ for v = 1:2
     th = so.theta_sl;  z = so.z_sl;  de = so.delta_sl;  aw = so.alpha_w_sl;
     tt = th.Time;
 
-    % --- ode45 replay on the SAME wind the model produced ---
+    % ode45 replay on the SAME wind the model produced
     M = pack_model(S, sc, aw);
     [~, x] = ode45(@(t, x) ode_lpv_ascent(t, x, M), tt, zeros(4, 1), odeo);
     if sc, Kp = S.fKp(tt); Kd = S.fKd(tt);
@@ -66,7 +58,7 @@ for v = 1:2
     fprintf('%-9s overlay: max|d theta|=%.2e rad  |d z|=%.2e m  |d delta|=%.2e rad\n', ...
             nm, err.theta, err.z, err.delta);
 
-    % --- overlay (baseline solid, Simulink dashed) ---
+    % overlay (baseline solid, Simulink dashed)
     nexttile; plot(tt, x(:, 3)*180/pi, 'b-', th.Time, squeeze(th.Data)*180/pi, 'r--', 'LineWidth', 1.1);
     grid on; xlabel('t [s]'); ylabel('\theta [deg]');
     title(sprintf('%s: \\theta (\\Delta=%.1e rad)', nm, err.theta));
@@ -86,7 +78,13 @@ end
 
 % ------------------------------------------------------------------------
 function M = pack_model(S, sched, aw)
-%PACK_MODEL  Build the ODE_LPV_ASCENT struct, wind = the model's logged alpha_w.
+% Build the ODE_LPV_ASCENT struct, wind = the model's logged alpha_w.
+%   INPUT
+%     S     - init_simulink_lpv struct
+%     sched - 0 frozen gains, 1 scheduled
+%     aw    - logged alpha_w timeseries
+%   OUTPUT
+%     M - struct for ODE_LPV_ASCENT
 M = struct('fc1', S.fc1, 'fc2', S.fc2, 'fc3', S.fc3, 'fc4', S.fc4, ...
            'fc5', S.fc5, 'fc6', S.fc6, 'fc7', S.fc7, 'fKp', S.fKp, 'fKd', S.fKd, ...
            'Kp_th0', S.K0.Kp_th, 'Kd_th0', S.K0.Kd_th, 'Kp_z', S.K0.Kp_z, ...

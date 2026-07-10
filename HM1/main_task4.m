@@ -213,8 +213,15 @@ end
 %% ===================== LOCAL FUNCTIONS =====================
 
 function res = shooting_single(z0, p, opts_ode)
-% Single-stage shooting (same as Task 1), improved formulation:
-% lam_m0 = 1 (normalization) and H = 0 imposed algebraically at t0. 4 unknowns.
+% Single-stage shooting (same as Task 1).
+%   INPUT
+%     z0       - unknowns [lam_vx0; lam_vy0; lam_y; tf]
+%     p        - struct: c, Q, T, yf
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - 4 residuals [y(tf)-yf; vx(tf)-1; vy(tf); H0]
+% Improved formulation: lam_m0=1; H=0 imposed at t0.
+% No arguments block by design: runs inside the fsolve loop.
     lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3); tf = z0(4);
 
     if tf <= 0 || tf > 2
@@ -239,9 +246,15 @@ function res = shooting_single(z0, p, opts_ode)
 end
 
 function res = shooting_twostage(z0, p, opts_ode)
-% Two-stage shooting with fixed staging time p.ts, improved formulation:
-% lam_m0 = 1 (normalization) and H = 0 imposed algebraically at t0.
-%   z0 = [lam_vx0; lam_vy0; lam_y; tf]
+% Two-stage shooting with fixed staging time p.ts.
+%   INPUT
+%     z0       - unknowns [lam_vx0; lam_vy0; lam_y; tf]
+%     p        - struct: c, Q, T, yf, eta, ts
+%     opts_ode - ode45 options
+%   OUTPUT
+%     res - 4 residuals [y(tf)-yf; vx(tf)-1; vy(tf); H0]
+% Improved formulation: lam_m0=1; H=0 imposed at t0. lam_m continuous at staging.
+% No arguments block by design: runs inside the fsolve loop.
 
     lam_vx0 = z0(1); lam_vy0 = z0(2); lam_y = z0(3); tf = z0(4);
     ts = p.ts;
