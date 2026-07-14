@@ -221,6 +221,15 @@ legend({sprintf('Task-1 gains (ideal actuator): Rigid PM = %.0f^\\circ', mB.rigi
 % same sheet.
 f4 = figure('Name','nichols_trade','Color','w','Position',[100 100 700 600]);
 ax = gca;  ngrid;  hold(ax,'on');
+% ngrid draws its M/N grid on the [0,360] sheet; move it onto [-360,0] and
+% replicate it (without the dB labels) on [-720,-360] to back the full window
+g0 = ax.Children;
+g1 = copyobj(findobj(g0, '-not', 'Type', 'text'), ax);
+for k = 1:numel(g0)
+    if isprop(g0(k), 'XData'), g0(k).XData = g0(k).XData - 360;
+    else, g0(k).Position(1) = g0(k).Position(1) - 360; end
+end
+for k = 1:numel(g1), g1(k).XData = g1(k).XData - 720; end
 wv  = logspace(-2, log10(300), 5000);
 [~, ph0] = bode(Lcand{3}, wv);  ph0 = squeeze(ph0);          % deep-notch reference phase
 sh0 = 360*round((-180 - interp1(wv, ph0, mB.rigidPM_w))/360); % common -180 shift
@@ -235,8 +244,8 @@ for i = 1:3
     ht(i) = plot(ax, ph, 20*log10(mag), 'Color', trcol(i,:), 'LineWidth', 1.4, ...
                  'DisplayName', trnam{i});
 end
-plot(ax,  180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
 plot(ax, -180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
+plot(ax, -540, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
 xlim(ax, [-720 0]);  ylim(ax, [-40 40]);
 xlabel(ax,'Open-Loop Phase (deg)');  ylabel(ax,'Open-Loop Gain (dB)');
 title(ax,'Task 2 - Full-model loop: bending filter trade');

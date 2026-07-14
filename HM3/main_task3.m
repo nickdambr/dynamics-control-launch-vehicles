@@ -76,6 +76,13 @@ cols = lines(nPlot);
 % closest to the -180 critical point.
 f1 = figure('Name','nichols_corners','Color','w','Position',[100 100 700 600]);
 ax = gca;  ngrid;  hold(ax,'on');
+% ngrid draws its M/N grid on the [0,360] sheet; move it onto [-360,0]
+% (critical point at -180) so it backs the plotted window
+for k = 1:numel(ax.Children)
+    hg = ax.Children(k);
+    if isprop(hg, 'XData'), hg.XData = hg.XData - 360;
+    else, hg.Position(1) = hg.Position(1) - 360; end
+end
 wv  = logspace(-2, log10(30), 3000);
 [~, ph1] = bode(L{1}, wv);  ph1 = squeeze(ph1);       % nominal phase (deg, unwrapped)
 sh0 = 360*round((-180 - interp1(wv, ph1, mm{1}.rigidPM_w))/360);   % common -180 shift
