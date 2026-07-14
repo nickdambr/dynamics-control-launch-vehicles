@@ -150,7 +150,9 @@ else
 end
 delta = -(Kp.*x(:, 3) + Kd.*x(:, 4) + S.K0.Kp_z*x(:, 1) + S.K0.Kd_z*x(:, 2));
 V     = S.fV(tt);
-alpha = x(:, 3) + x(:, 2)./V + S.windfun(tt);    % total angle of attack
+alpha = x(:, 3) + x(:, 2)./V - S.windfun(tt);    % total angle of attack
+                                                 % (minus: same convention as the
+                                                 % RHS, ode_lpv_ascent.m lines 26/28)
 qa    = (S.fQ(tt)/1000) .* (alpha*180/pi);       % qbar*alpha [kPa.deg]
 r = struct('t', tt, 'theta', x(:, 3), 'z', x(:, 1), 'zdot', x(:, 2), ...
            'thetadot', x(:, 4), 'delta', delta, 'alpha', alpha, 'qa', qa);

@@ -146,12 +146,17 @@ with $K_{P,z},K_{D,z}$ small and negative, of order $10^{-3}$, as recommended in
 the assignment guidelines. Closing the loop also on $(z_m,\dot z_m)$ trades
 between two classical objectives in wind: containing the lateral
 drift (drift minimum) and containing the angle of attack
-$\alpha = \theta + \dot z/V + \alpha_w$, hence the structural load
+$\alpha = \theta + \dot z/V - \alpha_w$, hence the structural load
 $\bar q\,\alpha$ (load minimum)~\cite[Lecture~17]{dclvnotes} --- the binding concern at the
-max-$\bar q$ condition studied here. The weak negative gains keep the drift
-bounded without fighting the natural load-relieving weathercock of the
-airframe; I therefore monitor both $z$ and $\bar q\,\alpha$ in the gust
-simulations. The actual deflection follows from the actuator and
+max-$\bar q$ condition studied here. The sign of $\alpha_w$ is the one implied by
+Eq.~\eqref{eq:plant}: $\alpha$ is the incidence measured against the
+\emph{air-relative} velocity, so a lateral wind subtracts from the vehicle's own
+$\dot z$. Note that no weathercock stability is available to relieve the load ---
+with $A_6 > 0$ the centre of pressure sits \emph{ahead} of the centre of mass and
+the aerodynamic moment is divergent, so an attitude-hold law is if anything load
+aggravating (Task~1). The weak negative gains close the free integrator in
+lateral position and keep the drift bounded; I therefore monitor both $z$ and
+$\bar q\,\alpha$ in the gust simulations. The actual deflection follows from the actuator and
 the bending filter $H_x(s)$ (Task~2): $\delta = W_{TVC}(s)\,e^{-\tau s}\,H_x(s)\,\delta_{cmd}$.
 The complete loop is sketched in Figure~\ref{fig:loop_full}.
 

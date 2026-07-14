@@ -68,24 +68,25 @@ fprintf(['\n(V* = uncertainty-box vertices, the assignment corner cases;' ...
 
 %% ---------------------------------------------------------------- Figures
 cols = lines(nPlot);
-% Nichols overlay over Nominal + vertices, launch-vehicle convention (critical
-% point +180 deg). A single common phase shift (from the nominal rigid crossover)
-% is applied to all corners so their spread is directly comparable. Zoomed on the
-% rigid region: V3 (max instability, min authority) is the corner whose aerodynamic
-% gain margin nearly vanishes -- its curve rides closest to the +180 critical point.
+% Nichols overlay over Nominal + vertices, critical point at (-180 deg, 0 dB)
+% (course convention, from 1 + L = 0). A single common phase shift (from the
+% nominal rigid crossover) is applied to all corners so their spread is directly
+% comparable. Zoomed on the rigid region: V3 (max instability, min authority) is
+% the corner whose aerodynamic gain margin nearly vanishes -- its curve rides
+% closest to the -180 critical point.
 f1 = figure('Name','nichols_corners','Color','w','Position',[100 100 700 600]);
 ax = gca;  ngrid;  hold(ax,'on');
 wv  = logspace(-2, log10(30), 3000);
 [~, ph1] = bode(L{1}, wv);  ph1 = squeeze(ph1);       % nominal phase (deg, unwrapped)
-sh0 = 360*round((180 - interp1(wv, ph1, mm{1}.rigidPM_w))/360);   % common +180 shift
+sh0 = 360*round((-180 - interp1(wv, ph1, mm{1}.rigidPM_w))/360);   % common -180 shift
 hc = gobjects(nPlot,1);
 for i = 1:nPlot
     [mag, ph] = bode(L{i}, wv);  mag = squeeze(mag);  ph = squeeze(ph) + sh0;
     hc(i) = plot(ax, ph, 20*log10(mag), 'Color', cols(i,:), 'LineWidth', 1.5, ...
                  'DisplayName', cases{i,1});
 end
-plot(ax, 180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
-xlim(ax, [90 270]);  ylim(ax, [-15 20]);
+plot(ax, -180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
+xlim(ax, [-270 -90]);  ylim(ax, [-15 20]);
 xlabel(ax,'Open-Loop Phase (deg)');  ylabel(ax,'Open-Loop Gain (dB)');
 title(ax,'Task 3 - Nichols overlay over the \pm30% corner cases');
 legend(hc, 'Location', 'southwest', 'FontSize', 9);

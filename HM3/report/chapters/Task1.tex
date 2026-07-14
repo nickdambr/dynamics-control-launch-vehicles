@@ -182,7 +182,8 @@ crossover~\cite{barrowsorr}. Because the lateral-drift position feedback carries
 a free integrator ($z/\delta\to\infty$ at DC), the Nichols curve comes from the
 top (Figure~\ref{fig:t1nichols}): the aerodynamic gain margin is the
 low-frequency gain-reduction margin, read where the curve crosses the critical
-point ($+180^\circ$) at $|GM_a|=6$~dB, and the rigid-body phase margin is read at
+point --- $(-180^\circ, 0~\mathrm{dB})$, from $1+L=0$ --- at $|GM_a|=6$~dB, and
+the rigid-body phase margin is read at
 the $2.45$~rad/s gain crossover. With the ideal Task-1 actuator these are the
 only rigid-body margins; the high-frequency rigid-body gain margin (a
 gain-increase margin set by the actuator lag) and the bending Flex margins appear
@@ -192,10 +193,11 @@ below $\sim0.5$~rad/s are lateral-drift artifacts, not rigid-body margins.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.62\textwidth]{task1_nichols.png}
-\caption{Task 1 --- full-loop Nichols in the launch-vehicle convention (critical
-point at $+180^\circ$). The loop comes from the top (lateral-drift integrator);
-the design meets $|GM_a|\approx 6$~dB (aerodynamic, at $+180^\circ$) and
-$PM\approx 30^\circ$ (rigid-body, at the $2.45$~rad/s crossover).}
+\caption{Task 1 --- full-loop Nichols; the critical point is
+$(-180^\circ, 0~\mathrm{dB})$, from $1+L=0$. The loop comes from the top
+(lateral-drift integrator); the design meets $|GM_a|\approx 6$~dB (aerodynamic,
+at $-180^\circ$) and $PM\approx 30^\circ$ (rigid-body, at the $2.45$~rad/s
+crossover).}
 \label{fig:t1nichols}
 \end{figure}
 
@@ -237,40 +239,61 @@ lateral drift $z$, drift rate $\dot z$ and TVC deflection $\delta$.}
 \end{figure}
 
 Since max-$\bar q$ is the load-critical point of the trajectory, the total
-angle of attack $\alpha = \theta + \dot z/V + \alpha_w$ and the structural-load
+angle of attack $\alpha = \theta + \dot z/V - \alpha_w$ and the structural-load
 indicator $\bar q\,\alpha$ are also monitored (Figure~\ref{fig:t1alpha}). The
-attitude loop pitches the vehicle slightly into the wind
-($\theta \to -0.26^\circ$ at the gust peak), so the peak total incidence,
-$0.26^\circ$, stays below the $0.39^\circ$ wind contribution alone --- a mild
-load-relieving action. With $\bar q = 81$~kPa the peak load indicator is
-$\bar q\,\alpha = 21$~kPa\,deg, the incidence remaining an order of magnitude
-below the few-degree load limit typical of a slender launcher, so at this gust
-level the drift-minimum--oriented gain choice does not conflict with the
-load-minimum requirement.
+minus sign is the model's own: $\alpha$ is the incidence seen by the
+\emph{air-relative} velocity, and it is the quantity that multiplies $A_6$ and
+$a_1 V$ in Eq.~(1), whose wind column is
+$\mathbf{B}_w = [0,\,-a_1V,\,0,\,-A_6,\,0,\,0]^\top$.
+To hold attitude against the gust the loop pitches the vehicle into the relative
+wind ($\theta \to -0.26^\circ$ at the gust peak), and that contribution
+\emph{adds} to the wind's own rather than cancelling it: the peak total
+incidence, $0.577^\circ$, therefore \emph{exceeds} the $0.39^\circ$ of the gust
+alone. With $\bar q = 81$~kPa the peak load indicator is
+$\bar q\,\alpha = 47$~kPa\,deg. A pure attitude-hold law is thus mildly
+\emph{load aggravating} --- which is precisely why flight designs add an explicit
+load-relief term. The incidence nevertheless stays an order of magnitude below
+the few-degree limit typical of a slender launcher, so at this gust level the
+design is not load critical.
 
 This drift-versus-load tension is the standard trade in launch-vehicle wind
-control~\cite[Sec.~3.1]{greensite_cr826}. The characteristic equation of the
-rigid airframe in wind is a cubic with two oscillatory rigid-body roots plus one
-real drift (flight-path) root; the final-value theorem applied to a \emph{sustained}
-step gust gives a steady drift rate $\dot z_{ss} = -V\,\alpha_w$, independent of the
-gains: with only weak drift feedback the vehicle does not null a persistent
-crosswind. The 1-cosine gust of Figure~\ref{fig:t1gust} is instead a transient
-pulse, so once it has passed the stable loop returns the drift to zero --- but only
-through that slow, lightly damped mode, which is why the settling takes
-$\sim\!80$~s. Two limiting cases bracket the design. The
-\textbf{drift-minimum} condition (drift-channel coefficient $B_0 = 0$) holds
-the trajectory dispersion down. The \textbf{load-minimum} condition
-($K_{P,\theta} = 0$, so the steady incidence $\alpha_{ss} = 0$) minimises
-$\bar q\,\alpha$, but pays for it with a slow unstable drift mode. The weak negative
-drift gains I used here are a small step toward the drift-minimum end of this
-trade.
+control~\cite[Sec.~3.1]{greensite_cr826}. Applying the final-value theorem to a
+\emph{sustained} step gust, with the attitude loop holding $\theta_{ss} = 0$, the
+aerodynamic moment can only vanish if the incidence does: $\alpha_{ss} = 0$, which
+forces a steady drift rate $\dot z_{ss} = +V\,\alpha_w$. The vehicle is simply blown
+downwind until it flies \emph{with} the air --- it nulls the relative incidence but
+not the dispersion. The 1-cosine gust of Figure~\ref{fig:t1gust} is instead a
+transient pulse, so once it has passed the stable loop returns the drift to zero,
+but only through the slow, lightly damped mode, which is why the settling takes
+$\sim\!80$~s.
+
+The weak negative drift gains are, first of all, a \emph{stability} requirement
+rather than a load-relief device. Lateral position has no restoring force: the
+rigid airframe carries a free integrator in $z$, and with $K_{P,z}=K_{D,z}=0$ the
+closed loop keeps a pole exactly at the origin --- poles
+$\{0,\ -0.076,\ -0.98 \pm 1.93\mathrm{i}\}$, marginally stable, with $z$ never
+returning to zero. The $-10^{-3}$ gains move that pair to
+$-0.056 \pm 0.233\mathrm{i}$, cutting the peak drift from $9.5$~m to $2.3$~m while
+changing the peak incidence by barely $1\%$ ($0.584^\circ \to 0.577^\circ$). They
+buy drift control, not load relief. The \textbf{load-minimum} condition of the
+classical literature ($K_{P,\theta} = 0$, so that $\alpha_{ss} = 0$) is moreover
+inadmissible on this airframe: $K_{P,\theta}$ is precisely what stabilises the
+$+\sqrt{A_6}$ aerodynamic root, and setting it to zero makes the loop diverge.
+Genuine load relief on an unstable launcher must therefore come from an added
+feedback, not from detuning the attitude channel: the classical options are a
+direct incidence term $K_\alpha\alpha$ (needs an air-data measurement or
+estimate), a lateral-acceleration term $K_a\ddot z$, or larger translational
+gains on $(z,\dot z)$ --- the latter being the structure used here, but sized
+for drift control rather than load relief.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.95\textwidth]{task1_alpha_load.png}
-\caption{Task 1 --- angle-of-attack budget $\alpha = \theta + \dot z/V +
+\caption{Task 1 --- angle-of-attack budget $\alpha = \theta + \dot z/V -
 \alpha_w$ (left) and aerodynamic load indicator $\bar q\,\alpha$ (right) during
-the severe gust.}
+the severe gust. The attitude loop pitches into the relative wind, so $\theta$ and
+$-\alpha_w$ add: the peak incidence ($0.577^\circ$) exceeds the gust alone
+($0.39^\circ$).}
 \label{fig:t1alpha}
 \end{figure}
 

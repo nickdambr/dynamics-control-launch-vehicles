@@ -1,10 +1,13 @@
 function ax = plot_nichols_lv(L, mm, opts)
-% Full-loop Nichols chart in the launch-vehicle (D'Antuono Fig. 3.2) convention.
+% Full-loop Nichols chart with the critical point at (-180 deg, 0 dB).
 %
 %   Uses the native MATLAB Nichols chart so the standard M/N grid with the dB
 %   magnitude labels (0, +/-0.25, +/-0.5, +/-1, +/-3, +/-6, +/-12, +/-20 dB) is
 %   drawn. The phase is matched so the rigid-body critical point sits at
-%   +180 deg (D'Antuono), with the wrapped flex critical points at -180/-540.
+%   -180 deg -- the course convention, from 1 + L = 0 <=> L = -1 <=>
+%   (-180 deg, 0 dB) -- with the wrapped flex critical points at -540/-900.
+%   (D'Antuono Fig. 3.2 shows the same chart relabeled by +360 deg; the phase
+%   is defined mod 360 so the two displays are the same curve.)
 %   The full open loop L = K_FCS*G comes from the top (lateral-drift position
 %   integrator z/delta -> inf at DC). The classified margins (classify_margins)
 %   are overlaid at their crossover frequencies, and the low-frequency drift
@@ -14,7 +17,7 @@ function ax = plot_nichols_lv(L, mm, opts)
 %     L    - full open loop (assemble_loop)
 %     mm   - classified margins struct (classify_margins)
 %     opts - name-value: wrange [wlo whi] rad/s (default [1e-3 1e3]);
-%            xlim [lo hi] deg (default [-360 360]); title (default '')
+%            xlim [lo hi] deg (default [-720 0]); title (default '')
 %   OUTPUT
 %     ax   - axis handle
 
@@ -22,7 +25,7 @@ arguments
     L {mustBeA(L, 'lti')}
     mm (1,1) struct
     opts.wrange (1,2) {mustBeNumeric, mustBeReal, mustBePositive} = [1e-3 1e3]
-    opts.xlim   (1,2) {mustBeNumeric, mustBeReal} = [-360 360]
+    opts.xlim   (1,2) {mustBeNumeric, mustBeReal} = [-720 0]
     opts.title  {mustBeTextScalar} = ''
 end
 
@@ -31,10 +34,10 @@ restoreWarn = onCleanup(@() warning(warnState));
 
 wref = mm.rigidPM_w;  if isnan(wref), wref = mm.aeroGM_w; end
 
-% Native Nichols chart (standard M/N grid + dB labels), phase matched to +180.
+% Native Nichols chart (standard M/N grid + dB labels), phase matched to -180.
 L.InputName = '';  L.OutputName = '';           % drop the "from delta to delta" subtitle
 h = nicholsplot(L, {opts.wrange(1), opts.wrange(2)});
-setoptions(h, 'PhaseMatching','on', 'PhaseMatchingFreq', wref, 'PhaseMatchingValue', 180, ...
+setoptions(h, 'PhaseMatching','on', 'PhaseMatchingFreq', wref, 'PhaseMatchingValue', -180, ...
              'Grid','on', 'XLimMode','manual','YLimMode','manual', ...
              'XLim', {opts.xlim}, 'YLim', {[-40 40]});
 ax = gca;  hold(ax, 'on');
@@ -43,7 +46,7 @@ if ~isempty(opts.title), title(ax, opts.title); end
 % Overlay the classified margins, replicating the constant 360 deg phase shift.
 wv = logspace(log10(opts.wrange(1)), log10(opts.wrange(2)), 4000);
 [mag, ph] = bode(L, wv);  mag = squeeze(mag);  ph = squeeze(ph);  gdb = 20*log10(mag);
-sh = ph + 360*round((180 - interp1(wv, ph, wref))/360);
+sh = ph + 360*round((-180 - interp1(wv, ph, wref))/360);
 
 hleg = gobjects(0);
 hleg = addmark(hleg, mm.aeroGM_w,  'Aero |GM|', 'rs');

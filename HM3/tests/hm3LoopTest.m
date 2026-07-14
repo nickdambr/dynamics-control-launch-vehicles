@@ -114,13 +114,14 @@ classdef hm3LoopTest < matlab.unittest.TestCase
         end
 
         function testGustResponseAngleOfAttackBudget(testCase)
-            % alpha = theta + zdot/V + alpha_w, and peaks match the histories
+            % alpha = theta + zdot/V - alpha_w (the plant's own convention:
+            % Eq. (1) has Bw = [0; -a1*V; 0; -A6]), and peaks match the histories
             pp = testCase.p;
             G  = build_plant_rigid(pp);
             [~, T] = assemble_loop(G, testCase.Kref);
             w  = load_wind_profile(pp);
             r  = simulate_gust_response(T, w);
-            testCase.verifyEqual(r.alpha, r.theta + r.zdot/pp.V + r.alphaw, ...
+            testCase.verifyEqual(r.alpha, r.theta + r.zdot/pp.V - r.alphaw, ...
                 'AbsTol', 1e-15);
             testCase.verifyEqual(r.peak_theta, max(abs(r.theta)), 'AbsTol', 1e-15);
             testCase.verifyEqual(r.theta(1), 0, 'AbsTol', 1e-15);

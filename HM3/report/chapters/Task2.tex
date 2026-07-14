@@ -119,7 +119,7 @@ Nichols chart, and Figure~\ref{fig:t2nichols} the retained full-loop margins.
 \includegraphics[width=0.66\textwidth]{task2_retune.png}
 \caption{Task 2 --- PD re-tuning on the full loop. With the Task-1 gains (ideal
 actuator) the actuator $+$ delay $+$ notch lag drives the loop close to the
-$+180^\circ$ critical point (rigid $PM = 15^\circ$, blue); re-tuning on the full
+$-180^\circ$ critical point (rigid $PM = 15^\circ$, blue); re-tuning on the full
 loop pulls the curve away and restores $PM = 30^\circ$ (orange).}
 \label{fig:t2retune}
 \end{figure}
@@ -127,8 +127,8 @@ loop pulls the curve away and restores $PM = 30^\circ$ (orange).}
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.64\textwidth]{task2_nichols.png}
-\caption{Task 2 --- retained full-loop Nichols (deep notch, re-tuned PD) in the
-launch-vehicle convention (critical point $+180^\circ$): aerodynamic gain margin
+\caption{Task 2 --- retained full-loop Nichols (deep notch, re-tuned PD);
+critical point at $(-180^\circ, 0~\mathrm{dB})$: aerodynamic gain margin
 ($|GM_a|=6$~dB), rigid phase margin ($30^\circ$) and the high-frequency rigid
 gain margin (set by the actuator lag) are marked. The bending mode is
 gain-stabilised, so its lobe stays well below $0$~dB near $\omega_{BM}$ rather
@@ -144,8 +144,8 @@ margin; the deep notch drives the bending lobe far below $0$~dB (blue).
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.64\textwidth]{task2_nichols_trade.png}
-\caption{Task 2 --- bending-filter trade on the Nichols chart (launch-vehicle
-convention, critical point $+180^\circ$; a common phase shift aligns the three
+\caption{Task 2 --- bending-filter trade on the Nichols chart (critical point
+at $-180^\circ$; a common phase shift aligns the three
 loops at the rigid crossover): without a filter the $+29$~dB bending lobe (red)
 wraps over the critical point and the loop is unstable; the best Eq.-4 lead-lag
 alone (green) rotates the lobe but only marginally; the deep notch (blue) pushes
@@ -242,8 +242,8 @@ C-NLL --- notch+lead-lag  & yes & yes & yes & yes & yes \\
 The gust response of the stabilised full model is shown in
 Figure~\ref{fig:t2gust}; all four assignment time histories remain well damped,
 with peaks $\theta = 0.23^\circ$, $z = 2.27$~m, $\delta = 0.51^\circ$ and a
-load indicator $\bar q\,\alpha = 20.5$~kPa\,deg, essentially the rigid
-case. Because the notch is localised at the bending frequency and the TVC
+load indicator $\bar q\,\alpha = 45.8$~kPa\,deg (peak incidence
+$\alpha = 0.565^\circ$), essentially the rigid case. Because the notch is localised at the bending frequency and the TVC
 bandwidth ($70$~rad/s) is well above the control crossover, the full-model
 response is almost indistinguishable from the rigid one
 (Figure~\ref{fig:t2cmp}): the added dynamics affect stability robustness (the

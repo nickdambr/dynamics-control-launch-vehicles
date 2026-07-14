@@ -37,7 +37,7 @@ tuned on the open-loop Nichols chart. Because the airframe is open-loop
 unstable the loop is *conditionally stable*, so a single `margin()` number is
 meaningless: the margins are read on the full drift-coupled loop and
 **classified by frequency band** (`classify_margins.m`) — the **aerodynamic
-gain margin** at the low-frequency `+180°` crossing, the **rigid-body
+gain margin** at the low-frequency `−180°` crossing, the **rigid-body
 phase/gain margins** at the control crossover, and the **delay margin**. The
 PD gains are seeded by the analytic pole-placement pair
 `Kp⁰ = 2A₆/K₁`, `Kd⁰ = √A₆/K₁` and then refined by a base-MATLAB
@@ -60,11 +60,23 @@ conditional stability) and clears the 6 dB contour. Against the assignment
 wind gust (`V_g = 6.4 m/s`, peak `α_w = 0.39°`) the pitch attitude peaks at
 0.26°, the TVC deflection at 0.53° and the lateral drift at 2.3 m. Since
 max-q̄ is the load-critical point, the angle-of-attack budget
-`α = θ + ż/V + α_w` and the load indicator `q̄α` are also monitored: the loop
-pitches slightly *into* the wind (`θ → −0.26°` at the gust peak), so the peak
-total incidence (0.26°) stays below the wind contribution alone — a mild
-load-relieving action. With `q̄ = 81 kPa` the peak load indicator is
-`q̄α = 21 kPa·deg`, an order of magnitude below typical slender-launcher limits.
+`α = θ + ż/V − α_w` and the load indicator `q̄α` are also monitored. The minus
+sign is the plant's own (Eq. 1 has the wind column `Bw = [0, −a₁V, 0, −A₆, 0, 0]ᵀ`):
+`α` is the incidence seen by the *air-relative* velocity. To hold attitude the loop
+pitches *into* the relative wind (`θ → −0.26°` at the gust peak), and that **adds**
+to the wind's own contribution: the peak total incidence (0.577°) therefore
+**exceeds** the gust alone (0.39°). With `q̄ = 81 kPa` the peak load indicator is
+`q̄α = 47 kPa·deg` — a pure attitude-hold law is mildly *load-aggravating*, which is
+exactly why flight designs add explicit load relief. It still sits an order of
+magnitude below typical slender-launcher limits, so the design is not load-critical
+at this gust level.
+
+The weak negative drift gains (`Kp_z = Kd_z = −1e-3`) are, first of all, a
+**stability** requirement, not load relief: lateral position has no restoring force,
+and with `Kp_z = Kd_z = 0` the closed loop keeps a pole exactly at the origin
+(`{0, −0.076, −0.98 ± 1.93i}` — marginally stable, `z` never returns). The gains move
+that pair to `−0.056 ± 0.233i`, cutting peak drift from 9.5 m to 2.3 m while changing
+the peak incidence by ~1%.
 
 ![Task 1 Nichols](figures/task1_nichols.png)
 ![Task 1 gust response](figures/task1_gust_response.png)
@@ -97,7 +109,7 @@ which restores **PM = 30°** (at 3.2 rad/s) and a 165 ms delay margin, with the
 bending lobe gain-stabilised at **|L(ω_BM)| = −18 dB** — an 18 dB bending gain
 margin, above the ≥ 12 dB usually required of gain-stabilised modes. The gust
 response is essentially the rigid one (peaks θ = 0.23°, z = 2.27 m, δ = 0.51°,
-`q̄α = 20.5 kPa·deg`).
+α = 0.565°, `q̄α = 45.8 kPa·deg`).
 
 The price of the deep notch is **exact ω_BM knowledge**: with the filters
 fixed it tolerates −10 % detuning but goes unstable at +5 % (the asymmetric

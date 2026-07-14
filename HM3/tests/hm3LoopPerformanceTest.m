@@ -6,8 +6,9 @@ classdef hm3LoopPerformanceTest < matlab.perftest.TestCase
     %  search. Run: runperf('hm3LoopPerformanceTest')
 
     properties (Constant)
-        % Task-1 PD design (pinned), same as hm3LoopTest
-        Kref = struct('Kp_th', 1.9800, 'Kd_th', 1.3997, ...
+        % Task-1 PD design (pinned), same as hm3LoopTest. Keep the two in sync:
+        % testDesignControllerSearch asserts the tuner converges back to Kp_th.
+        Kref = struct('Kp_th', 1.7845, 'Kd_th', 0.4433, ...
                       'Kp_z', -1e-3,   'Kd_z', -1e-3)
     end
 

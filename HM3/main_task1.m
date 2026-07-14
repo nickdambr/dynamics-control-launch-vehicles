@@ -55,11 +55,12 @@ fprintf('  lateral drift (load-relief): peak |z| = %.1f m (<500 m), peak |zdot| 
         r.peak_z, max(abs(r.zdot)));
 
 %% ---------------------------------------------------------------- Figures
-% Full-loop Nichols in the D'Antuono Fig. 3.2 convention: the loop comes from the
-% top (lateral-drift integrator), the rigid critical point sits at +180 deg, and
-% the classified Aero GM / Rigid PM are marked at their crossover frequencies.
+% Full-loop Nichols with the critical point at (-180 deg, 0 dB), the course
+% convention from 1 + L = 0. The loop comes from the top (lateral-drift
+% integrator) and the classified Aero GM / Rigid PM are marked at their
+% crossover frequencies. (D'Antuono Fig. 3.2 = same chart relabeled +360 deg.)
 f1 = figure('Name','nichols','Color','w','Position',[100 100 700 600]);
-plot_nichols_lv(L, m, 'wrange', [1e-2 1e2], 'xlim', [-360 360], ...
+plot_nichols_lv(L, m, 'wrange', [1e-2 1e2], 'xlim', [-720 0], ...
     'title', sprintf('Task 1 - Full-loop Nichols  (Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ)', ...
              abs(m.aeroGM_dB), m.rigidPM_deg));
 
@@ -80,7 +81,7 @@ xlabel('t [s]'); ylabel('$\dot z$ [m/s]','Interpreter','latex'); title('Lateral 
 nexttile; plot(r.t, r.delta*180/pi,'LineWidth',1.4); grid on;
 xlabel('t [s]'); ylabel('\delta [deg]'); title('TVC deflection');
 
-% Angle-of-attack budget and aero load: alpha = theta + zdot/V + alpha_w
+% Angle-of-attack budget and aero load: alpha = theta + zdot/V - alpha_w
 % drives qbar*alpha, the sizing quantity at max-qbar
 f3 = figure('Name','alpha_load','Color','w','Position',[100 100 820 340]);
 tl2 = tiledlayout(f3,1,2,'TileSpacing','compact','Padding','compact');
@@ -92,7 +93,7 @@ plot(r.t, r.zdot/p.V*180/pi, '-.','LineWidth',1.2);
 plot(r.t, r.alphaw*180/pi, ':','LineWidth',1.2);
 xlabel('t [s]'); ylabel('[deg]');
 legend({'$\alpha$','$\theta$','$\dot z/V$','$\alpha_w$'},'Interpreter','latex','Location','best');
-title('$\alpha = \theta + \dot z/V + \alpha_w$','Interpreter','latex');
+title('$\alpha = \theta + \dot z/V - \alpha_w$','Interpreter','latex');
 nexttile; plot(r.t, p.qbar/1000*r.alpha*180/pi, 'LineWidth',1.6); grid on;
 xlabel('t [s]'); ylabel('$\bar q\,\alpha$ [kPa deg]','Interpreter','latex');
 title(sprintf('Aerodynamic load  (peak %.1f kPa deg)', p.qbar/1000*r.peak_alpha*180/pi));

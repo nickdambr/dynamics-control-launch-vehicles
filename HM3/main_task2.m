@@ -190,23 +190,23 @@ fprintf('  peak |alpha| = %.3f deg -> peak qbar*alpha = %.1f kPa deg\n', ...
 
 %% ---------------------------------------------------------------- Figures
 % (1) Retained design: full-loop Nichols in the launch-vehicle convention
-%     (critical point +180 deg), with the classified rigid margins marked. The
+%     (critical point -180 deg), with the classified rigid margins marked. The
 %     bending mode is gain-stabilised, so the loop stays far below 0 dB near wBM
 %     (no Flex crossover) rather than threading the critical point.
 f1 = figure('Name','nichols','Color','w','Position',[100 100 700 600]);
-plot_nichols_lv(Lc, mF, 'wrange', [1e-2 1e2], 'xlim', [-360 360], ...
+plot_nichols_lv(Lc, mF, 'wrange', [1e-2 1e2], 'xlim', [-720 0], ...
     'title', sprintf(['Task 2 - Full-loop Nichols, deep notch  ' ...
              '(Aero |GM|=%.1f dB, Rigid PM=%.0f^\\circ, |L(\\omega_{BM})|=%.0f dB)'], ...
              abs(mF.aeroGM_dB), mF.rigidPM_deg, mF.LwBM_dB));
 
 % (2) Before/after re-tuning: with the Task-1 (ideal-actuator) gains the
 %     actuator + delay + notch lag collapses the rigid phase margin; re-tuning
-%     the PD on the full loop restores it (same notch, +180 deg convention).
+%     the PD on the full loop restores it (same notch, -180 deg convention).
 f5 = figure('Name','retune','Color','w','Position',[100 100 700 600]);
 Lb1.InputName = '';  Lb1.OutputName = '';  Lc.InputName = '';  Lc.OutputName = '';
 hR = nicholsplot(Lb1, Lc, {1e-2, 1e2});
-setoptions(hR, 'PhaseMatching','on', 'PhaseMatchingFreq', mF.rigidPM_w, 'PhaseMatchingValue', 180, ...
-              'Grid','on', 'XLim',{[-360 360]}, 'YLim',{[-40 40]}, ...
+setoptions(hR, 'PhaseMatching','on', 'PhaseMatchingFreq', mF.rigidPM_w, 'PhaseMatchingValue', -180, ...
+              'Grid','on', 'XLim',{[-720 0]}, 'YLim',{[-40 40]}, ...
               'XLimMode','manual', 'YLimMode','manual');
 title(gca, 'Task 2 - PD re-tuning on the full loop: rigid phase margin recovered');
 legend({sprintf('Task-1 gains (ideal actuator): Rigid PM = %.0f^\\circ', mB.rigidPM_deg), ...
@@ -214,16 +214,16 @@ legend({sprintf('Task-1 gains (ideal actuator): Rigid PM = %.0f^\\circ', mB.rigi
         'Location','southwest');
 
 % (3) Bending-filter trade: no filter vs least-unstable lead-lag vs deep notch,
-% in the launch-vehicle convention (critical point +180 deg) --- consistent with
+% with the critical point at -180 deg (course convention) --- consistent with
 % the other Nichols charts. A single common phase shift (from the retained deep-
-% notch rigid crossover) is applied to all three loops so their bending lobes are
-% directly comparable: the rigid region sits near +180 deg, the bending lobes near
-% the wrapped -180 deg critical point.
+% notch rigid crossover) is applied to all three loops so the rigid regions
+% overlap near -180 deg and the bending lobes are directly comparable on the
+% same sheet.
 f4 = figure('Name','nichols_trade','Color','w','Position',[100 100 700 600]);
 ax = gca;  ngrid;  hold(ax,'on');
 wv  = logspace(-2, log10(300), 5000);
 [~, ph0] = bode(Lcand{3}, wv);  ph0 = squeeze(ph0);          % deep-notch reference phase
-sh0 = 360*round((180 - interp1(wv, ph0, mB.rigidPM_w))/360); % common +180 shift
+sh0 = 360*round((-180 - interp1(wv, ph0, mB.rigidPM_w))/360); % common -180 shift
 trcol = [0.85 0.15 0.15; 0.10 0.60 0.10; 0.10 0.20 0.85];    % red / green / blue
 trnam = {'no filter (unstable)', ...
          sprintf('lead-lag Eq.4 alone (\\omega_x=%.0f, \\zeta_N=%.2f, \\zeta_D=%.1f) - marginal', ...
@@ -237,7 +237,7 @@ for i = 1:3
 end
 plot(ax,  180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
 plot(ax, -180, 0, 'r+', 'MarkerSize', 13, 'LineWidth', 1.6, 'HandleVisibility','off');
-xlim(ax, [-360 360]);  ylim(ax, [-40 40]);
+xlim(ax, [-720 0]);  ylim(ax, [-40 40]);
 xlabel(ax,'Open-Loop Phase (deg)');  ylabel(ax,'Open-Loop Gain (dB)');
 title(ax,'Task 2 - Full-model loop: bending filter trade');
 legend(ht, 'Location', 'northwest', 'FontSize', 9);

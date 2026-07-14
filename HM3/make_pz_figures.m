@@ -70,7 +70,7 @@ pOL = pole(Grigid);  pCL = pole(T1);
 
 f2 = figure('Name','task1_polemap','Color','w','Position',[100 100 720 560]);
 ax = axes(f2); hold(ax,'on');
-xl = [-6 2];  yl = [-0.28 0.28];
+xl = [-6 2];  yl = [-2.5 2.5];   % tall enough for the PD-placed pair at -0.95 +/- 1.90i
 shade_rhp(ax, xl, yl, cRHP);
 hOL = plot(ax, real(pOL),imag(pOL),'x','Color',cUnst,'MarkerSize',13,'LineWidth',2.2);
 hCL = plot(ax, real(pCL),imag(pCL),'o','MarkerFaceColor',cStab,'MarkerEdgeColor',cStab*0.55,'MarkerSize',9,'LineWidth',1.0);
