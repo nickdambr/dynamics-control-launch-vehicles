@@ -41,6 +41,9 @@ desktop.ini
 # --- Internal backlog (kept local, not published) ---
 tickets/
 
+# --- Personal study material (kept local, not published) ---
+/docs/
+
 # --- LaTeX build artifacts ---
 # keep main.pdf (the deliverable) and source files
 *.aux
