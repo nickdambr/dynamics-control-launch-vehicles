@@ -252,9 +252,12 @@ incidence, $0.577^\circ$, therefore \emph{exceeds} the $0.39^\circ$ of the gust
 alone. With $\bar q = 81$~kPa the peak load indicator is
 $\bar q\,\alpha = 47$~kPa\,deg. A pure attitude-hold law is thus mildly
 \emph{load aggravating} --- which is precisely why flight designs add an explicit
-load-relief term. The incidence nevertheless stays an order of magnitude below
-the few-degree limit typical of a slender launcher, so at this gust level the
-design is not load critical.
+load-relief term. The incidence nevertheless stays well below the few-degree
+limit typical of a slender launcher: taking a representative allowable
+$\alpha_{\lim} = 4^\circ$ (the assignment specifies no vehicle allowable), the
+load limit is $\bar q\,\alpha_{\lim} \simeq 325$~kPa\,deg --- drawn as the
+dashed pair in Figure~\ref{fig:t1alpha} --- and the gust peak sits a factor
+$6.9$ below it, so at this gust level the design is not load critical.
 
 This drift-versus-load tension is the standard trade in launch-vehicle wind
 control~\cite[Sec.~3.1]{greensite_cr826}. Applying the final-value theorem to a
@@ -293,7 +296,12 @@ for drift control rather than load relief.
 \alpha_w$ (left) and aerodynamic load indicator $\bar q\,\alpha$ (right) during
 the severe gust. The attitude loop pitches into the relative wind, so $\theta$ and
 $-\alpha_w$ add: the peak incidence ($0.577^\circ$) exceeds the gust alone
-($0.39^\circ$).}
+($0.39^\circ$). The trace is kept \emph{signed}, as customary for planar time
+histories (the sign carries the loading direction and shows the control and wind
+contributions adding); the structural check is on the modulus, against the
+symmetric allowable $\pm\bar q\,\alpha_{\lim}$ (dashed, $\alpha_{\lim}=4^\circ$
+representative of a slender launcher), which the response clears by a factor
+$6.9$.}
 \label{fig:t1alpha}
 \end{figure}
 

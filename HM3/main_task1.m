@@ -50,6 +50,14 @@ fprintf('  peak |z|     = %.2f m\n',   r.peak_z);
 fprintf('  peak |delta| = %.3f deg\n', r.peak_delta*180/pi);
 fprintf('  peak |alpha| = %.3f deg  -> peak qbar*alpha = %.1f kPa deg (qbar = %.1f kPa)\n', ...
         r.peak_alpha*180/pi, p.qbar/1000*r.peak_alpha*180/pi, p.qbar/1000);
+% Load allowable: the assignment gives no vehicle-specific qbar*alpha limit,
+% so the check uses the few-degree incidence allowable typical of a slender
+% LV at max-qbar (alpha_lim = 4 deg, representative order of magnitude).
+alpha_lim = 4;                        % deg   representative incidence allowable
+qa_lim    = p.qbar/1000*alpha_lim;    % kPa deg
+qa_pk     = p.qbar/1000*r.peak_alpha*180/pi;
+fprintf('  load allowable: qbar*alpha_lim = %.0f kPa deg (alpha_lim = %.0f deg) -> peak is %.1fx below\n', ...
+        qa_lim, alpha_lim, qa_lim/qa_pk);
 % Lateral drift is the load-relief channel (drift-minimum), not a Nichols margin:
 fprintf('  lateral drift (load-relief): peak |z| = %.1f m (<500 m), peak |zdot| = %.2f m/s (<15 m/s)\n', ...
         r.peak_z, max(abs(r.zdot)));
@@ -94,9 +102,17 @@ plot(r.t, r.alphaw*180/pi, ':','LineWidth',1.2);
 xlabel('t [s]'); ylabel('[deg]');
 legend({'$\alpha$','$\theta$','$\dot z/V$','$\alpha_w$'},'Interpreter','latex','Location','best');
 title('$\alpha = \theta + \dot z/V - \alpha_w$','Interpreter','latex');
-nexttile; plot(r.t, p.qbar/1000*r.alpha*180/pi, 'LineWidth',1.6); grid on;
+% Signed trace (literature convention for planar time histories: the sign is
+% the physics -- loading side, control/wind contributions adding); the limit
+% check is on |qbar*alpha|, drawn as the symmetric pair +/- qa_lim.
+nexttile; hold on; grid on;
+plot(r.t, p.qbar/1000*r.alpha*180/pi, 'LineWidth',1.6);
+yline( qa_lim, 'r--', sprintf('$\\pm\\bar q\\,\\alpha_{\\lim}$ ($\\alpha_{\\lim}=%.0f^\\circ$)', alpha_lim), ...
+       'LineWidth',1.2, 'Interpreter','latex', 'LabelVerticalAlignment','bottom');
+yline(-qa_lim, 'r--', 'LineWidth',1.2);
+ylim(1.15*qa_lim*[-1 1]);
 xlabel('t [s]'); ylabel('$\bar q\,\alpha$ [kPa deg]','Interpreter','latex');
-title(sprintf('Aerodynamic load  (peak %.1f kPa deg)', p.qbar/1000*r.peak_alpha*180/pi));
+title(sprintf('Aerodynamic load  (peak %.1f kPa deg, %.1fx below the limit)', qa_pk, qa_lim/qa_pk));
 
 %% Export figures (PNG, 200 dpi) next to the script
 fig_dir = fullfile(fileparts(mfilename('fullpath')), 'figures');
